@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../services/servicio_autenticacion.dart';
@@ -24,7 +24,18 @@ class _PantallaSplashState extends State<PantallaSplash> {
   Future<void> _handleNavigation() async {
     final ServicioAutenticacion servicioAuth = ServicioAutenticacion();
     await servicioAuth.checkInitialSession();
-    await Future.delayed(const Duration(milliseconds: 2500));
+    
+    if (servicioAuth.currentUser != null) {
+      if (!mounted) return;
+      final estadoApp = Provider.of<EstadoApp>(context, listen: false);
+      
+      // Sincronizar con la nube de inmediato en el arranque si hay sesion activa
+      if (!servicioAuth.currentUser!.uid.startsWith('demo_')) {
+        await estadoApp.sincronizarConNube(servicioAuth.currentUser!.uid);
+      }
+    }
+
+    await Future.delayed(const Duration(milliseconds: 1500));
 
     if (!mounted) return;
 
@@ -68,8 +79,8 @@ class _PantallaSplashState extends State<PantallaSplash> {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFFC5FAD5).withOpacity(0.55),
-                    const Color(0xFFFAFAFA).withOpacity(0.0),
+                    const Color(0xFFC5FAD5).withValues(alpha: 0.55),
+                    const Color(0xFFFAFAFA).withValues(alpha: 0.0),
                   ],
                 ),
               ),
@@ -93,12 +104,12 @@ class _PantallaSplashState extends State<PantallaSplash> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(28),
                     border: Border.all(
-                      color: const Color(0xFF1E293B).withOpacity(0.15),
+                      color: const Color(0xFF1E293B).withValues(alpha: 0.15),
                       width: 1.2,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF1E293B).withOpacity(0.05),
+                        color: const Color(0xFF1E293B).withValues(alpha: 0.05),
                         blurRadius: 20,
                         offset: const Offset(0, 8),
                       ),
@@ -111,8 +122,8 @@ class _PantallaSplashState extends State<PantallaSplash> {
                       decoration: BoxDecoration(
                         gradient: RadialGradient(
                           colors: [
-                            const Color(0xFFC5FAD5).withOpacity(0.35),
-                            Colors.white.withOpacity(0.0),
+                            const Color(0xFFC5FAD5).withValues(alpha: 0.35),
+                            Colors.white.withValues(alpha: 0.0),
                           ],
                           center: Alignment.topLeft,
                           radius: 1.2,
@@ -186,7 +197,7 @@ class _PantallaSplashState extends State<PantallaSplash> {
                             fontSize: 10,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 4,
-                            color: const Color(0xFF0F172A).withOpacity(0.4),
+                            color: const Color(0xFF0F172A).withValues(alpha: 0.4),
                           ),
                         )
                             .animate()
@@ -200,7 +211,7 @@ class _PantallaSplashState extends State<PantallaSplash> {
                         width: 96,
                         height: 3,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF00E676).withOpacity(0.5),
+                          color: const Color(0xFF00E676).withValues(alpha: 0.5),
                           borderRadius: BorderRadius.circular(2),
                         ),
                       )

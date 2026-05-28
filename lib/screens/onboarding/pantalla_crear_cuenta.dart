@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/estado_app.dart';
 import '../pantalla_principal.dart';
@@ -128,7 +128,7 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: const Color(0xFF0F172A).withOpacity(0.4),
+                    color: const Color(0xFF0F172A).withValues(alpha: 0.4),
                   ),
                 ),
               ),
@@ -146,7 +146,7 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.5,
-                          color: const Color(0xFF0F172A).withOpacity(0.5),
+                          color: const Color(0xFF0F172A).withValues(alpha: 0.5),
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -177,7 +177,7 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                               hintStyle: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w500,
-                                color: const Color(0xFF0F172A).withOpacity(0.3),
+                                color: const Color(0xFF0F172A).withValues(alpha: 0.3),
                               ),
                               border: InputBorder.none,
                               isDense: true,
@@ -193,7 +193,7 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.5,
-                          color: const Color(0xFF0F172A).withOpacity(0.5),
+                          color: const Color(0xFF0F172A).withValues(alpha: 0.5),
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -253,7 +253,7 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.5,
-                          color: const Color(0xFF0F172A).withOpacity(0.5),
+                          color: const Color(0xFF0F172A).withValues(alpha: 0.5),
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -311,7 +311,7 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                         'Puedes editar este valor más tarde desde la cuenta.',
                         style: TextStyle(
                           fontSize: 11,
-                          color: const Color(0xFF0F172A).withOpacity(0.35),
+                          color: const Color(0xFF0F172A).withValues(alpha: 0.35),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -365,7 +365,7 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                                       fontSize: 12,
                                       height: 1.35,
                                       fontWeight: FontWeight.w500,
-                                      color: const Color(0xFF0F172A).withOpacity(0.55),
+                                      color: const Color(0xFF0F172A).withValues(alpha: 0.55),
                                     ),
                                   ),
                                 ],

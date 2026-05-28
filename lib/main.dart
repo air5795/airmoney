@@ -49,7 +49,6 @@ class GastosApp extends StatelessWidget {
           primary: Color(0xFF0F172A),
           secondary: Color(0xFF00E676),
           surface: Colors.white,
-          background: Color(0xFFFAFAFA),
         ),
         fontFamily: 'Roboto',
         useMaterial3: true,

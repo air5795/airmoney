@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/estado_app.dart';
 import 'pantalla_moneda.dart';
@@ -83,7 +83,7 @@ class _PantallaIdiomaState extends State<PantallaIdioma> {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: const Color(0xFF0F172A).withOpacity(0.4),
+                  color: const Color(0xFF0F172A).withValues(alpha: 0.4),
                 ),
               ),
               const SizedBox(height: 24),
@@ -99,7 +99,7 @@ class _PantallaIdiomaState extends State<PantallaIdioma> {
                   children: [
                     Icon(
                       Icons.search_rounded,
-                      color: const Color(0xFF0F172A).withOpacity(0.35),
+                      color: const Color(0xFF0F172A).withValues(alpha: 0.35),
                       size: 20,
                     ),
                     const SizedBox(width: 10),
@@ -121,7 +121,7 @@ class _PantallaIdiomaState extends State<PantallaIdioma> {
                           hintStyle: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w500,
-                            color: const Color(0xFF0F172A).withOpacity(0.35),
+                            color: const Color(0xFF0F172A).withValues(alpha: 0.35),
                           ),
                           border: InputBorder.none,
                           isDense: true,
@@ -158,7 +158,7 @@ class _PantallaIdiomaState extends State<PantallaIdioma> {
                           boxShadow: isSelected
                               ? [
                                   BoxShadow(
-                                    color: const Color(0xFF0F172A).withOpacity(0.03),
+                                    color: const Color(0xFF0F172A).withValues(alpha: 0.03),
                                     blurRadius: 10,
                                     offset: const Offset(0, 4),
                                   )
@@ -204,7 +204,7 @@ class _PantallaIdiomaState extends State<PantallaIdioma> {
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w500,
-                                      color: const Color(0xFF0F172A).withOpacity(0.4),
+                                      color: const Color(0xFF0F172A).withValues(alpha: 0.4),
                                     ),
                                   ),
                                 ],

@@ -34,6 +34,14 @@ class _PantallaLoginState extends State<PantallaLogin> {
 
       if (user != null) {
         final estadoApp = Provider.of<EstadoApp>(context, listen: false);
+        
+        // Sincronizar con la nube inmediatamente para descargar las cuentas del usuario logueado
+        if (!user.uid.startsWith('demo_')) {
+          await estadoApp.sincronizarConNube(user.uid);
+        }
+
+        if (!mounted) return;
+
         if (estadoApp.hasCompletedOnboarding) {
           Navigator.pushReplacement(
             context,
@@ -52,7 +60,7 @@ class _PantallaLoginState extends State<PantallaLogin> {
               'No se pudo iniciar sesion con $provider. Por favor intenta de nuevo.',
               style: const TextStyle(color: Colors.white),
             ),
-            backgroundColor: Colors.redAccent.withOpacity(0.85),
+            backgroundColor: Colors.redAccent.withValues(alpha: 0.85),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -63,9 +71,9 @@ class _PantallaLoginState extends State<PantallaLogin> {
         SnackBar(
           content: const Text(
             'Ocurrio un error al intentar iniciar sesion.',
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: Colors.white),
           ),
-          backgroundColor: Colors.redAccent.withOpacity(0.85),
+          backgroundColor: Colors.redAccent.withValues(alpha: 0.85),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -101,8 +109,8 @@ class _PantallaLoginState extends State<PantallaLogin> {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      const Color(0xFFC5FAD5).withOpacity(0.55),
-                      const Color(0xFFFAFAFA).withOpacity(0.0),
+                      const Color(0xFFC5FAD5).withValues(alpha: 0.55),
+                      const Color(0xFFFAFAFA).withValues(alpha: 0.0),
                     ],
                   ),
                 ),
@@ -125,8 +133,8 @@ class _PantallaLoginState extends State<PantallaLogin> {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      const Color(0xFF00B0FF).withOpacity(0.08),
-                      const Color(0xFFFAFAFA).withOpacity(0.0),
+                      const Color(0xFF00B0FF).withValues(alpha: 0.08),
+                      const Color(0xFFFAFAFA).withValues(alpha: 0.0),
                     ],
                   ),
                 ),
@@ -155,12 +163,12 @@ class _PantallaLoginState extends State<PantallaLogin> {
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(22),
                               border: Border.all(
-                                color: const Color(0xFF1E293B).withOpacity(0.12),
+                                color: const Color(0xFF1E293B).withValues(alpha: 0.12),
                                 width: 1.0,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF1E293B).withOpacity(0.04),
+                                  color: const Color(0xFF1E293B).withValues(alpha: 0.04),
                                   blurRadius: 15,
                                   offset: const Offset(0, 6),
                                 ),
@@ -173,8 +181,8 @@ class _PantallaLoginState extends State<PantallaLogin> {
                                 decoration: BoxDecoration(
                                   gradient: RadialGradient(
                                     colors: [
-                                      const Color(0xFFC5FAD5).withOpacity(0.35),
-                                      Colors.white.withOpacity(0.0),
+                                      const Color(0xFFC5FAD5).withValues(alpha: 0.35),
+                                      Colors.white.withValues(alpha: 0.0),
                                     ],
                                     center: Alignment.topLeft,
                                     radius: 1.2,
@@ -227,7 +235,7 @@ class _PantallaLoginState extends State<PantallaLogin> {
                               fontSize: 9,
                               fontWeight: FontWeight.w800,
                               letterSpacing: 3,
-                              color: const Color(0xFF0F172A).withOpacity(0.4),
+                              color: const Color(0xFF0F172A).withValues(alpha: 0.4),
                             ),
                           )
                               .animate()
@@ -243,15 +251,15 @@ class _PantallaLoginState extends State<PantallaLogin> {
                             width: double.infinity,
                             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.55),
+                              color: Colors.white.withValues(alpha: 0.55),
                               borderRadius: BorderRadius.circular(32),
                               border: Border.all(
-                                color: Colors.white.withOpacity(0.4),
+                                color: Colors.white.withValues(alpha: 0.4),
                                 width: 1.5,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF1E293B).withOpacity(0.06),
+                                  color: const Color(0xFF1E293B).withValues(alpha: 0.06),
                                   blurRadius: 30,
                                   offset: const Offset(0, 15),
                                 ),
@@ -273,7 +281,7 @@ class _PantallaLoginState extends State<PantallaLogin> {
                                   'Accede de forma rapida y segura para sincronizar tus finanzas.',
                                   style: TextStyle(
                                     fontSize: 13,
-                                    color: const Color(0xFF0F172A).withOpacity(0.6),
+                                    color: const Color(0xFF0F172A).withValues(alpha: 0.6),
                                     height: 1.4,
                                   ),
                                 ),
@@ -286,7 +294,7 @@ class _PantallaLoginState extends State<PantallaLogin> {
                                   textColor: const Color(0xFF0F172A),
                                   iconColor: const Color(0xFFEA4335),
                                   border: BorderSide(
-                                    color: const Color(0xFF1E293B).withOpacity(0.12),
+                                    color: const Color(0xFF1E293B).withValues(alpha: 0.12),
                                     width: 1.2,
                                   ),
                                 ),
@@ -312,7 +320,7 @@ class _PantallaLoginState extends State<PantallaLogin> {
                         'AIRMONEY asegura tus datos con encriptacion avanzada.',
                         style: TextStyle(
                           fontSize: 10,
-                          color: const Color(0xFF0F172A).withOpacity(0.3),
+                          color: const Color(0xFF0F172A).withValues(alpha: 0.3),
                           fontWeight: FontWeight.w500,
                         ),
                       )
@@ -347,7 +355,7 @@ class _PantallaLoginState extends State<PantallaLogin> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1E293B).withOpacity(0.04),
+            color: const Color(0xFF1E293B).withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -358,7 +366,7 @@ class _PantallaLoginState extends State<PantallaLogin> {
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
           foregroundColor: textColor,
-          disabledBackgroundColor: color.withOpacity(0.6),
+          disabledBackgroundColor: color.withValues(alpha: 0.6),
           side: border,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
