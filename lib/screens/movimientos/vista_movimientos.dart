@@ -17,6 +17,10 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
   String? _selectedAccountFilter;
   bool _hideBalances = false;
   String _movimientosSortOrder = 'date_desc';
+  final Set<String> _collapsedDays = {};
+  String _searchQuery = '';
+  bool _isSearchExpanded = false;
+  String? _selectedCategoryFilter;
 
   static const List<String> _monthsNames = [
     'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
@@ -571,6 +575,27 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
       }
     }
 
+    // Obtener las categorias unicas que tienen transacciones en el periodo actual
+    final Set<String> categoriasUsadas = {};
+    for (var tx in estadoApp.transactions) {
+      final matchesMonth = tx.date.month == _selectedFilterMonth;
+      final matchesYear = tx.date.year == _selectedFilterYear;
+      bool matchesAccount = true;
+      if (_selectedAccountFilter != null) {
+        matchesAccount = tx.accountId == _selectedAccountFilter || tx.toAccountId == _selectedAccountFilter;
+      }
+      if (matchesMonth && matchesYear && matchesAccount) {
+        if (tx.type != 'transferencia') {
+          categoriasUsadas.add(tx.category.toLowerCase());
+        }
+      }
+    }
+
+    // Si la categoria previamente seleccionada ya no esta entre las usadas en este periodo, limpiamos el filtro
+    if (_selectedCategoryFilter != null && !categoriasUsadas.contains(_selectedCategoryFilter!.toLowerCase())) {
+      _selectedCategoryFilter = null;
+    }
+
     List<ModeloTransaccion> txsFiltradas = estadoApp.transactions.where((tx) {
       final matchesMonth = tx.date.month == _selectedFilterMonth;
       final matchesYear = tx.date.year == _selectedFilterYear;
@@ -578,7 +603,21 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
       if (_selectedAccountFilter != null) {
         matchesAccount = tx.accountId == _selectedAccountFilter || tx.toAccountId == _selectedAccountFilter;
       }
-      return matchesMonth && matchesYear && matchesAccount;
+      
+      bool matchesQuery = true;
+      if (_searchQuery.isNotEmpty) {
+        final query = _searchQuery.toLowerCase().trim();
+        matchesQuery = tx.title.toLowerCase().contains(query) ||
+                      tx.category.toLowerCase().contains(query) ||
+                      tx.description.toLowerCase().contains(query);
+      }
+
+      bool matchesCategory = true;
+      if (_selectedCategoryFilter != null) {
+        matchesCategory = tx.category.toLowerCase() == _selectedCategoryFilter!.toLowerCase();
+      }
+
+      return matchesMonth && matchesYear && matchesAccount && matchesQuery && matchesCategory;
     }).toList();
 
     if (_movimientosSortOrder == 'date_desc') {
@@ -614,7 +653,8 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
         _buildMovimientosHeader(esOscuro, colorTexto),
         const SizedBox(height: 6),
         _buildDateFilterBar(esOscuro, colorTexto),
-        const SizedBox(height: 14),
+        _buildCategoryChipsBar(estadoApp, categoriasUsadas, esOscuro, estadoApp.colorPrincipal),
+        const SizedBox(height: 10),
         Expanded(
           child: txsFiltradas.isEmpty
               ? Center(
@@ -680,22 +720,105 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
   }
 
   Widget _buildMovimientosHeader(bool esOscuro, Color colorTexto) {
+    final estadoApp = Provider.of<EstadoApp>(context, listen: false);
+    final activeColor = estadoApp.colorPrincipal;
+
     return Container(
       padding: const EdgeInsets.only(left: 20, right: 12, top: 8, bottom: 4),
+      height: 48,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            'Libro Mayor',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: colorTexto,
-              letterSpacing: -0.5,
-            ),
+          Expanded(
+            child: _isSearchExpanded
+                ? Container(
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: esOscuro 
+                          ? Colors.white.withValues(alpha: 0.04) 
+                          : Colors.black.withValues(alpha: 0.03),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: esOscuro 
+                            ? Colors.white.withValues(alpha: 0.08) 
+                            : Colors.black.withValues(alpha: 0.05),
+                        width: 1.0,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const SizedBox(width: 10),
+                        Icon(
+                          Icons.search_rounded,
+                          color: colorTexto.withValues(alpha: 0.4),
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            onChanged: (val) {
+                              setState(() {
+                                _searchQuery = val;
+                              });
+                            },
+                            style: TextStyle(
+                              color: colorTexto,
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'Buscar movimiento...',
+                              hintStyle: TextStyle(
+                                color: colorTexto.withValues(alpha: 0.3),
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ),
+                        if (_searchQuery.isNotEmpty)
+                          IconButton(
+                            icon: Icon(Icons.close_rounded, color: colorTexto.withValues(alpha: 0.4), size: 16),
+                            onPressed: () {
+                              setState(() {
+                                _searchQuery = '';
+                              });
+                            },
+                          ),
+                      ],
+                    ),
+                  )
+                : Text(
+                    'Libro Mayor',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: colorTexto,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
           ),
+          const SizedBox(width: 8),
           Row(
             children: [
+              IconButton(
+                icon: Icon(
+                  _isSearchExpanded ? Icons.search_off_rounded : Icons.search_rounded,
+                  color: _isSearchExpanded ? activeColor : colorTexto.withValues(alpha: 0.6),
+                  size: 20,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _isSearchExpanded = !_isSearchExpanded;
+                    if (!_isSearchExpanded) {
+                      _searchQuery = '';
+                    }
+                  });
+                },
+              ),
               IconButton(
                 icon: Icon(
                   _hideBalances ? Icons.visibility_off_rounded : Icons.visibility_rounded,
@@ -715,6 +838,94 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryChipsBar(EstadoApp estadoApp, Set<String> categoriasUsadas, bool esOscuro, Color colorPrincipal) {
+    final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
+    
+    // Filtrar categorias registradas en la app para mostrar solo las usadas en el periodo
+    final List<ModeloCategoria> cats = estadoApp.categories.where((cat) {
+      return categoriasUsadas.contains(cat.name.toLowerCase());
+    }).toList();
+
+    return Container(
+      height: 38,
+      margin: const EdgeInsets.only(top: 8, bottom: 4),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: cats.length + 1,
+        itemBuilder: (context, index) {
+          final bool isAllChip = index == 0;
+          final String label = isAllChip ? 'TODOS' : cats[index - 1].name;
+          final bool isSelected = isAllChip
+              ? _selectedCategoryFilter == null
+              : _selectedCategoryFilter?.toLowerCase() == label.toLowerCase();
+              
+          IconData chipIcon = Icons.all_inclusive_rounded;
+          Color chipColor = colorPrincipal;
+          
+          if (!isAllChip) {
+            final cat = cats[index - 1];
+            chipIcon = _galleryIcons[cat.iconCode] ?? Icons.category_rounded;
+            try {
+              chipColor = Color(int.parse(cat.hexColor.replaceFirst('#', '0xFF')));
+            } catch (_) {
+              chipColor = colorPrincipal;
+            }
+          }
+
+          final bgSelectionColor = isSelected
+              ? chipColor.withValues(alpha: esOscuro ? 0.20 : 0.12)
+              : (esOscuro ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03));
+          final borderSelectionColor = isSelected
+              ? chipColor
+              : (esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05));
+          final textSelectionColor = isSelected ? chipColor : colorTexto.withValues(alpha: 0.65);
+
+          return GestureDetector(
+            onTap: () {
+              setState(() {
+                if (isAllChip) {
+                  _selectedCategoryFilter = null;
+                } else {
+                  _selectedCategoryFilter = label;
+                }
+              });
+            },
+            child: Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: bgSelectionColor,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: borderSelectionColor, width: 1.0),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    chipIcon,
+                    color: textSelectionColor,
+                    size: 14,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    label.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w900,
+                      color: textSelectionColor,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -846,256 +1057,285 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
     final String mesAnio = '${_monthsNames[fechaDia.month - 1]} ${fechaDia.year}';
     final isNetoDiaPositivo = netoDia >= 0;
 
+    final claveDiaStr = '${fechaDia.year}-${fechaDia.month}-${fechaDia.day}';
+    final isCollapsed = _collapsedDays.contains(claveDiaStr);
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 18),
+      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
+        color: esOscuro
+            ? const Color(0xFF111625)
+            : Colors.white,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: esOscuro
+              ? Colors.white.withValues(alpha: 0.08)
+              : const Color(0xFFE2E8F0),
+          width: 1.0,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: esOscuro ? 0.15 : 0.04),
-            blurRadius: 10,
+            color: Colors.black.withValues(alpha: esOscuro ? 0.20 : 0.03),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-          child: Container(
-            decoration: BoxDecoration(
-              color: esOscuro
-                  ? const Color(0xFF0D0E15).withValues(alpha: 0.45)
-                  : Colors.white.withValues(alpha: 0.60),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: esOscuro
-                    ? Colors.white.withValues(alpha: 0.12)
-                    : Colors.white.withValues(alpha: 0.65),
-                width: 1.0,
+      child: Column(
+        children: [
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                if (_collapsedDays.contains(claveDiaStr)) {
+                  _collapsedDays.remove(claveDiaStr);
+                } else {
+                  _collapsedDays.add(claveDiaStr);
+                }
+              });
+            },
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: esOscuro 
+                    ? Colors.white.withValues(alpha: 0.01) 
+                    : const Color(0xFFF1F5F9).withValues(alpha: 0.3),
               ),
-            ),
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: esOscuro 
-                        ? Colors.white.withValues(alpha: 0.02) 
-                        : const Color(0xFFF1F5F9).withValues(alpha: 0.4),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    alignment: Alignment.center,
+                    child: Text(
+                      fechaDia.day.toString(),
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                        color: colorTexto,
+                        height: 1.0,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
                   ),
-                  child: Row(
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          nombreDia,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: colorTexto,
+                            letterSpacing: 0.1,
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          mesAnio,
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w600,
+                            color: colorTexto.withValues(alpha: 0.45),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: esOscuro 
-                              ? Colors.white.withValues(alpha: 0.06)
-                              : const Color(0xFFE2E8F0),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Center(
-                          child: Text(
-                            fechaDia.day.toString(),
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w900,
-                              color: colorTexto,
-                            ),
-                          ),
+                      Text(
+                        _formatCurrency(netoDia, currency, showSign: true),
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w800,
+                          color: isNetoDiaPositivo ? const Color(0xFF10B981) : const Color(0xFFEF4444),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              nombreDia,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
-                                color: colorTexto,
-                                letterSpacing: 0.1,
-                              ),
-                            ),
-                            const SizedBox(height: 1),
-                            Text(
-                              mesAnio,
-                              style: TextStyle(
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w600,
-                                color: colorTexto.withValues(alpha: 0.45),
-                              ),
-                            ),
-                          ],
+                      const SizedBox(height: 2),
+                      Text(
+                        'SALDO: ${_formatCurrency(saldoAcumuladoDia, currency)}',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                          color: colorTexto.withValues(alpha: 0.45),
                         ),
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            _formatCurrency(netoDia, currency, showSign: true),
-                            style: TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w800,
-                              color: isNetoDiaPositivo ? const Color(0xFF10B981) : const Color(0xFFEF4444),
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'SALDO: ${_formatCurrency(saldoAcumuladoDia, currency)}',
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w600,
-                              color: colorTexto.withValues(alpha: 0.45),
-                            ),
-                          ),
-                        ],
                       ),
                     ],
                   ),
-                ),
-                Container(
-                  height: 1,
-                  color: esOscuro
-                      ? Colors.white.withValues(alpha: 0.05)
-                      : const Color(0xFF0D0E15).withValues(alpha: 0.05),
-                ),
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: transacciones.length,
-                  separatorBuilder: (_, __) => Container(
-                    height: 1,
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                    color: esOscuro
-                        ? Colors.white.withValues(alpha: 0.03)
-                        : const Color(0xFF0D0E15).withValues(alpha: 0.03),
+                  const SizedBox(width: 8),
+                  Icon(
+                    isCollapsed
+                        ? Icons.keyboard_arrow_down_rounded
+                        : Icons.keyboard_arrow_up_rounded,
+                    color: colorTexto.withValues(alpha: 0.4),
+                    size: 20,
                   ),
-                  itemBuilder: (context, idx) {
-                    final tx = transacciones[idx];
-                    final isIncome = tx.type == 'ingreso';
-                    final isTransfer = tx.type == 'transferencia';
-
-                    String labelDetalle = '';
-                    if (isTransfer) {
-                      final accOrigen = estadoApp.accounts.firstWhere((a) => a.id == tx.accountId, orElse: () => ModeloCuenta(id: '', name: 'Desconocido', balance: 0, gradientIndex: 0, type: 'Efectivo'));
-                      final accDestino = estadoApp.accounts.firstWhere((a) => a.id == tx.toAccountId, orElse: () => ModeloCuenta(id: '', name: 'Desconocido', balance: 0, gradientIndex: 0, type: 'Efectivo'));
-                      labelDetalle = 'TRF: ${accOrigen.name.toUpperCase()} > ${accDestino.name.toUpperCase()}';
-                    } else {
-                      final acc = estadoApp.accounts.firstWhere((a) => a.id == tx.accountId, orElse: () => ModeloCuenta(id: '', name: '', balance: 0, gradientIndex: 0, type: 'Efectivo'));
-                      labelDetalle = '${tx.category.toUpperCase()} • ${acc.name.toUpperCase()}';
-                    }
-
-                    IconData transIcon = Icons.arrow_downward_rounded;
-                    Color transIconColor = const Color(0xFFEF4444);
-                    
-                    if (isTransfer) {
-                      transIcon = Icons.swap_horiz_rounded;
-                      transIconColor = const Color(0xFF3B82F6);
-                    } else {
-                      // Buscar el icono real y color de la categoria de la transaccion
-                      final defaultColorHex = isIncome ? '#10B981' : '#EF4444';
-                      final cat = estadoApp.categories.firstWhere(
-                        (c) => c.name.toLowerCase() == tx.category.toLowerCase(),
-                        orElse: () => ModeloCategoria(id: '', name: tx.category, iconCode: 'category', hexColor: defaultColorHex),
-                      );
-                      transIcon = _galleryIcons[cat.iconCode] ?? Icons.category_rounded;
-                      // Resolver color hex a objeto Color
-                      try {
-                        transIconColor = Color(int.parse(cat.hexColor.replaceFirst('#', '0xFF')));
-                      } catch (e) {
-                        transIconColor = isIncome ? const Color(0xFF10B981) : const Color(0xFFEF4444);
-                      }
-                    }
-
-                    return GestureDetector(
-                      behavior: HitTestBehavior.translucent,
-                      onTap: () {
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          backgroundColor: Colors.transparent,
-                          builder: (context) => PanelTransaccion(transaccion: tx),
-                        );
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: transIconColor.withValues(alpha: esOscuro ? 0.15 : 0.08),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Center(
-                                child: Icon(
-                                  transIcon,
-                                  color: transIconColor,
-                                  size: 16,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              flex: 4,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    tx.title,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: colorTexto,
-                                      letterSpacing: -0.2,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    labelDetalle,
-                                    style: TextStyle(
-                                      fontSize: 9.5,
-                                      fontWeight: FontWeight.w600,
-                                      color: colorTexto.withValues(alpha: 0.45),
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Expanded(
-                              flex: 2,
-                              child: Text(
-                                _formatCurrency(isIncome ? tx.amount : (isTransfer ? tx.amount : -tx.amount), currency, showSign: isIncome),
-                                textAlign: TextAlign.right,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  color: isIncome
-                                      ? const Color(0xFF10B981)
-                                      : (isTransfer ? const Color(0xFF3B82F6) : const Color(0xFFEF4444)),
-                                  letterSpacing: -0.2,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
+          if (!isCollapsed) ...[
+            Container(
+              height: 1,
+              color: esOscuro
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : const Color(0xFF0D0E15).withValues(alpha: 0.05),
+            ),
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: transacciones.length,
+              separatorBuilder: (_, __) => Container(
+                height: 1,
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                color: esOscuro
+                    ? Colors.white.withValues(alpha: 0.03)
+                    : const Color(0xFF0D0E15).withValues(alpha: 0.03),
+              ),
+              itemBuilder: (context, idx) {
+                final tx = transacciones[idx];
+                final isIncome = tx.type == 'ingreso';
+                final isTransfer = tx.type == 'transferencia';
+
+                String labelDetalle = '';
+                if (isTransfer) {
+                  final accOrigen = estadoApp.accounts.firstWhere((a) => a.id == tx.accountId, orElse: () => ModeloCuenta(id: '', name: 'Desconocido', balance: 0, gradientIndex: 0, type: 'Efectivo'));
+                  final accDestino = estadoApp.accounts.firstWhere((a) => a.id == tx.toAccountId, orElse: () => ModeloCuenta(id: '', name: 'Desconocido', balance: 0, gradientIndex: 0, type: 'Efectivo'));
+                  labelDetalle = 'TRF: ${accOrigen.name.toUpperCase()} > ${accDestino.name.toUpperCase()}';
+                } else {
+                  final acc = estadoApp.accounts.firstWhere((a) => a.id == tx.accountId, orElse: () => ModeloCuenta(id: '', name: '', balance: 0, gradientIndex: 0, type: 'Efectivo'));
+                  labelDetalle = '${tx.category.toUpperCase()} • ${acc.name.toUpperCase()}';
+                }
+
+                IconData transIcon = Icons.arrow_downward_rounded;
+                Color transIconColor = const Color(0xFFEF4444);
+                
+                if (isTransfer) {
+                  transIcon = Icons.swap_horiz_rounded;
+                  transIconColor = const Color(0xFF3B82F6);
+                } else {
+                  final defaultColorHex = isIncome ? '#10B981' : '#EF4444';
+                  final cat = estadoApp.categories.firstWhere(
+                    (c) => c.name.toLowerCase() == tx.category.toLowerCase(),
+                    orElse: () => ModeloCategoria(id: '', name: tx.category, iconCode: 'category', hexColor: defaultColorHex),
+                  );
+                  transIcon = _galleryIcons[cat.iconCode] ?? Icons.category_rounded;
+                  try {
+                    transIconColor = Color(int.parse(cat.hexColor.replaceFirst('#', '0xFF')));
+                  } catch (e) {
+                    transIconColor = isIncome ? const Color(0xFF10B981) : const Color(0xFFEF4444);
+                  }
+                }
+
+                return GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) => PanelTransaccion(transaccion: tx),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 36,
+                          height: 38,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Positioned(
+                                top: idx == 0 ? 19 : 0,
+                                bottom: idx == transacciones.length - 1 ? 19 : 0,
+                                child: Container(
+                                  width: 2.0,
+                                  color: esOscuro
+                                      ? Colors.white.withValues(alpha: 0.12)
+                                      : const Color(0xFF0D0E15).withValues(alpha: 0.06),
+                                ),
+                              ),
+                              Container(
+                                width: 26,
+                                height: 26,
+                                decoration: BoxDecoration(
+                                  color: transIconColor.withValues(alpha: esOscuro ? 0.20 : 0.12),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: (esOscuro ? const Color(0xFF0D0E15) : Colors.white).withValues(alpha: 0.85),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Icon(
+                                    transIcon,
+                                    color: transIconColor,
+                                    size: 13,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 4,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                tx.title,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: colorTexto,
+                                  letterSpacing: -0.2,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                labelDetalle,
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: colorTexto.withValues(alpha: 0.45),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            _formatCurrency(isIncome ? tx.amount : (isTransfer ? tx.amount : -tx.amount), currency, showSign: isIncome),
+                            textAlign: TextAlign.right,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: isIncome
+                                  ? const Color(0xFF10B981)
+                                  : (isTransfer ? const Color(0xFF3B82F6) : const Color(0xFFEF4444)),
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ],
       ),
     );
   }

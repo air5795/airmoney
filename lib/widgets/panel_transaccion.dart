@@ -5,6 +5,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../services/estado_app.dart';
 import '../helpers/asistente_voz_helper.dart';
+import 'toast_ios.dart';
 
 class PanelTransaccion extends StatefulWidget {
   final ModeloTransaccion? transaccion;
@@ -206,15 +207,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
       _isListening = false;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Asistente: Rellenado "$frase"'),
-        backgroundColor: _getTipoColor(),
-        duration: const Duration(seconds: 3),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
+    ToastHelper.showInfo(context, 'Asistente: Rellenado "$frase"');
   }
 
   // Obtener el color dinámico basado en el tipo de transacción seleccionado
@@ -266,12 +259,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
     final amount = double.tryParse(_amountController.text.trim()) ?? 0.0;
 
     if (amount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('El importe debe ser mayor a 0.'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+      ToastHelper.showError(context, 'El importe debe ser mayor a 0.');
       return;
     }
 
@@ -284,12 +272,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
     } else if (_tabController.index == 2) {
       type = 'transferencia';
       if (_selectedAccountId == _selectedToAccountId) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('La cuenta de destino debe ser diferente a la de origen.'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
+        ToastHelper.showError(context, 'La cuenta de destino debe ser diferente a la de origen.');
         return;
       }
     }
@@ -325,16 +308,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
 
     Navigator.pop(context);
     
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(successMessage),
-        backgroundColor: const Color(0xFF10B981),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-    );
+    ToastHelper.showSuccess(context, successMessage);
   }
 
   @override
@@ -696,12 +670,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                             setState(() {
                               _simulatedPhotoPath = 'photo_simulated_path.jpg';
                             });
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Foto simulada adjuntada correctamente'),
-                                duration: Duration(seconds: 1),
-                              ),
-                            );
+                            ToastHelper.showInfo(context, 'Foto simulada adjuntada correctamente');
                           },
                           child: Container(
                             height: 60,
@@ -803,16 +772,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                                     estadoApp.deleteTransaction(widget.transaccion!.id);
                                     Navigator.pop(context);
                                     
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: const Text('Movimiento eliminado con éxito'),
-                                        backgroundColor: Colors.redAccent,
-                                        behavior: SnackBarBehavior.floating,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                      ),
-                                    );
+                                    ToastHelper.showSuccess(context, 'Movimiento eliminado con éxito');
                                   },
                                 ),
                               ],

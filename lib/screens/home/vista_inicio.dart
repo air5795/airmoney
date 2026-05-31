@@ -210,79 +210,106 @@ class VistaInicio extends StatelessWidget {
     final esOscuro = estadoApp.esTemaOscuro;
     final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-          decoration: BoxDecoration(
-            color: esOscuro
-                ? const Color(0xFF0D0E15).withValues(alpha: 0.45)
-                : Colors.white.withValues(alpha: 0.60),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: esOscuro
-                  ? Colors.white.withValues(alpha: 0.12)
-                  : Colors.white.withValues(alpha: 0.70),
-              width: 1.0,
-            ),
+    // Calcular ingresos y gastos del mes actual de forma reactiva
+    final ahora = DateTime.now();
+    double ingresosMes = 0.0;
+    double gastosMes = 0.0;
+    for (var tx in estadoApp.transactions) {
+      if (tx.date.month == ahora.month && tx.date.year == ahora.year) {
+        if (tx.type == 'ingreso') {
+          ingresosMes += tx.amount;
+        } else if (tx.type == 'gasto') {
+          gastosMes += tx.amount;
+        }
+      }
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      decoration: BoxDecoration(
+        color: esOscuro
+            ? const Color(0xFF111625)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: esOscuro
+              ? Colors.white.withValues(alpha: 0.08)
+              : const Color(0xFFE2E8F0),
+          width: 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: esOscuro ? 0.20 : 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(
-                'BALANCE GENERAL DE CUENTAS',
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.0,
-                  color: colorTexto.withValues(alpha: 0.5),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Bs ${estadoApp.totalBalance.toStringAsFixed(2)}',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w900,
-                  color: estadoApp.colorPrincipal,
-                  letterSpacing: -1.0,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Container(
-                height: 1,
-                color: esOscuro
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : const Color(0xFF0D0E15).withValues(alpha: 0.08),
-              ),
-              const SizedBox(height: 20),
-              Row(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: _buildBalanceMiniChip(
-                      label: 'TOTAL INGRESOS',
-                      amount: '+Bs ${estadoApp.totalIncome.toStringAsFixed(2)}',
-                      color: const Color(0xFF10B981),
-                      esOscuro: esOscuro,
+                  Text(
+                    'BALANCE GENERAL DE CUENTAS',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.0,
+                      color: colorTexto.withValues(alpha: 0.5),
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildBalanceMiniChip(
-                      label: 'TOTAL GASTOS',
-                      amount: '-Bs ${estadoApp.totalExpenses.toStringAsFixed(2)}',
-                      color: const Color(0xFFEF4444),
-                      esOscuro: esOscuro,
+                  const SizedBox(height: 6),
+                  Text(
+                    'Bs ${estadoApp.totalBalance.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w900,
+                      color: estadoApp.colorPrincipal,
+                      letterSpacing: -1.0,
                     ),
                   ),
                 ],
               ),
+              _buildMiniMonthlyChart(ingresosMes, gastosMes, esOscuro),
             ],
           ),
-        ),
+          const SizedBox(height: 20),
+          Container(
+            height: 1,
+            color: esOscuro
+                ? Colors.white.withValues(alpha: 0.08)
+                : const Color(0xFF0D0E15).withValues(alpha: 0.08),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: _buildBalanceMiniChip(
+                  label: 'TOTAL INGRESOS',
+                  amount: '+Bs ${estadoApp.totalIncome.toStringAsFixed(2)}',
+                  color: const Color(0xFF10B981),
+                  esOscuro: esOscuro,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildBalanceMiniChip(
+                  label: 'TOTAL GASTOS',
+                  amount: '-Bs ${estadoApp.totalExpenses.toStringAsFixed(2)}',
+                  color: const Color(0xFFEF4444),
+                  esOscuro: esOscuro,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -558,164 +585,265 @@ class VistaInicio extends StatelessWidget {
       );
     }
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-        child: Container(
-          decoration: BoxDecoration(
-            color: esOscuro
-                ? const Color(0xFF0D0E15).withValues(alpha: 0.45)
-                : Colors.white.withValues(alpha: 0.60),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: esOscuro
-                  ? Colors.white.withValues(alpha: 0.12)
-                  : Colors.white.withValues(alpha: 0.65),
-              width: 1.0,
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        color: esOscuro
+            ? const Color(0xFF111625)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: esOscuro
+              ? Colors.white.withValues(alpha: 0.08)
+              : const Color(0xFFE2E8F0),
+          width: 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: esOscuro ? 0.20 : 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-          child: ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: txs.length > 5 ? 5 : txs.length,
-            separatorBuilder: (_, __) => Container(
-              height: 1,
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              color: esOscuro
-                  ? Colors.white.withValues(alpha: 0.05)
-                  : const Color(0xFF0D0E15).withValues(alpha: 0.05),
-            ),
-            itemBuilder: (context, index) {
-              final tx = txs[index];
-              final isIncome = tx.type == 'ingreso';
-              final isTransfer = tx.type == 'transferencia';
+        ],
+      ),
+      child: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: txs.length > 5 ? 5 : txs.length,
+        separatorBuilder: (_, __) => Container(
+          height: 1,
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          color: esOscuro
+              ? Colors.white.withValues(alpha: 0.05)
+              : const Color(0xFF0D0E15).withValues(alpha: 0.05),
+        ),
+        itemBuilder: (context, index) {
+          final tx = txs[index];
+          final isIncome = tx.type == 'ingreso';
+          final isTransfer = tx.type == 'transferencia';
 
-              final accName = estadoApp.accounts.firstWhere(
-                (a) => a.id == tx.accountId,
-                orElse: () => ModeloCuenta(id: '', name: 'N/A', type: '', balance: 0.0, gradientIndex: 0),
-              ).name;
+          final accName = estadoApp.accounts.firstWhere(
+            (a) => a.id == tx.accountId,
+            orElse: () => ModeloCuenta(id: '', name: 'N/A', type: '', balance: 0.0, gradientIndex: 0),
+          ).name;
 
-              IconData transIcon = Icons.arrow_downward_rounded;
-              Color transIconColor = const Color(0xFFEF4444);
-              if (isIncome) {
-                transIcon = Icons.arrow_upward_rounded;
-                transIconColor = const Color(0xFF10B981);
-              } else if (isTransfer) {
-                transIcon = Icons.swap_horiz_rounded;
-                transIconColor = const Color(0xFF3B82F6);
-              }
+          IconData transIcon = Icons.arrow_downward_rounded;
+          Color transIconColor = const Color(0xFFEF4444);
+          if (isIncome) {
+            transIcon = Icons.arrow_upward_rounded;
+            transIconColor = const Color(0xFF10B981);
+          } else if (isTransfer) {
+            transIcon = Icons.swap_horiz_rounded;
+            transIconColor = const Color(0xFF3B82F6);
+          }
 
-              return GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onTap: () {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (context) => PanelTransaccion(transaccion: tx),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: transIconColor.withValues(alpha: esOscuro ? 0.15 : 0.10),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Icon(
-                            transIcon,
-                            color: transIconColor,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 4,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              tx.title,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: colorTexto,
-                                letterSpacing: -0.2,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              accName.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w600,
-                                color: colorTexto.withValues(alpha: 0.45),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        flex: 3,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              isIncome
-                                  ? '+Bs ${tx.amount.toStringAsFixed(2)}'
-                                  : isTransfer
-                                      ? 'Bs ${tx.amount.toStringAsFixed(2)}'
-                                      : '-Bs ${tx.amount.toStringAsFixed(2)}',
-                              style: TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w800,
-                                color: isIncome
-                                    ? const Color(0xFF10B981)
-                                    : isTransfer
-                                        ? const Color(0xFF3B82F6)
-                                        : const Color(0xFFEF4444),
-                                letterSpacing: -0.2,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: isTransfer
-                                    ? (esOscuro ? const Color(0xFF00B0FF) : const Color(0xFF0284C7)).withValues(alpha: 0.08)
-                                    : (esOscuro ? Colors.white : const Color(0xFF4B5563)).withValues(alpha: 0.08),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                tx.category.toUpperCase(),
-                                style: TextStyle(
-                                  fontSize: 8.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: isTransfer
-                                      ? (esOscuro ? const Color(0xFF00B0FF) : const Color(0xFF0284C7))
-                                      : (esOscuro ? Colors.white70 : const Color(0xFF4B5563)),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+          return GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => PanelTransaccion(transaccion: tx),
               );
             },
-          ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: transIconColor.withValues(alpha: esOscuro ? 0.15 : 0.10),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Icon(
+                        transIcon,
+                        color: transIconColor,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 4,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          tx.title,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: colorTexto,
+                            letterSpacing: -0.2,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          accName.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                            color: colorTexto.withValues(alpha: 0.45),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          isIncome
+                              ? '+Bs ${tx.amount.toStringAsFixed(2)}'
+                              : isTransfer
+                                  ? 'Bs ${tx.amount.toStringAsFixed(2)}'
+                                  : '-Bs ${tx.amount.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            color: isIncome
+                                ? const Color(0xFF10B981)
+                                : isTransfer
+                                    ? const Color(0xFF3B82F6)
+                                    : const Color(0xFFEF4444),
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isTransfer
+                                ? (esOscuro ? const Color(0xFF00B0FF) : const Color(0xFF0284C7)).withValues(alpha: 0.08)
+                                : (esOscuro ? Colors.white : const Color(0xFF4B5563)).withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            tx.category.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w800,
+                              color: isTransfer
+                                  ? (esOscuro ? const Color(0xFF00B0FF) : const Color(0xFF0284C7))
+                                  : (esOscuro ? Colors.white70 : const Color(0xFF4B5563)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildMiniMonthlyChart(double ingresos, double gastos, bool esOscuro) {
+    final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
+    final maxMonto = ingresos > gastos ? ingresos : gastos;
+    
+    // Altura maxima de las barras es 44px, minima 4px
+    final double alturaIngresos = maxMonto > 0 ? (ingresos / maxMonto) * 44.0 : 4.0;
+    final double alturaGastos = maxMonto > 0 ? (gastos / maxMonto) * 44.0 : 4.0;
+    
+    // Asegurar que la barra tenga al menos 4px si tiene monto mayor a 0
+    final double hIng = ingresos > 0 && alturaIngresos < 4.0 ? 4.0 : alturaIngresos;
+    final double hGas = gastos > 0 && alturaGastos < 4.0 ? 4.0 : alturaGastos;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: esOscuro
+            ? Colors.white.withValues(alpha: 0.03)
+            : Colors.black.withValues(alpha: 0.02),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: esOscuro
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.05),
+          width: 1.0,
         ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // Barra de ingresos (Verde)
+              Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Container(
+                    width: 10,
+                    height: hIng,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF34D399), Color(0xFF10B981)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                      borderRadius: BorderRadius.circular(5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.25),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 12),
+              // Barra de gastos (Rojo)
+              Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Container(
+                    width: 10,
+                    height: hGas,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFF87171), Color(0xFFEF4444)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                      borderRadius: BorderRadius.circular(5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFEF4444).withValues(alpha: 0.25),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'ESTE MES',
+            style: TextStyle(
+              fontSize: 7.5,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.5,
+              color: colorTexto.withValues(alpha: 0.4),
+            ),
+          ),
+        ],
       ),
     );
   }
