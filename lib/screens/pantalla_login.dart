@@ -36,11 +36,27 @@ class _PantallaLoginState extends State<PantallaLogin> {
         final estadoApp = Provider.of<EstadoApp>(context, listen: false);
         
         // Sincronizar con la nube inmediatamente para descargar las cuentas del usuario logueado
+        bool syncSuccess = true;
         if (!user.uid.startsWith('demo_')) {
-          await estadoApp.sincronizarConNube(user.uid);
+          syncSuccess = await estadoApp.sincronizarConNube(user.uid);
         }
 
         if (!mounted) return;
+
+        if (!syncSuccess) {
+          await _servicioAuth.signOut();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                'No se pudo sincronizar tus datos desde la nube. Por favor, verifica tu conexion a internet.',
+                style: TextStyle(color: Colors.white),
+              ),
+              backgroundColor: Colors.redAccent.withValues(alpha: 0.85),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return;
+        }
 
         if (estadoApp.hasCompletedOnboarding) {
           Navigator.pushReplacement(

@@ -18,11 +18,14 @@ class VistaAjustes extends StatefulWidget {
 
 class _VistaAjustesState extends State<VistaAjustes> {
   int _settingsSubView = 0;
+  bool _isDeleting = false;
   final ServicioAutenticacion _servicioAuth = ServicioAutenticacion();
 
   Future<void> _handleLogout() async {
     try {
+      final estadoApp = Provider.of<EstadoApp>(context, listen: false);
       await _servicioAuth.signOut();
+      await estadoApp.clearAllData();
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
@@ -37,6 +40,106 @@ class _VistaAjustesState extends State<VistaAjustes> {
         ),
       );
     }
+  }
+
+  Future<void> _showDeleteAccountConfirmation() async {
+    final estadoApp = Provider.of<EstadoApp>(context, listen: false);
+    final user = _servicioAuth.currentUser;
+    if (user == null) return;
+
+    final esOscuro = estadoApp.esTemaOscuro;
+    final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: AlertDialog(
+            backgroundColor: esOscuro ? const Color(0xFF1E293B) : Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            title: Text(
+              '¿Eliminar tu cuenta?',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                color: colorTexto,
+              ),
+            ),
+            content: Text(
+              'Esta acción borrará permanentemente todos tus datos financieros de la nube y tu cuenta. Esta acción no se puede deshacer.',
+              style: TextStyle(
+                color: colorTexto.withValues(alpha: 0.7),
+                fontSize: 14,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(
+                  'Cancelar',
+                  style: TextStyle(
+                    color: colorTexto.withValues(alpha: 0.5),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                onPressed: () async {
+                  final mainNavigator = Navigator.of(this.context);
+                  Navigator.of(context).pop(); // Cerrar diálogo de confirmación
+                  
+                  setState(() {
+                    _isDeleting = true;
+                  });
+
+                  try {
+                    final uid = user.uid;
+                    print('=== DEBUG AJUSTES: Iniciando proceso de eliminacion ===');
+                    
+                    print('=== DEBUG AJUSTES: Llamando a eliminarDatosNubeYLocal ===');
+                    await estadoApp.eliminarDatosNubeYLocal(uid);
+                    print('=== DEBUG AJUSTES: eliminarDatosNubeYLocal completado ===');
+                    
+                    print('=== DEBUG AJUSTES: Llamando a deleteFirebaseAccount ===');
+                    await _servicioAuth.deleteFirebaseAccount();
+                    print('=== DEBUG AJUSTES: deleteFirebaseAccount completado ===');
+
+                    print('=== DEBUG AJUSTES: Redireccionando a PantallaLogin ===');
+                    mainNavigator.pushReplacement(
+                      MaterialPageRoute(builder: (_) => const PantallaLogin()),
+                    );
+                    print('=== DEBUG AJUSTES: Redireccion completa ===');
+                  } catch (e) {
+                    print('=== DEBUG AJUSTES: Error capturado en onPressed: $e ===');
+                    setState(() {
+                      _isDeleting = false;
+                    });
+                    ScaffoldMessenger.of(this.context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Error al eliminar la cuenta. Inténtalo de nuevo.'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                },
+                child: const Text(
+                  'Eliminar',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -70,6 +173,44 @@ class _VistaAjustesState extends State<VistaAjustes> {
       );
     } else {
       cuerpoSettings = _buildMainSettingsMenu(estadoApp);
+    }
+
+    if (_isDeleting) {
+      final esOscuro = estadoApp.esTemaOscuro;
+      final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
+      
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.only(top: 150.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(
+                color: estadoApp.colorPrincipal,
+                strokeWidth: 3.5,
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Eliminando tu cuenta...',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: colorTexto,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Borrando datos financieros de forma permanente...',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: colorTexto.withValues(alpha: 0.5),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     return SingleChildScrollView(
@@ -263,6 +404,22 @@ class _VistaAjustesState extends State<VistaAjustes> {
                     esOscuro: esOscuro,
                     isDestructive: true,
                     onTap: _handleLogout,
+                  ),
+                  Container(
+                    height: 1,
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    color: esOscuro
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : const Color(0xFF0D0E15).withValues(alpha: 0.05),
+                  ),
+                  _buildSettingsMenuItem(
+                    icon: Icons.delete_forever_rounded,
+                    title: 'Eliminar Cuenta',
+                    subtitle: 'Borrar permanentemente todos tus datos',
+                    color: Colors.redAccent,
+                    esOscuro: esOscuro,
+                    isDestructive: true,
+                    onTap: _showDeleteAccountConfirmation,
                   ),
                 ],
               ),

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -124,6 +125,27 @@ class ServicioAutenticacion {
       await prefs.remove('demo_user_session');
       _currentUser = null;
       _userStreamController.add(null);
+    }
+  }
+
+  Future<bool> deleteFirebaseAccount() async {
+    if (_isFirebaseInitialized && FirebaseAuth.instance.currentUser != null) {
+      try {
+        await FirebaseAuth.instance.currentUser!.delete();
+        _currentUser = null;
+        _userStreamController.add(null);
+        return true;
+      } catch (e) {
+        debugPrint('Error al eliminar cuenta en Firebase Auth: $e');
+        await signOut(); // Fallback: asegurarse de cerrar sesión
+        return false;
+      }
+    } else {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.remove('demo_user_session');
+      _currentUser = null;
+      _userStreamController.add(null);
+      return true;
     }
   }
 

@@ -28,26 +28,26 @@ class ModeloCuenta {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'name': name,
-      'type': type,
-      'balance': balance,
-      'gradientIndex': gradientIndex,
-      'customColorHex': customColorHex,
-      'customColorSecondaryHex': customColorSecondaryHex,
-      'useDarkText': useDarkText,
+      'nombre': name,
+      'tipo': type,
+      'saldo': balance,
+      'indiceGradiente': gradientIndex,
+      'colorPersonalizadoHex': customColorHex,
+      'colorSecundarioPersonalizadoHex': customColorSecondaryHex,
+      'usarTextoOscuro': useDarkText,
     };
   }
 
   factory ModeloCuenta.fromMap(Map<String, dynamic> map) {
     return ModeloCuenta(
       id: map['id'] ?? '',
-      name: map['name'] ?? '',
-      type: map['type'] ?? '',
-      balance: (map['balance'] as num?)?.toDouble() ?? 0.0,
-      gradientIndex: map['gradientIndex'] ?? 0,
-      customColorHex: map['customColorHex'],
-      customColorSecondaryHex: map['customColorSecondaryHex'],
-      useDarkText: map['useDarkText'] ?? false,
+      name: map['nombre'] ?? '',
+      type: map['tipo'] ?? '',
+      balance: (map['saldo'] as num?)?.toDouble() ?? 0.0,
+      gradientIndex: map['indiceGradiente'] ?? 0,
+      customColorHex: map['colorPersonalizadoHex'],
+      customColorSecondaryHex: map['colorSecundarioPersonalizadoHex'],
+      useDarkText: map['usarTextoOscuro'] ?? false,
     );
   }
 }
@@ -80,30 +80,30 @@ class ModeloTransaccion {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'title': title,
-      'description': description,
-      'amount': amount,
-      'category': category,
-      'date': date.toIso8601String(),
-      'type': type,
-      'accountId': accountId,
-      'toAccountId': toAccountId,
-      'photoPath': photoPath,
+      'titulo': title,
+      'descripcion': description,
+      'monto': amount,
+      'categoria': category,
+      'fecha': date.toIso8601String(),
+      'tipo': type,
+      'idCuenta': accountId,
+      'idCuentaDestino': toAccountId,
+      'rutaFoto': photoPath,
     };
   }
 
   factory ModeloTransaccion.fromMap(Map<String, dynamic> map) {
     return ModeloTransaccion(
       id: map['id'] ?? '',
-      title: map['title'] ?? '',
-      description: map['description'] ?? '',
-      amount: (map['amount'] as num?)?.toDouble() ?? 0.0,
-      category: map['category'] ?? '',
-      date: DateTime.parse(map['date'] ?? DateTime.now().toIso8601String()),
-      type: map['type'] ?? 'gasto',
-      accountId: map['accountId'] ?? '',
-      toAccountId: map['toAccountId'],
-      photoPath: map['photoPath'],
+      title: map['titulo'] ?? '',
+      description: map['descripcion'] ?? '',
+      amount: (map['monto'] as num?)?.toDouble() ?? 0.0,
+      category: map['categoria'] ?? '',
+      date: DateTime.parse(map['fecha'] ?? DateTime.now().toIso8601String()),
+      type: map['tipo'] ?? 'gasto',
+      accountId: map['idCuenta'] ?? '',
+      toAccountId: map['idCuentaDestino'],
+      photoPath: map['rutaFoto'],
     );
   }
 }
@@ -126,20 +126,20 @@ class ModeloCategoria {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'name': name,
-      'parentId': parentId,
-      'iconCode': iconCode,
-      'hexColor': hexColor,
+      'nombre': name,
+      'idPadre': parentId,
+      'codigoIcono': iconCode,
+      'colorHex': hexColor,
     };
   }
 
   factory ModeloCategoria.fromMap(Map<String, dynamic> map) {
     return ModeloCategoria(
       id: map['id'] ?? '',
-      name: map['name'] ?? '',
-      parentId: map['parentId'],
-      iconCode: map['iconCode'] ?? 'bubble_chart',
-      hexColor: map['hexColor'] ?? '#E2E8F0',
+      name: map['nombre'] ?? '',
+      parentId: map['idPadre'],
+      iconCode: map['codigoIcono'] ?? 'bubble_chart',
+      hexColor: map['colorHex'] ?? '#E2E8F0',
     );
   }
 }
@@ -159,7 +159,9 @@ class EstadoApp extends ChangeNotifier {
   bool get hasCompletedOnboarding => _hasCompletedOnboarding;
   List<ModeloCuenta> get accounts => _accounts;
   List<ModeloTransaccion> get transactions => _transactions;
-  List<ModeloCategoria> get categories => _categories;
+  List<ModeloCategoria> get categories {
+    return [...categoriasPorDefecto, ..._categories];
+  }
   bool get esTemaOscuro => _esTemaOscuro;
   Color get colorPrincipal => _colorPrincipal;
 
@@ -262,10 +264,7 @@ class EstadoApp extends ChangeNotifier {
       }
     }
 
-    if (_categories.isEmpty) {
-      _inicializarCategoriasPredeterminadas();
-      await _saveCategoriesToPrefs(prefs);
-    }
+
 
     notifyListeners();
   }
@@ -584,51 +583,115 @@ class EstadoApp extends ChangeNotifier {
   }
 
   Future<void> clearAllData() async {
+    print('=== DEBUG ESTADO: clearAllData - Iniciando ===');
     _accounts.clear();
     _transactions.clear();
     _categories.clear();
     _hasCompletedOnboarding = false;
 
+    print('=== DEBUG ESTADO: clearAllData - Obteniendo SharedPreferences ===');
     final SharedPreferences prefs = await SharedPreferences.getInstance();
+    print('=== DEBUG ESTADO: clearAllData - Removiendo SharedPreferences keys ===');
     await prefs.remove('app_onboarding_completed');
     await prefs.remove('app_accounts');
     await prefs.remove('app_transactions');
     await prefs.remove('app_categories');
     
+    print('=== DEBUG ESTADO: clearAllData - Notificando listeners ===');
     notifyListeners();
+    print('=== DEBUG ESTADO: clearAllData - Fin ===');
   }
 
-  void _inicializarCategoriasPredeterminadas() {
-    _categories = [
-      ModeloCategoria(id: 'cat_comida', name: 'Comida', iconCode: 'restaurant', hexColor: '#FF9800'),
-      ModeloCategoria(id: 'cat_comida_super', name: 'Supermercado', parentId: 'cat_comida', iconCode: 'shopping_cart', hexColor: '#FF9800'),
-      ModeloCategoria(id: 'cat_comida_rest', name: 'Restaurantes', parentId: 'cat_comida', iconCode: 'restaurant', hexColor: '#FF9800'),
-      ModeloCategoria(id: 'cat_comida_cafe', name: 'Cafetería', parentId: 'cat_comida', iconCode: 'local_cafe', hexColor: '#FF9800'),
-
-      ModeloCategoria(id: 'cat_transporte', name: 'Transporte', iconCode: 'directions_car', hexColor: '#0284C7'),
-      ModeloCategoria(id: 'cat_trans_gas', name: 'Combustible', parentId: 'cat_transporte', iconCode: 'local_gas_station', hexColor: '#0284C7'),
-      ModeloCategoria(id: 'cat_trans_mantenimiento', name: 'Mantenimiento', parentId: 'cat_transporte', iconCode: 'build', hexColor: '#0284C7'),
-      ModeloCategoria(id: 'cat_trans_publico', name: 'Transporte Público', parentId: 'cat_transporte', iconCode: 'directions_bus', hexColor: '#0284C7'),
-
-      ModeloCategoria(id: 'cat_salario', name: 'Salario', iconCode: 'work', hexColor: '#10B981'),
-      ModeloCategoria(id: 'cat_sal_mensual', name: 'Nómina', parentId: 'cat_salario', iconCode: 'payments', hexColor: '#10B981'),
-      ModeloCategoria(id: 'cat_sal_freelance', name: 'Freelance', parentId: 'cat_salario', iconCode: 'laptop', hexColor: '#10B981'),
-      ModeloCategoria(id: 'cat_sal_bonos', name: 'Inversiones', parentId: 'cat_salario', iconCode: 'trending_up', hexColor: '#10B981'),
-
-      ModeloCategoria(id: 'cat_servicios', name: 'Servicios', iconCode: 'electrical_services', hexColor: '#8B5CF6'),
-      ModeloCategoria(id: 'cat_serv_luz', name: 'Luz/Agua', parentId: 'cat_servicios', iconCode: 'water_drop', hexColor: '#8B5CF6'),
-      ModeloCategoria(id: 'cat_serv_internet', name: 'Internet/TV', parentId: 'cat_servicios', iconCode: 'router', hexColor: '#8B5CF6'),
-      ModeloCategoria(id: 'cat_serv_streaming', name: 'Streaming', parentId: 'cat_servicios', iconCode: 'tv', hexColor: '#8B5CF6'),
-
-      ModeloCategoria(id: 'cat_entretenimiento', name: 'Entretenimiento', iconCode: 'sports_esports', hexColor: '#EC4899'),
-      ModeloCategoria(id: 'cat_ent_cine', name: 'Cine', parentId: 'cat_entretenimiento', iconCode: 'movie', hexColor: '#EC4899'),
-      ModeloCategoria(id: 'cat_ent_salidas', name: 'Salidas', parentId: 'cat_entretenimiento', iconCode: 'celebration', hexColor: '#EC4899'),
-
-      ModeloCategoria(id: 'cat_otros', name: 'Otros', iconCode: 'category', hexColor: '#64748B'),
-      ModeloCategoria(id: 'cat_otr_salud', name: 'Médico/Salud', parentId: 'cat_otros', iconCode: 'local_hospital', hexColor: '#64748B'),
-      ModeloCategoria(id: 'cat_otr_regalo', name: 'Regalos', parentId: 'cat_otros', iconCode: 'card_giftcard', hexColor: '#64748B'),
-    ];
+  Future<void> eliminarDatosNubeYLocal(String uid) async {
+    try {
+      if (!uid.startsWith('demo_')) {
+        print('=== DEBUG ESTADO: Intentando borrar Firestore doc: usuarios/$uid ===');
+        final docRef = FirebaseFirestore.instance.collection('usuarios').doc(uid);
+        await docRef.delete().timeout(const Duration(seconds: 4));
+        print('=== DEBUG ESTADO: Firestore doc borrado con exito ===');
+      } else {
+        print('=== DEBUG ESTADO: Es usuario demo, omitiendo borrado Firestore ===');
+      }
+    } catch (e) {
+      print('=== DEBUG ESTADO: Error al eliminar datos de la nube: $e ===');
+    }
+    print('=== DEBUG ESTADO: Llamando a clearAllData ===');
+    await clearAllData();
+    print('=== DEBUG ESTADO: clearAllData completado ===');
   }
+
+  static final List<ModeloCategoria> categoriasPorDefecto = [
+    // ALIMENTACIÓN (Comida)
+    ModeloCategoria(id: 'cat_comida', name: 'Alimentación', parentId: null, iconCode: 'restaurant', hexColor: '#FF9800'),
+    ModeloCategoria(id: 'cat_comida_super', name: 'Supermercado', parentId: 'cat_comida', iconCode: 'shopping_cart', hexColor: '#FF9800'),
+    ModeloCategoria(id: 'cat_comida_rest', name: 'Restaurantes', parentId: 'cat_comida', iconCode: 'restaurant', hexColor: '#FF9800'),
+    ModeloCategoria(id: 'cat_comida_cafe', name: 'Cafetería', parentId: 'cat_comida', iconCode: 'local_cafe', hexColor: '#FF9800'),
+    ModeloCategoria(id: 'cat_comida_rapida', name: 'Comida Rápida', parentId: 'cat_comida', iconCode: 'fastfood', hexColor: '#FF9800'),
+    ModeloCategoria(id: 'cat_comida_bebidas', name: 'Bebidas/Licores', parentId: 'cat_comida', iconCode: 'local_bar', hexColor: '#FF9800'),
+
+    // TRANSPORTE
+    ModeloCategoria(id: 'cat_transporte', name: 'Transporte', parentId: null, iconCode: 'directions_car', hexColor: '#0284C7'),
+    ModeloCategoria(id: 'cat_trans_gas', name: 'Combustible', parentId: 'cat_transporte', iconCode: 'local_gas_station', hexColor: '#0284C7'),
+    ModeloCategoria(id: 'cat_trans_mantenimiento', name: 'Mantenimiento de Auto', parentId: 'cat_transporte', iconCode: 'build', hexColor: '#0284C7'),
+    ModeloCategoria(id: 'cat_trans_publico', name: 'Transporte Público', parentId: 'cat_transporte', iconCode: 'directions_bus', hexColor: '#0284C7'),
+    ModeloCategoria(id: 'cat_trans_taxi', name: 'Taxi / Uber', parentId: 'cat_transporte', iconCode: 'local_taxi', hexColor: '#0284C7'),
+    ModeloCategoria(id: 'cat_trans_seguro', name: 'Seguro de Auto', parentId: 'cat_transporte', iconCode: 'verified_user', hexColor: '#0284C7'),
+
+    // VIVIENDA / HOGAR
+    ModeloCategoria(id: 'cat_vivienda', name: 'Vivienda', parentId: null, iconCode: 'home', hexColor: '#009688'),
+    ModeloCategoria(id: 'cat_viv_alquiler', name: 'Alquiler / Hipoteca', parentId: 'cat_vivienda', iconCode: 'vpn_key', hexColor: '#009688'),
+    ModeloCategoria(id: 'cat_viv_servicios', name: 'Servicios Básicos (Luz/Agua)', parentId: 'cat_vivienda', iconCode: 'water_drop', hexColor: '#009688'),
+    ModeloCategoria(id: 'cat_viv_internet', name: 'Internet / Tv Cable', parentId: 'cat_vivienda', iconCode: 'router', hexColor: '#009688'),
+    ModeloCategoria(id: 'cat_viv_limpieza', name: 'Limpieza / Mantenimiento', parentId: 'cat_vivienda', iconCode: 'clean_hands', hexColor: '#009688'),
+    ModeloCategoria(id: 'cat_viv_muebles', name: 'Decoración / Muebles', parentId: 'cat_vivienda', iconCode: 'weekend', hexColor: '#009688'),
+
+    // ENTRETENIMIENTO / OCIO
+    ModeloCategoria(id: 'cat_entretenimiento', name: 'Entretenimiento', parentId: null, iconCode: 'sports_esports', hexColor: '#EC4899'),
+    ModeloCategoria(id: 'cat_ent_cine', name: 'Cine y Teatro', parentId: 'cat_entretenimiento', iconCode: 'movie', hexColor: '#EC4899'),
+    ModeloCategoria(id: 'cat_ent_streaming', name: 'Servicios Streaming', parentId: 'cat_entretenimiento', iconCode: 'tv', hexColor: '#EC4899'),
+    ModeloCategoria(id: 'cat_ent_videojuegos', name: 'Videojuegos', parentId: 'cat_entretenimiento', iconCode: 'sports_esports', hexColor: '#EC4899'),
+    ModeloCategoria(id: 'cat_ent_viajes', name: 'Viajes / Vacaciones', parentId: 'cat_entretenimiento', iconCode: 'flight', hexColor: '#EC4899'),
+    ModeloCategoria(id: 'cat_ent_eventos', name: 'Conciertos / Eventos', parentId: 'cat_entretenimiento', iconCode: 'confirmation_number', hexColor: '#EC4899'),
+
+    // SALUD Y BIENESTAR
+    ModeloCategoria(id: 'cat_salud', name: 'Salud y Bienestar', parentId: null, iconCode: 'local_hospital', hexColor: '#EF5350'),
+    ModeloCategoria(id: 'cat_sal_medico', name: 'Consultas Médicas', parentId: 'cat_salud', iconCode: 'medical_services', hexColor: '#EF5350'),
+    ModeloCategoria(id: 'cat_sal_farmacia', name: 'Farmacia / Medicinas', parentId: 'cat_salud', iconCode: 'medication', hexColor: '#EF5350'),
+    ModeloCategoria(id: 'cat_sal_gimnasio', name: 'Gimnasio / Deportes', parentId: 'cat_salud', iconCode: 'fitness_center', hexColor: '#EF5350'),
+    ModeloCategoria(id: 'cat_sal_personal', name: 'Cuidado Personal', parentId: 'cat_salud', iconCode: 'face', hexColor: '#EF5350'),
+
+    // EDUCACIÓN
+    ModeloCategoria(id: 'cat_educacion', name: 'Educación', parentId: null, iconCode: 'school', hexColor: '#3F51B5'),
+    ModeloCategoria(id: 'cat_edu_matricula', name: 'Matrícula / Mensualidad', parentId: 'cat_educacion', iconCode: 'receipt_long', hexColor: '#3F51B5'),
+    ModeloCategoria(id: 'cat_edu_libros', name: 'Libros / Útiles', parentId: 'cat_educacion', iconCode: 'book', hexColor: '#3F51B5'),
+    ModeloCategoria(id: 'cat_edu_cursos', name: 'Cursos / Certificaciones', parentId: 'cat_educacion', iconCode: 'laptop_chromebook', hexColor: '#3F51B5'),
+
+    // COMPRAS
+    ModeloCategoria(id: 'cat_compras', name: 'Compras', parentId: null, iconCode: 'shopping_bag', hexColor: '#E91E63'),
+    ModeloCategoria(id: 'cat_comp_ropa', name: 'Ropa y Calzado', parentId: 'cat_compras', iconCode: 'checkroom', hexColor: '#E91E63'),
+    ModeloCategoria(id: 'cat_comp_tecnologia', name: 'Tecnología / Gadgets', parentId: 'cat_compras', iconCode: 'devices', hexColor: '#E91E63'),
+    ModeloCategoria(id: 'cat_comp_regalos', name: 'Regalos / Detalles', parentId: 'cat_compras', iconCode: 'card_giftcard', hexColor: '#E91E63'),
+    ModeloCategoria(id: 'cat_comp_mascotas', name: 'Mascotas', parentId: 'cat_compras', iconCode: 'pets', hexColor: '#E91E63'),
+
+    // FINANZAS Y BANCO
+    ModeloCategoria(id: 'cat_finanzas', name: 'Finanzas', parentId: null, iconCode: 'account_balance', hexColor: '#607D8B'),
+    ModeloCategoria(id: 'cat_fin_impuestos', name: 'Impuestos', parentId: 'cat_finanzas', iconCode: 'receipt', hexColor: '#607D8B'),
+    ModeloCategoria(id: 'cat_fin_comisiones', name: 'Comisiones / Intereses', parentId: 'cat_finanzas', iconCode: 'monetization_on', hexColor: '#607D8B'),
+    ModeloCategoria(id: 'cat_fin_deudas', name: 'Préstamos / Deudas', parentId: 'cat_finanzas', iconCode: 'credit_card', hexColor: '#607D8B'),
+    ModeloCategoria(id: 'cat_fin_inversiones', name: 'Inversiones', parentId: 'cat_finanzas', iconCode: 'trending_up', hexColor: '#607D8B'),
+
+    // INGRESOS
+    ModeloCategoria(id: 'cat_ingresos', name: 'Ingresos', parentId: null, iconCode: 'work', hexColor: '#10B981'),
+    ModeloCategoria(id: 'cat_ing_nomina', name: 'Salario / Nómina', parentId: 'cat_ingresos', iconCode: 'payments', hexColor: '#10B981'),
+    ModeloCategoria(id: 'cat_ing_freelance', name: 'Freelance / Trabajos', parentId: 'cat_ingresos', iconCode: 'laptop', hexColor: '#10B981'),
+    ModeloCategoria(id: 'cat_ing_ventas', name: 'Ventas / Negocio', parentId: 'cat_ingresos', iconCode: 'storefront', hexColor: '#10B981'),
+    ModeloCategoria(id: 'cat_ing_regalos', name: 'Regalos / Donaciones', parentId: 'cat_ingresos', iconCode: 'volunteer_activism', hexColor: '#10B981'),
+
+    // OTROS
+    ModeloCategoria(id: 'cat_otros', name: 'Otros', parentId: null, iconCode: 'category', hexColor: '#64748B'),
+    ModeloCategoria(id: 'cat_otr_donaciones', name: 'Ayuda social / Donación', parentId: 'cat_otros', iconCode: 'favorite', hexColor: '#64748B'),
+    ModeloCategoria(id: 'cat_otr_perdidas', name: 'Ajustes / Pérdidas', parentId: 'cat_otros', iconCode: 'remove_circle_outline', hexColor: '#64748B'),
+  ];
 
   Future<void> _saveCategoriesToPrefs(SharedPreferences prefs) async {
     final List<Map<String, dynamic>> categoriesMapList = _categories.map((cat) => cat.toMap()).toList();
@@ -683,10 +746,10 @@ class EstadoApp extends ChangeNotifier {
     }
   }
 
-  Future<void> sincronizarConNube(String uid) async {
+  Future<bool> sincronizarConNube(String uid) async {
     try {
       final docRef = FirebaseFirestore.instance.collection('usuarios').doc(uid);
-      final docSnap = await docRef.get();
+      final docSnap = await docRef.get().timeout(const Duration(seconds: 4));
 
       if (docSnap.exists) {
         final data = docSnap.data();
@@ -698,21 +761,21 @@ class EstadoApp extends ChangeNotifier {
             _colorPrincipal = Color(data['colorPrincipal'] as int);
           }
 
-          if (data['accounts'] != null) {
-            final List<dynamic> accountsData = data['accounts'];
+          if (data['cuentas'] != null) {
+            final List<dynamic> accountsData = data['cuentas'];
             _accounts = accountsData.map((item) => ModeloCuenta.fromMap(Map<String, dynamic>.from(item))).toList();
             if (_accounts.isNotEmpty) {
               _hasCompletedOnboarding = true;
             }
           }
 
-          if (data['transactions'] != null) {
-            final List<dynamic> transactionsData = data['transactions'];
+          if (data['transacciones'] != null) {
+            final List<dynamic> transactionsData = data['transacciones'];
             _transactions = transactionsData.map((item) => ModeloTransaccion.fromMap(Map<String, dynamic>.from(item))).toList();
           }
 
-          if (data['categories'] != null) {
-            final List<dynamic> categoriesData = data['categories'];
+          if (data['categorias'] != null) {
+            final List<dynamic> categoriesData = data['categorias'];
             _categories = categoriesData.map((item) => ModeloCategoria.fromMap(Map<String, dynamic>.from(item))).toList();
           }
 
@@ -731,8 +794,10 @@ class EstadoApp extends ChangeNotifier {
           await _subirDatosANube(uid);
         }
       }
+      return true;
     } catch (e) {
       debugPrint('Error en la sincronizacion con la nube: $e');
+      return false;
     }
   }
 
@@ -747,11 +812,11 @@ class EstadoApp extends ChangeNotifier {
         'uid': uid,
         'esTemaOscuro': _esTemaOscuro,
         'colorPrincipal': _colorPrincipal.toARGB32(),
-        'accounts': accountsMapList,
-        'transactions': transactionsMapList,
-        'categories': categoriesMapList,
-        'lastUpdated': FieldValue.serverTimestamp(),
-      });
+        'cuentas': accountsMapList,
+        'transacciones': transactionsMapList,
+        'categorias': categoriesMapList,
+        'ultimaActualizacion': FieldValue.serverTimestamp(),
+      }).timeout(const Duration(seconds: 4));
     } catch (e) {
       debugPrint('Error al subir datos a la nube: $e');
     }
