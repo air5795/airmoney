@@ -2,7 +2,10 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/estado_app.dart';
+import '../../services/servicio_autenticacion.dart';
 import '../../widgets/panel_transaccion.dart';
+import '../../widgets/interactive_scale.dart';
+import '../ajustes/pantalla_ajustes.dart';
 
 class VistaInicio extends StatelessWidget {
   const VistaInicio({super.key});
@@ -48,7 +51,7 @@ class VistaInicio extends StatelessWidget {
         final estadoApp = Provider.of<EstadoApp>(context, listen: false);
         final esOscuro = estadoApp.esTemaOscuro;
         final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
-        final colorFondo = esOscuro ? const Color(0xFF12131C) : Colors.white;
+        final colorFondo = esOscuro ? const Color(0xFF0E0E0E) : Colors.white;
 
         return AlertDialog(
           backgroundColor: colorFondo,
@@ -142,6 +145,9 @@ class VistaInicio extends StatelessWidget {
     final estadoApp = Provider.of<EstadoApp>(context);
     final esOscuro = estadoApp.esTemaOscuro;
     final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
+    
+    final authUser = ServicioAutenticacion().currentUser;
+    final nombreUsuario = authUser?.displayName ?? 'Invitado';
 
     final textStyleSeccion = TextStyle(
       fontSize: 11,
@@ -156,7 +162,55 @@ class VistaInicio extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Hola, $nombreUsuario',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      color: colorTexto,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Aquí tienes el resumen de tus finanzas.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: colorTexto.withValues(alpha: 0.55),
+                    ),
+                  ),
+                ],
+              ),
+              InteractiveScale(
+                onTap: () {
+                  estadoApp.selectedSettingsSubView = 0;
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PantallaAjustes()),
+                  );
+                },
+                child: CircleAvatar(
+                  radius: 18,
+                  backgroundColor: colorTexto.withValues(alpha: 0.06),
+                  backgroundImage: authUser?.photoUrl != null && authUser!.photoUrl!.isNotEmpty
+                      ? NetworkImage(authUser.photoUrl!)
+                      : null,
+                  child: authUser?.photoUrl == null || authUser!.photoUrl!.isEmpty
+                      ? Icon(Icons.person_rounded, size: 18, color: colorTexto.withValues(alpha: 0.6))
+                      : null,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
           _buildBalanceCard(estadoApp),
           const SizedBox(height: 24),
           Row(
@@ -166,13 +220,22 @@ class VistaInicio extends StatelessWidget {
                 'CUENTAS ACTIVAS',
                 style: textStyleSeccion,
               ),
-              Text(
-                'VER DETALLE',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  color: estadoApp.colorPrincipal,
-                  letterSpacing: 0.5,
+              InteractiveScale(
+                onTap: () {
+                  estadoApp.selectedSettingsSubView = 2;
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PantallaAjustes()),
+                  );
+                },
+                child: Text(
+                  'VER DETALLE',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: estadoApp.colorPrincipal,
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ),
             ],
@@ -187,13 +250,18 @@ class VistaInicio extends StatelessWidget {
                 'MOVIMIENTOS RECIENTES',
                 style: textStyleSeccion,
               ),
-              Text(
-                'VER TODO',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  color: estadoApp.colorPrincipal,
-                  letterSpacing: 0.5,
+              InteractiveScale(
+                onTap: () {
+                  estadoApp.selectedDockIndex = 1;
+                },
+                child: Text(
+                  'VER TODO',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: estadoApp.colorPrincipal,
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ),
             ],
@@ -224,28 +292,25 @@ class VistaInicio extends StatelessWidget {
       }
     }
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      decoration: BoxDecoration(
-        color: esOscuro
-            ? const Color(0xFF111625)
-            : Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: esOscuro
-              ? Colors.white.withValues(alpha: 0.08)
-              : const Color(0xFFE2E8F0),
-          width: 1.0,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: esOscuro ? 0.20 : 0.03),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          decoration: BoxDecoration(
+            color: esOscuro
+                ? const Color(0xFF0A0A0A).withValues(alpha: 0.65)
+                : Colors.white.withValues(alpha: 0.70),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: esOscuro
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.06),
+              width: 1.0,
+            ),
           ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -271,8 +336,9 @@ class VistaInicio extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.w900,
-                      color: estadoApp.colorPrincipal,
+                      color: esOscuro ? Colors.white : const Color(0xFF0F172A),
                       letterSpacing: -1.0,
+                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
                 ],
@@ -285,7 +351,7 @@ class VistaInicio extends StatelessWidget {
             height: 1,
             color: esOscuro
                 ? Colors.white.withValues(alpha: 0.08)
-                : const Color(0xFF0D0E15).withValues(alpha: 0.08),
+                : const Color(0xFF0A0A0A).withValues(alpha: 0.08),
           ),
           const SizedBox(height: 20),
           Row(
@@ -311,7 +377,7 @@ class VistaInicio extends StatelessWidget {
           ),
         ],
       ),
-    );
+    )));
   }
 
   Widget _buildBalanceMiniChip({
@@ -355,6 +421,7 @@ class VistaInicio extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                   color: color,
                   letterSpacing: -0.3,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -384,8 +451,14 @@ class VistaInicio extends StatelessWidget {
       ),
       itemBuilder: (context, index) {
         if (index == activeAccounts.length) {
-          return GestureDetector(
-            onTap: () => _showAddAccountDialog(context),
+          return InteractiveScale(
+            onTap: () {
+              estadoApp.selectedSettingsSubView = 2;
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PantallaAjustes()),
+              );
+            },
             child: ClipRRect(
               borderRadius: BorderRadius.circular(20),
               child: BackdropFilter(
@@ -393,7 +466,7 @@ class VistaInicio extends StatelessWidget {
                 child: Container(
                   decoration: BoxDecoration(
                     color: esOscuro
-                        ? const Color(0xFF0D0E15).withValues(alpha: 0.25)
+                        ? const Color(0xFF0A0A0A).withValues(alpha: 0.25)
                         : Colors.white.withValues(alpha: 0.40),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
@@ -450,112 +523,118 @@ class VistaInicio extends StatelessWidget {
 
         final cardContentColor = (acc.useDarkText ?? false) ? const Color(0xFF0F172A) : Colors.white;
 
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: bgColors,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: esOscuro
-                    ? Colors.white.withValues(alpha: 0.15)
-                    : Colors.white.withValues(alpha: 0.40),
-                width: 1.0,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: colorInicio.withValues(alpha: esOscuro ? 0.25 : 0.15),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
+        return InteractiveScale(
+          onTap: () {
+            // Detalle de cuenta
+          },
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: bgColors,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Tipo de cuenta en capsula acrilica
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: cardContentColor.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: cardContentColor.withValues(alpha: 0.30),
-                          width: 0.5,
-                        ),
-                      ),
-                      child: Text(
-                        acc.type.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 8.0,
-                          fontWeight: FontWeight.w900,
-                          color: cardContentColor,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                    ),
-                    // Circulos acrilicos decorativos (MasterCard style) unificados con Ajustes
-                    Row(
-                      children: [
-                        Container(
-                          width: 14,
-                          height: 14,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: cardContentColor.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: esOscuro
+                      ? Colors.white.withValues(alpha: 0.15)
+                      : Colors.white.withValues(alpha: 0.40),
+                  width: 1.0,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: colorInicio.withValues(alpha: esOscuro ? 0.25 : 0.15),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Tipo de cuenta en capsula acrilica
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: cardContentColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: cardContentColor.withValues(alpha: 0.30),
+                            width: 0.5,
                           ),
                         ),
-                        Transform.translate(
-                          offset: const Offset(-5, 0),
-                          child: Container(
+                        child: Text(
+                          acc.type.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 8.0,
+                            fontWeight: FontWeight.w900,
+                            color: cardContentColor,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                      // Circulos acrilicos decorativos (MasterCard style) unificados con Ajustes
+                      Row(
+                        children: [
+                          Container(
                             width: 14,
                             height: 14,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: cardContentColor.withValues(alpha: 0.2),
+                              color: cardContentColor.withValues(alpha: 0.35),
                             ),
                           ),
+                          Transform.translate(
+                            offset: const Offset(-5, 0),
+                            child: Container(
+                              width: 14,
+                              height: 14,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: cardContentColor.withValues(alpha: 0.2),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        acc.name.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          color: cardContentColor,
+                          letterSpacing: -0.2,
                         ),
-                      ],
-                    ),
-                  ],
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      acc.name.toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                        color: cardContentColor,
-                        letterSpacing: -0.2,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Bs ${acc.balance.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        color: cardContentColor,
-                        letterSpacing: -0.3,
+                      const SizedBox(height: 2),
+                      Text(
+                        'Bs ${acc.balance.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          color: cardContentColor,
+                          letterSpacing: -0.3,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -588,7 +667,7 @@ class VistaInicio extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: esOscuro
-            ? const Color(0xFF111625)
+            ? const Color(0xFF0E0E0E)
             : Colors.white,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
@@ -614,7 +693,7 @@ class VistaInicio extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: 16),
           color: esOscuro
               ? Colors.white.withValues(alpha: 0.05)
-              : const Color(0xFF0D0E15).withValues(alpha: 0.05),
+              : const Color(0xFF0A0A0A).withValues(alpha: 0.05),
         ),
         itemBuilder: (context, index) {
           final tx = txs[index];
@@ -636,8 +715,7 @@ class VistaInicio extends StatelessWidget {
             transIconColor = const Color(0xFF3B82F6);
           }
 
-          return GestureDetector(
-            behavior: HitTestBehavior.translucent,
+          return InteractiveScale(
             onTap: () {
               showModalBottomSheet(
                 context: context,
@@ -714,6 +792,7 @@ class VistaInicio extends StatelessWidget {
                                     ? const Color(0xFF3B82F6)
                                     : const Color(0xFFEF4444),
                             letterSpacing: -0.2,
+                            fontFeatures: const [FontFeature.tabularFigures()],
                           ),
                         ),
                         const SizedBox(height: 2),

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../services/estado_app.dart';
+import '../../widgets/interactive_scale.dart';
 
 class VistaEstadisticas extends StatefulWidget {
   const VistaEstadisticas({super.key});
@@ -75,7 +76,7 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
       builder: (context) {
         final esOscuro = estadoApp.esTemaOscuro;
         final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
-        final colorFondo = esOscuro ? const Color(0xFF0D0E15) : Colors.white;
+        final colorFondo = esOscuro ? const Color(0xFF0A0A0A) : Colors.white;
 
         return ClipRRect(
           borderRadius: const BorderRadius.only(
@@ -133,7 +134,7 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
                     itemCount: 12,
                     itemBuilder: (context, idx) {
                       final isSelected = _selectedFilterMonth == (idx + 1);
-                      return GestureDetector(
+                      return InteractiveScale(
                         onTap: () {
                           setState(() {
                             _selectedFilterMonth = idx + 1;
@@ -183,7 +184,7 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
       builder: (context) {
         final esOscuro = estadoApp.esTemaOscuro;
         final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
-        final colorFondo = esOscuro ? const Color(0xFF0D0E15) : Colors.white;
+        final colorFondo = esOscuro ? const Color(0xFF0A0A0A) : Colors.white;
         final currentYear = DateTime.now().year;
         final years = List.generate(10, (idx) => currentYear - 5 + idx);
 
@@ -244,7 +245,7 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
                     itemBuilder: (context, idx) {
                       final y = years[idx];
                       final isSelected = _selectedFilterYear == y;
-                      return GestureDetector(
+                      return InteractiveScale(
                         onTap: () {
                           setState(() {
                             _selectedFilterYear = y;
@@ -294,7 +295,7 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
       builder: (context) {
         final esOscuro = estadoApp.esTemaOscuro;
         final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
-        final colorFondo = esOscuro ? const Color(0xFF0D0E15) : Colors.white;
+        final colorFondo = esOscuro ? const Color(0xFF0A0A0A) : Colors.white;
 
         return ClipRRect(
           borderRadius: const BorderRadius.only(
@@ -343,45 +344,47 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: _selectedAccountFilter == null 
-                            ? estadoApp.colorPrincipal.withValues(alpha: 0.15)
-                            : (esOscuro ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03)),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: _selectedAccountFilter == null 
-                              ? estadoApp.colorPrincipal 
-                              : Colors.transparent,
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.account_balance_wallet_rounded,
-                        color: _selectedAccountFilter == null ? estadoApp.colorPrincipal : colorTexto.withValues(alpha: 0.6),
-                        size: 18,
-                      ),
-                    ),
-                    title: Text(
-                      'Todas las cuentas',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: colorTexto,
-                      ),
-                    ),
-                    trailing: _selectedAccountFilter == null
-                        ? Icon(Icons.check_circle_rounded, color: estadoApp.colorPrincipal, size: 20)
-                        : null,
+                  InteractiveScale(
                     onTap: () {
                       setState(() {
                         _selectedAccountFilter = null;
                       });
                       Navigator.pop(context);
                     },
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: _selectedAccountFilter == null 
+                              ? estadoApp.colorPrincipal.withValues(alpha: 0.15)
+                              : (esOscuro ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03)),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: _selectedAccountFilter == null 
+                                ? estadoApp.colorPrincipal 
+                                : Colors.transparent,
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.account_balance_wallet_rounded,
+                          color: _selectedAccountFilter == null ? estadoApp.colorPrincipal : colorTexto.withValues(alpha: 0.6),
+                          size: 18,
+                        ),
+                      ),
+                      title: Text(
+                        'Todas las cuentas',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: colorTexto,
+                        ),
+                      ),
+                      trailing: _selectedAccountFilter == null
+                          ? Icon(Icons.check_circle_rounded, color: estadoApp.colorPrincipal, size: 20)
+                          : null,
+                    ),
                   ),
                   const Divider(height: 20),
                   ConstrainedBox(
@@ -394,43 +397,45 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
                         final acc = estadoApp.accounts[idx];
                         final isSelected = _selectedAccountFilter == acc.id;
 
-                        return ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: isSelected 
-                                  ? estadoApp.colorPrincipal.withValues(alpha: 0.15)
-                                  : (esOscuro ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03)),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isSelected ? estadoApp.colorPrincipal : Colors.transparent,
-                              ),
-                            ),
-                            child: Icon(
-                              Icons.account_balance_rounded,
-                              color: isSelected ? estadoApp.colorPrincipal : colorTexto.withValues(alpha: 0.6),
-                              size: 18,
-                            ),
-                          ),
-                          title: Text(
-                            acc.name,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: colorTexto,
-                            ),
-                          ),
-                          trailing: isSelected
-                              ? Icon(Icons.check_circle_rounded, color: estadoApp.colorPrincipal, size: 20)
-                              : null,
+                        return InteractiveScale(
                           onTap: () {
                             setState(() {
                               _selectedAccountFilter = acc.id;
                             });
                             Navigator.pop(context);
                           },
+                          child: ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: isSelected 
+                                    ? estadoApp.colorPrincipal.withValues(alpha: 0.15)
+                                    : (esOscuro ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03)),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isSelected ? estadoApp.colorPrincipal : Colors.transparent,
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.account_balance_rounded,
+                                color: isSelected ? estadoApp.colorPrincipal : colorTexto.withValues(alpha: 0.6),
+                                size: 18,
+                              ),
+                            ),
+                            title: Text(
+                              acc.name,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: colorTexto,
+                              ),
+                            ),
+                            trailing: isSelected
+                                ? Icon(Icons.check_circle_rounded, color: estadoApp.colorPrincipal, size: 20)
+                                : null,
+                          ),
                         );
                       },
                     ),
@@ -631,9 +636,8 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(
-            icon: Icon(Icons.arrow_back_ios_new_rounded, color: colorTexto.withValues(alpha: 0.5), size: 14),
-            onPressed: () {
+          InteractiveScale(
+            onTap: () {
               setState(() {
                 _selectedFilterMonth--;
                 if (_selectedFilterMonth < 1) {
@@ -642,84 +646,95 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
                 }
               });
             },
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: esOscuro ? const Color(0xFF0E0E0E) : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.arrow_back_ios_new_rounded, color: colorTexto.withValues(alpha: 0.6), size: 12),
+            ),
           ),
-          GestureDetector(
+          InteractiveScale(
             onTap: _showMonthSelector,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(20),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  decoration: BoxDecoration(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                decoration: BoxDecoration(
+                  color: esOscuro 
+                      ? const Color(0xFF0E0E0E) 
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
                     color: esOscuro 
-                        ? Colors.white.withValues(alpha: 0.05) 
-                        : Colors.white.withValues(alpha: 0.65),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: esOscuro 
-                          ? Colors.white.withValues(alpha: 0.08) 
-                          : Colors.white.withValues(alpha: 0.6),
-                      width: 1.0,
-                    ),
+                        ? Colors.white.withValues(alpha: 0.08) 
+                        : const Color(0xFFE2E8F0),
+                    width: 1.0,
                   ),
-                  child: Text(
-                    mesTexto,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: activeColor,
-                      letterSpacing: 0.5,
-                    ),
+                ),
+                child: Text(
+                  mesTexto,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: activeColor,
+                    letterSpacing: 0.5,
                   ),
                 ),
               ),
             ),
           ),
-          GestureDetector(
+          InteractiveScale(
             onTap: _showYearSelector,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(20),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: esOscuro 
+                      ? const Color(0xFF0E0E0E) 
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
                     color: esOscuro 
-                        ? Colors.white.withValues(alpha: 0.05) 
-                        : Colors.white.withValues(alpha: 0.65),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: esOscuro 
-                          ? Colors.white.withValues(alpha: 0.08) 
-                          : Colors.white.withValues(alpha: 0.6),
-                      width: 1.0,
-                    ),
+                        ? Colors.white.withValues(alpha: 0.08) 
+                        : const Color(0xFFE2E8F0),
+                    width: 1.0,
                   ),
-                  child: Text(
-                    _selectedFilterYear.toString(),
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: colorTexto.withValues(alpha: 0.7),
-                      letterSpacing: 0.5,
-                    ),
+                ),
+                child: Text(
+                  _selectedFilterYear.toString(),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: colorTexto.withValues(alpha: 0.7),
+                    letterSpacing: 0.5,
                   ),
                 ),
               ),
             ),
           ),
-          IconButton(
-            icon: Icon(
-              Icons.filter_alt_outlined,
-              color: _selectedAccountFilter != null ? activeColor : colorTexto.withValues(alpha: 0.5),
-              size: 20,
+          InteractiveScale(
+            onTap: _showAccountFilterSelector,
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: esOscuro ? const Color(0xFF0E0E0E) : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(8),
+                border: _selectedAccountFilter != null ? Border.all(color: activeColor, width: 1.0) : null,
+              ),
+              child: Icon(
+                Icons.filter_alt_outlined,
+                color: _selectedAccountFilter != null ? activeColor : colorTexto.withValues(alpha: 0.6),
+                size: 16,
+              ),
             ),
-            onPressed: _showAccountFilterSelector,
           ),
-          IconButton(
-            icon: Icon(Icons.arrow_forward_ios_rounded, color: colorTexto.withValues(alpha: 0.5), size: 14),
-            onPressed: () {
+          InteractiveScale(
+            onTap: () {
               setState(() {
                 _selectedFilterMonth++;
                 if (_selectedFilterMonth > 12) {
@@ -728,6 +743,15 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
                 }
               });
             },
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: esOscuro ? const Color(0xFF0E0E0E) : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.arrow_forward_ios_rounded, color: colorTexto.withValues(alpha: 0.6), size: 12),
+            ),
           ),
         ],
       ),
@@ -753,7 +777,7 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
       child: Row(
         children: [
           Expanded(
-            child: GestureDetector(
+            child: InteractiveScale(
               onTap: () {
                 setState(() {
                   _selectedType = 'gasto';
@@ -789,7 +813,7 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
             ),
           ),
           Expanded(
-            child: GestureDetector(
+            child: InteractiveScale(
               onTap: () {
                 setState(() {
                   _selectedType = 'ingreso';
@@ -864,7 +888,7 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: esOscuro
-            ? const Color(0xFF111625)
+            ? const Color(0xFF0E0E0E)
             : Colors.white,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
@@ -901,6 +925,7 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
               fontWeight: FontWeight.w900,
               color: _selectedType == 'gasto' ? colorPrincipal : const Color(0xFF10B981),
               letterSpacing: -0.5,
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
           const SizedBox(height: 12),
@@ -908,7 +933,7 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
             height: 1,
             color: esOscuro
                 ? Colors.white.withValues(alpha: 0.06)
-                : const Color(0xFF0D0E15).withValues(alpha: 0.06),
+                : const Color(0xFF0A0A0A).withValues(alpha: 0.06),
           ),
           const SizedBox(height: 10),
           Row(
@@ -928,6 +953,7 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
                     fontSize: 10.5,
                     fontWeight: FontWeight.w700,
                     color: tieneVariacionValida ? colorTendencia : colorTexto.withValues(alpha: 0.5),
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
               ),
@@ -945,84 +971,121 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
     List<SeccionGrafico> secciones,
     String currency,
   ) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 1000),
-      curve: Curves.easeOutBack,
-      builder: (context, animFactor, child) {
-        return SizedBox(
-          width: 170,
-          height: 170,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              CustomPaint(
-                size: const Size(170, 170),
-                painter: PintorAnilloEstadisticas(
-                  secciones: secciones,
-                  factorAnimacion: animFactor,
-                  strokeWidth: 16.0,
-                ),
-              ),
-              // Circulo interno para alojar los importes con efecto de cristal
-              Container(
-                width: 128,
-                height: 128,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: esOscuro
-                      ? const Color(0xFF020617).withValues(alpha: 0.35)
-                      : Colors.white.withValues(alpha: 0.45),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: esOscuro ? 0.08 : 0.02),
-                      blurRadius: 10,
-                    ),
-                  ],
-                ),
-                alignment: Alignment.center,
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      _selectedType == 'gasto' ? 'GASTADO' : 'INGRESADO',
-                      style: TextStyle(
-                        fontSize: 8,
-                        fontWeight: FontWeight.w800,
-                        color: colorTexto.withValues(alpha: 0.4),
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        _formatCurrency(total, currency),
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                          color: colorTexto,
-                          letterSpacing: -0.5,
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+      decoration: BoxDecoration(
+        color: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: esOscuro ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE2E8F0),
+          width: 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: esOscuro ? 0.20 : 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Text(
+            'VISUALIZACIÓN DE FLUJO',
+            style: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w800,
+              color: colorTexto.withValues(alpha: 0.5),
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Center(
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0.0, end: 1.0),
+              duration: const Duration(milliseconds: 1000),
+              curve: Curves.easeOutBack,
+              builder: (context, animFactor, child) {
+                return SizedBox(
+                  width: 170,
+                  height: 170,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      CustomPaint(
+                        size: const Size(170, 170),
+                        painter: PintorAnilloEstadisticas(
+                          secciones: secciones,
+                          factorAnimacion: animFactor,
+                          strokeWidth: 16.0,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '100%',
-                      style: TextStyle(
-                        fontSize: 8.5,
-                        fontWeight: FontWeight.w800,
-                        color: colorTexto.withValues(alpha: 0.45),
+                      // Circulo interno para alojar los importes con efecto de cristal
+                      Container(
+                        width: 128,
+                        height: 128,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: esOscuro
+                              ? const Color(0xFF000000).withValues(alpha: 0.35)
+                              : Colors.white.withValues(alpha: 0.45),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: esOscuro ? 0.08 : 0.02),
+                              blurRadius: 10,
+                            ),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              _selectedType == 'gasto' ? 'GASTADO' : 'INGRESADO',
+                              style: TextStyle(
+                                fontSize: 8,
+                                fontWeight: FontWeight.w800,
+                                color: colorTexto.withValues(alpha: 0.4),
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                _formatCurrency(total, currency),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                  color: colorTexto,
+                                  letterSpacing: -0.5,
+                                  fontFeatures: const [FontFeature.tabularFigures()],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '100%',
+                              style: TextStyle(
+                                fontSize: 8.5,
+                                fontWeight: FontWeight.w800,
+                                color: colorTexto.withValues(alpha: 0.45),
+                                fontFeatures: const [FontFeature.tabularFigures()],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
@@ -1068,112 +1131,119 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
                 colorCategoria = colorPrincipal;
               }
 
-              return Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: esOscuro 
-                      ? Colors.white.withValues(alpha: 0.02) 
-                      : Colors.black.withValues(alpha: 0.015),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
+              return InteractiveScale(
+                onTap: () {
+                  // Filtro o accion táctil premium
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
                     color: esOscuro 
-                        ? Colors.white.withValues(alpha: 0.05) 
-                        : Colors.black.withValues(alpha: 0.04),
-                    width: 1.0,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: colorCategoria.withValues(alpha: esOscuro ? 0.20 : 0.12),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        iconData,
-                        color: colorCategoria,
-                        size: 15,
-                      ),
+                        ? Colors.white.withValues(alpha: 0.02) 
+                        : Colors.black.withValues(alpha: 0.015),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: esOscuro 
+                          ? Colors.white.withValues(alpha: 0.05) 
+                          : Colors.black.withValues(alpha: 0.04),
+                      width: 1.0,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                cat.name.toUpperCase(),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
-                                  color: colorTexto,
-                                  letterSpacing: -0.2,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: colorCategoria.withValues(alpha: esOscuro ? 0.20 : 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          iconData,
+                          color: colorCategoria,
+                          size: 15,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  cat.name.toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: colorTexto,
+                                    letterSpacing: -0.2,
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                _formatCurrency(monto, currency),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
-                                  color: colorTexto,
-                                  letterSpacing: -0.2,
+                                Text(
+                                  _formatCurrency(monto, currency),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: colorTexto,
+                                    letterSpacing: -0.2,
+                                    fontFeatures: const [FontFeature.tabularFigures()],
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(4),
-                                  child: Container(
-                                    height: 5.5,
-                                    color: esOscuro 
-                                        ? Colors.white.withValues(alpha: 0.04) 
-                                        : Colors.black.withValues(alpha: 0.04),
-                                    child: FractionallySizedBox(
-                                      alignment: Alignment.centerLeft,
-                                      widthFactor: porcentaje,
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          color: colorCategoria,
-                                          borderRadius: BorderRadius.circular(4),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: colorCategoria.withValues(alpha: 0.3),
-                                              blurRadius: 3,
-                                            ),
-                                          ],
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Container(
+                                      height: 5.5,
+                                      color: esOscuro 
+                                          ? Colors.white.withValues(alpha: 0.04) 
+                                          : Colors.black.withValues(alpha: 0.04),
+                                      child: FractionallySizedBox(
+                                        alignment: Alignment.centerLeft,
+                                        widthFactor: porcentaje,
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: colorCategoria,
+                                            borderRadius: BorderRadius.circular(4),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: colorCategoria.withValues(alpha: 0.3),
+                                                blurRadius: 3,
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 10),
-                              Container(
-                                width: 34,
-                                alignment: Alignment.centerRight,
-                                child: Text(
-                                  '$porcentajeTexto%',
-                                  style: TextStyle(
-                                    fontSize: 9.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: colorTexto.withValues(alpha: 0.55),
+                                const SizedBox(width: 10),
+                                Container(
+                                  width: 34,
+                                  alignment: Alignment.centerRight,
+                                  child: Text(
+                                    '$porcentajeTexto%',
+                                    style: TextStyle(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: colorTexto.withValues(alpha: 0.55),
+                                      fontFeatures: const [FontFeature.tabularFigures()],
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ],
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ).animate().fadeIn(duration: 350.ms, delay: (idx * 50).ms).slideX(begin: 0.05, end: 0);
             },
@@ -1215,7 +1285,7 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
                   height: 104,
                   decoration: BoxDecoration(
                     color: esOscuro
-                        ? const Color(0xFF111625)
+                        ? const Color(0xFF0E0E0E)
                         : Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
@@ -1257,6 +1327,7 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
                                 fontWeight: FontWeight.w900,
                                 color: colorTexto,
                                 letterSpacing: -0.3,
+                                fontFeatures: const [FontFeature.tabularFigures()],
                               ),
                             ),
                           ),
@@ -1282,7 +1353,7 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
                   height: 104,
                   decoration: BoxDecoration(
                     color: esOscuro
-                        ? const Color(0xFF111625)
+                        ? const Color(0xFF0E0E0E)
                         : Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
@@ -1334,6 +1405,7 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
                               fontSize: 9,
                               fontWeight: FontWeight.w700,
                               color: colorTexto.withValues(alpha: 0.4),
+                              fontFeatures: const [FontFeature.tabularFigures()],
                             ),
                           ),
                         ],

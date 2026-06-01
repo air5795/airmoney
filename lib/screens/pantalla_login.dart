@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../services/servicio_autenticacion.dart';
 import '../services/estado_app.dart';
+import '../models/usuario_app.dart';
 import 'pantalla_principal.dart';
 import 'onboarding/pantalla_idioma.dart';
 
@@ -26,9 +27,14 @@ class _PantallaLoginState extends State<PantallaLogin> {
     });
 
     try {
-      final user = provider == 'google'
-          ? await _servicioAuth.signInWithGoogle()
-          : await _servicioAuth.signInWithFacebook();
+      UsuarioApp? user;
+      if (provider == 'google') {
+        user = await _servicioAuth.signInWithGoogle();
+      } else if (provider == 'facebook') {
+        user = await _servicioAuth.signInWithFacebook();
+      } else if (provider == 'demo') {
+        user = await _servicioAuth.signInDemo();
+      }
 
       if (!mounted) return;
 
@@ -106,15 +112,23 @@ class _PantallaLoginState extends State<PantallaLogin> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final estadoApp = Provider.of<EstadoApp>(context);
+    final esOscuro = estadoApp.esTemaOscuro;
+    final colorPrimario = estadoApp.colorPrincipal;
+    
+    final colorFondo = esOscuro ? const Color(0xFF000000) : const Color(0xFFF8FAFC);
+    final colorTexto = esOscuro ? const Color(0xFFF1F5F9) : const Color(0xFF0F172A);
+    final colorSecundario = esOscuro ? const Color(0xFF64748B) : const Color(0xFF475569);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: colorFondo,
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        color: const Color(0xFFFAFAFA),
+        color: colorFondo,
         child: Stack(
           children: [
+            // Micro-destello radial de fondo sumamente sutil (no intrusivo)
             Positioned(
               top: -size.height * 0.1,
               right: -size.width * 0.2,
@@ -125,116 +139,71 @@ class _PantallaLoginState extends State<PantallaLogin> {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      const Color(0xFFC5FAD5).withValues(alpha: 0.55),
-                      const Color(0xFFFAFAFA).withValues(alpha: 0.0),
+                      colorPrimario.withValues(alpha: esOscuro ? 0.05 : 0.03),
+                      colorFondo.withValues(alpha: 0.0),
                     ],
                   ),
                 ),
-              )
-                  .animate(onPlay: (controller) => controller.repeat(reverse: true))
-                  .scale(
-                    duration: 4.seconds,
-                    begin: const Offset(0.85, 0.85),
-                    end: const Offset(1.15, 1.15),
-                    curve: Curves.easeInOut,
-                  ),
+              ),
             ),
-            Positioned(
-              bottom: size.height * 0.1,
-              left: -size.width * 0.2,
-              child: Container(
-                width: 280,
-                height: 280,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      const Color(0xFF00B0FF).withValues(alpha: 0.08),
-                      const Color(0xFFFAFAFA).withValues(alpha: 0.0),
-                    ],
-                  ),
-                ),
-              )
-                  .animate(onPlay: (controller) => controller.repeat(reverse: true))
-                  .scale(
-                    duration: 5.seconds,
-                    begin: const Offset(0.9, 0.9),
-                    end: const Offset(1.1, 1.1),
-                    curve: Curves.easeInOut,
-                  ),
-            ),
+            
             SafeArea(
               child: Center(
                 child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
+                      // Cabecera unificada con Splash para consistencia de marca
                       Column(
                         children: [
                           Container(
                             width: 80,
                             height: 80,
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: esOscuro ? const Color(0xFF0F172A) : Colors.white,
                               borderRadius: BorderRadius.circular(22),
                               border: Border.all(
-                                color: const Color(0xFF1E293B).withValues(alpha: 0.12),
+                                color: esOscuro
+                                    ? Colors.white.withValues(alpha: 0.08)
+                                    : const Color(0xFFE2E8F0),
                                 width: 1.0,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF1E293B).withValues(alpha: 0.04),
+                                  color: Colors.black.withValues(alpha: esOscuro ? 0.20 : 0.03),
                                   blurRadius: 15,
                                   offset: const Offset(0, 6),
                                 ),
                               ],
                             ),
                             child: Center(
-                              child: Container(
-                                width: 68,
-                                height: 68,
-                                decoration: BoxDecoration(
-                                  gradient: RadialGradient(
-                                    colors: [
-                                      const Color(0xFFC5FAD5).withValues(alpha: 0.35),
-                                      Colors.white.withValues(alpha: 0.0),
-                                    ],
-                                    center: Alignment.topLeft,
-                                    radius: 1.2,
-                                  ),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: const Center(
-                                  child: Text(
-                                    'A',
-                                    style: TextStyle(
-                                      fontSize: 36,
-                                      fontWeight: FontWeight.w900,
-                                      color: Color(0xFF0F172A),
-                                      letterSpacing: -1,
-                                    ),
-                                  ),
-                                ),
+                              child: Icon(
+                                Icons.account_balance_wallet_rounded,
+                                color: colorPrimario,
+                                size: 36,
                               ),
                             ),
                           )
                               .animate()
-                              .scale(duration: 600.ms, curve: Curves.easeOutBack),
+                              .scale(duration: 600.ms, curve: Curves.easeOutCubic),
                           const SizedBox(height: 20),
                           RichText(
-                            text: const TextSpan(
+                            text: TextSpan(
                               style: TextStyle(
                                 fontSize: 30,
                                 fontWeight: FontWeight.w800,
-                                color: Color(0xFF0F172A),
+                                color: colorTexto,
                                 fontFamily: 'Roboto',
+                                letterSpacing: -0.8,
                               ),
                               children: [
-                                TextSpan(text: 'Air'),
+                                const TextSpan(text: 'Air'),
                                 TextSpan(
                                   text: 'Money',
                                   style: TextStyle(
+                                    color: colorPrimario,
                                     fontWeight: FontWeight.w900,
                                   ),
                                 ),
@@ -243,105 +212,160 @@ class _PantallaLoginState extends State<PantallaLogin> {
                           )
                               .animate()
                               .fadeIn(duration: 600.ms, delay: 200.ms)
-                              .slideY(begin: 0.2, end: 0, duration: 600.ms),
+                              .slideY(begin: 0.15, end: 0, duration: 600.ms, curve: Curves.easeOutCubic),
                           const SizedBox(height: 6),
                           Text(
-                            'TU DINERO, LIGERO.',
+                            'TU DINERO, SEGURO Y LIGERO.',
                             style: TextStyle(
                               fontSize: 9,
                               fontWeight: FontWeight.w800,
-                              letterSpacing: 3,
-                              color: const Color(0xFF0F172A).withValues(alpha: 0.4),
+                              letterSpacing: 3.5,
+                              color: colorSecundario.withValues(alpha: 0.5),
                             ),
                           )
                               .animate()
                               .fadeIn(duration: 600.ms, delay: 350.ms),
                         ],
                       ),
-                      const SizedBox(height: 48),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(32),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.55),
-                              borderRadius: BorderRadius.circular(32),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.4),
-                                width: 1.5,
+                      
+                      const SizedBox(height: 40),
+                      
+                      // Tarjeta acrílica refinada (Bento Grid Style)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                        decoration: BoxDecoration(
+                          color: esOscuro
+                              ? const Color(0xFF0F172A).withValues(alpha: 0.85)
+                              : Colors.white.withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(28),
+                          border: Border.all(
+                            color: esOscuro
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : const Color(0xFFE2E8F0),
+                            width: 1.0,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: esOscuro ? 0.25 : 0.03),
+                              blurRadius: 30,
+                              offset: const Offset(0, 12),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Iniciar Sesión',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                                color: colorTexto,
+                                letterSpacing: -0.5,
                               ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF1E293B).withValues(alpha: 0.06),
-                                  blurRadius: 30,
-                                  offset: const Offset(0, 15),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Accede de forma rápida y segura para sincronizar tus finanzas.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: colorSecundario.withValues(alpha: 0.85),
+                                height: 1.4,
+                              ),
+                            ),
+                            const SizedBox(height: 28),
+                            
+                            // Botones de login con Spring Animation sutil en tap
+                            _buildSocialButton(
+                              provider: 'google',
+                              label: 'Continuar con Google',
+                              icon: Icons.g_mobiledata_rounded,
+                              color: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
+                              textColor: colorTexto,
+                              iconColor: const Color(0xFFEA4335),
+                              border: BorderSide(
+                                color: esOscuro
+                                    ? Colors.white.withValues(alpha: 0.08)
+                                    : const Color(0xFFE2E8F0),
+                                width: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            _buildSocialButton(
+                              provider: 'facebook',
+                              label: 'Continuar con Facebook',
+                              icon: Icons.facebook_rounded,
+                              color: const Color(0xFF1877F2),
+                              textColor: Colors.white,
+                              iconColor: Colors.white,
+                            ),
+                            
+                            const SizedBox(height: 20),
+                            Row(
+                              children: [
+                                Expanded(child: Divider(color: colorSecundario.withValues(alpha: 0.15))),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  child: Text(
+                                    'O PRUEBA LA APP',
+                                    style: TextStyle(
+                                      fontSize: 8.5,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.5,
+                                      color: colorSecundario.withValues(alpha: 0.4),
+                                    ),
+                                  ),
                                 ),
+                                Expanded(child: Divider(color: colorSecundario.withValues(alpha: 0.15))),
                               ],
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Iniciar Sesión',
-                                  style: TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFF0F172A),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Accede de forma rapida y segura para sincronizar tus finanzas.',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: const Color(0xFF0F172A).withValues(alpha: 0.6),
-                                    height: 1.4,
-                                  ),
-                                ),
-                                const SizedBox(height: 36),
-                                _buildSocialButton(
-                                  provider: 'google',
-                                  label: 'Continuar con Google',
-                                  icon: Icons.g_mobiledata_rounded,
-                                  color: Colors.white,
-                                  textColor: const Color(0xFF0F172A),
-                                  iconColor: const Color(0xFFEA4335),
-                                  border: BorderSide(
-                                    color: const Color(0xFF1E293B).withValues(alpha: 0.12),
-                                    width: 1.2,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                _buildSocialButton(
-                                  provider: 'facebook',
-                                  label: 'Continuar con Facebook',
-                                  icon: Icons.facebook_rounded,
-                                  color: const Color(0xFF1877F2),
-                                  textColor: Colors.white,
-                                  iconColor: Colors.white,
-                                ),
-                              ],
+                            const SizedBox(height: 20),
+                            
+                            // Botón de ingreso local inmediato en Modo Demo
+                            _buildSocialButton(
+                              provider: 'demo',
+                              label: 'Acceso en Modo Demostración',
+                              icon: Icons.auto_awesome_rounded,
+                              color: colorPrimario.withValues(alpha: 0.1),
+                              textColor: colorPrimario,
+                              iconColor: colorPrimario,
+                              border: BorderSide(
+                                color: colorPrimario.withValues(alpha: 0.25),
+                                width: 1.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                          .animate()
+                          .fadeIn(duration: 800.ms, delay: 400.ms)
+                          .slideY(begin: 0.12, end: 0, duration: 800.ms, curve: Curves.easeOutCubic),
+                      
+                      const SizedBox(height: 36),
+                      
+                      // Pie de seguridad explícita
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.verified_user_rounded,
+                            size: 13,
+                            color: colorSecundario.withValues(alpha: 0.4),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'AirMoney protege tus datos de acuerdo al estándar PCI-DSS.',
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              color: colorSecundario.withValues(alpha: 0.4),
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                        ),
+                        ],
                       )
                           .animate()
-                          .fadeIn(duration: 800.ms, delay: 500.ms)
-                          .slideY(begin: 0.15, end: 0, duration: 800.ms, curve: Curves.easeOutCubic),
-                      const SizedBox(height: 48),
-                      Text(
-                        'AIRMONEY asegura tus datos con encriptacion avanzada.',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: const Color(0xFF0F172A).withValues(alpha: 0.3),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      )
-                          .animate()
-                          .fadeIn(duration: 800.ms, delay: 800.ms),
+                          .fadeIn(duration: 800.ms, delay: 650.ms),
                     ],
                   ),
                 ),
@@ -371,7 +395,7 @@ class _PantallaLoginState extends State<PantallaLogin> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1E293B).withValues(alpha: 0.04),
+            color: const Color(0xFF000000).withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

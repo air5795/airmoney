@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/estado_app.dart';
 import '../pantalla_principal.dart';
@@ -50,11 +50,20 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
   @override
   Widget build(BuildContext context) {
     final estadoApp = Provider.of<EstadoApp>(context);
+    final esOscuro = estadoApp.esTemaOscuro;
+    final colorPrimario = estadoApp.colorPrincipal;
+    
+    final colorFondo = esOscuro ? const Color(0xFF000000) : const Color(0xFFF8FAFC);
+    final colorTexto = esOscuro ? const Color(0xFFF1F5F9) : const Color(0xFF0F172A);
+    final colorSecundario = esOscuro ? const Color(0xFF64748B) : const Color(0xFF475569);
+    final colorCard = esOscuro ? const Color(0xFF0A0A0A) : Colors.white;
+    final colorBuscador = esOscuro ? const Color(0xFF0E0E0E) : const Color(0xFFF1F5F9);
+
     final size = MediaQuery.of(context).size;
     final isNameEmpty = _nameController.text.trim().isEmpty;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: colorFondo,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -62,12 +71,15 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 16),
+              
               // Barra de progreso de iOS (100%)
               Container(
                 width: double.infinity,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE2E8F0),
+                  color: esOscuro
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : const Color(0xFFE2E8F0),
                   borderRadius: BorderRadius.circular(2),
                 ),
                 child: Row(
@@ -76,7 +88,7 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                       width: size.width - 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF0F172A),
+                        color: colorPrimario,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -84,6 +96,7 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                 ),
               ),
               const SizedBox(height: 36),
+              
               Row(
                 children: [
                   GestureDetector(
@@ -93,29 +106,31 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                       height: 36,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.white,
+                        color: colorCard,
                         border: Border.all(
-                          color: const Color(0xFFE2E8F0),
+                          color: esOscuro
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : const Color(0xFFE2E8F0),
                           width: 1.0,
                         ),
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Icon(
                           Icons.chevron_left_rounded,
-                          color: Color(0xFF0F172A),
+                          color: colorTexto,
                           size: 20,
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Text(
+                  Text(
                     'Crea tu primera cuenta',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF0F172A),
-                      letterSpacing: -0.5,
+                      color: colorTexto,
+                      letterSpacing: -0.8,
                     ),
                   ),
                 ],
@@ -127,12 +142,13 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                   'Empieza con un saldo y tipo de cuenta.',
                   style: TextStyle(
                     fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF0F172A).withValues(alpha: 0.4),
+                    fontWeight: FontWeight.w600,
+                    color: colorSecundario.withValues(alpha: 0.7),
                   ),
                 ),
               ),
               const SizedBox(height: 28),
+              
               Expanded(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
@@ -143,20 +159,22 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                       Text(
                         'NOMBRE DE LA CUENTA',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 10,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.5,
-                          color: const Color(0xFF0F172A).withValues(alpha: 0.5),
+                          color: colorSecundario.withValues(alpha: 0.8),
                         ),
                       ),
                       const SizedBox(height: 10),
                       Container(
                         height: 54,
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: colorCard,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: const Color(0xFFE2E8F0),
+                            color: esOscuro
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : const Color(0xFFE2E8F0),
                             width: 1.2,
                           ),
                         ),
@@ -167,17 +185,17 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                             onChanged: (val) {
                               setState(() {});
                             },
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF0F172A),
+                              color: colorTexto,
                             ),
                             decoration: InputDecoration(
                               hintText: 'Ej. Banco principal',
                               hintStyle: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w500,
-                                color: const Color(0xFF0F172A).withValues(alpha: 0.3),
+                                color: colorSecundario.withValues(alpha: 0.4),
                               ),
                               border: InputBorder.none,
                               isDense: true,
@@ -186,14 +204,15 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                         ),
                       ),
                       const SizedBox(height: 24),
+                      
                       // TIPO DE CUENTA
                       Text(
                         'TIPO DE CUENTA',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 10,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.5,
-                          color: const Color(0xFF0F172A).withValues(alpha: 0.5),
+                          color: colorSecundario.withValues(alpha: 0.8),
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -217,14 +236,14 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                                 decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? const Color(0xFF0F172A)
-                                      : Colors.white,
+                                  color: isSelected ? colorPrimario : colorCard,
                                   borderRadius: BorderRadius.circular(22),
                                   border: Border.all(
                                     color: isSelected
-                                        ? const Color(0xFF0F172A)
-                                        : const Color(0xFFE2E8F0),
+                                        ? colorPrimario
+                                        : (esOscuro
+                                            ? Colors.white.withValues(alpha: 0.08)
+                                            : const Color(0xFFE2E8F0)),
                                     width: 1.2,
                                   ),
                                 ),
@@ -233,10 +252,8 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                                     type,
                                     style: TextStyle(
                                       fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: isSelected
-                                          ? Colors.white
-                                          : const Color(0xFF0F172A),
+                                      fontWeight: FontWeight.w800,
+                                      color: isSelected ? Colors.white : colorTexto,
                                     ),
                                   ),
                                 ),
@@ -246,24 +263,29 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                         ),
                       ),
                       const SizedBox(height: 24),
+                      
                       // SALDO INICIAL
                       Text(
                         'SALDO INICIAL',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 10,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.5,
-                          color: const Color(0xFF0F172A).withValues(alpha: 0.5),
+                          color: colorSecundario.withValues(alpha: 0.8),
                         ),
                       ),
                       const SizedBox(height: 10),
                       Container(
                         height: 56,
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: colorCard,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: const Color(0xFF0F172A),
+                            color: isNameEmpty
+                                ? (esOscuro
+                                    ? Colors.white.withValues(alpha: 0.08)
+                                    : const Color(0xFFE2E8F0))
+                                : colorPrimario.withValues(alpha: 0.8),
                             width: 1.2,
                           ),
                         ),
@@ -273,15 +295,15 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF1F5F9),
+                                color: colorBuscador,
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Text(
-                                'Bs ${estadoApp.selectedCurrency}',
-                                style: const TextStyle(
+                                '${estadoApp.selectedCurrency}',
+                                style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w900,
-                                  color: Color(0xFF0F172A),
+                                  color: colorTexto,
                                 ),
                               ),
                             ),
@@ -290,10 +312,10 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                               child: TextField(
                                 controller: _balanceController,
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.w900,
-                                  color: Color(0xFF0F172A),
+                                  color: colorTexto,
                                   letterSpacing: 0.5,
                                 ),
                                 textAlign: TextAlign.right,
@@ -311,19 +333,24 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                         'Puedes editar este valor más tarde desde la cuenta.',
                         style: TextStyle(
                           fontSize: 11,
-                          color: const Color(0xFF0F172A).withValues(alpha: 0.35),
+                          color: colorSecundario.withValues(alpha: 0.5),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                       const SizedBox(height: 28),
-                      // Tarjeta Casi Listo
+                      
+                      // Tarjeta Casi Listo Premium
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE8F5E9),
+                          color: esOscuro
+                              ? const Color(0xFF064E3B).withValues(alpha: 0.2)
+                              : const Color(0xFFECFDF5),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: const Color(0xFFC8E6C9),
+                            color: esOscuro
+                                ? const Color(0xFF059669).withValues(alpha: 0.2)
+                                : const Color(0xFFA7F3D0),
                             width: 1.0,
                           ),
                         ),
@@ -333,9 +360,9 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                             Container(
                               width: 24,
                               height: 24,
-                              decoration: const BoxDecoration(
+                              decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Color(0xFF0F172A),
+                                color: colorPrimario,
                               ),
                               child: const Center(
                                 child: Icon(
@@ -350,12 +377,12 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
+                                  Text(
                                     'Casi listo',
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w900,
-                                      color: Color(0xFF0F172A),
+                                      color: colorTexto,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
@@ -364,8 +391,8 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                                     style: TextStyle(
                                       fontSize: 12,
                                       height: 1.35,
-                                      fontWeight: FontWeight.w500,
-                                      color: const Color(0xFF0F172A).withValues(alpha: 0.55),
+                                      fontWeight: FontWeight.w600,
+                                      color: colorSecundario.withValues(alpha: 0.8),
                                     ),
                                   ),
                                 ],
@@ -379,6 +406,7 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                   ),
                 ),
               ),
+              
               // Botón Finalizar Onboarding
               Container(
                 width: double.infinity,
@@ -388,10 +416,10 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                   onPressed: isNameEmpty ? null : _finishOnboarding,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: isNameEmpty
-                        ? const Color(0xFFE2E8F0)
-                        : const Color(0xFF0F172A),
+                        ? (esOscuro ? const Color(0xFF1E1E1E) : const Color(0xFFE2E8F0))
+                        : colorPrimario,
                     foregroundColor: Colors.white,
-                    disabledBackgroundColor: const Color(0xFFCBD5E1),
+                    disabledBackgroundColor: esOscuro ? const Color(0xFF0E0E0E) : const Color(0xFFCBD5E1),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
                     ),
@@ -401,9 +429,9 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                     'Empezar a usar AirMoney',
                     style: TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w900,
                       color: isNameEmpty
-                          ? const Color(0xFF94A3B8)
+                          ? (esOscuro ? const Color(0xFF475569) : const Color(0xFF94A3B8))
                           : Colors.white,
                     ),
                   ),

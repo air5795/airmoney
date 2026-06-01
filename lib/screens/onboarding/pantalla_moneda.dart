@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/estado_app.dart';
 import 'pantalla_crear_cuenta.dart';
@@ -29,6 +29,15 @@ class _PantallaMonedaState extends State<PantallaMoneda> {
   @override
   Widget build(BuildContext context) {
     final estadoApp = Provider.of<EstadoApp>(context);
+    final esOscuro = estadoApp.esTemaOscuro;
+    final colorPrimario = estadoApp.colorPrincipal;
+    
+    final colorFondo = esOscuro ? const Color(0xFF000000) : const Color(0xFFF8FAFC);
+    final colorTexto = esOscuro ? const Color(0xFFF1F5F9) : const Color(0xFF0F172A);
+    final colorSecundario = esOscuro ? const Color(0xFF64748B) : const Color(0xFF475569);
+    final colorCard = esOscuro ? const Color(0xFF0A0A0A) : Colors.white;
+    final colorBuscador = esOscuro ? const Color(0xFF0E0E0E) : const Color(0xFFF1F5F9);
+
     final size = MediaQuery.of(context).size;
 
     final filteredCurrencies = _currencies.where((cur) {
@@ -39,7 +48,7 @@ class _PantallaMonedaState extends State<PantallaMoneda> {
     }).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: colorFondo,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -47,12 +56,15 @@ class _PantallaMonedaState extends State<PantallaMoneda> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 16),
+              
               // Barra de progreso de iOS (66%)
               Container(
                 width: double.infinity,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE2E8F0),
+                  color: esOscuro
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : const Color(0xFFE2E8F0),
                   borderRadius: BorderRadius.circular(2),
                 ),
                 child: Row(
@@ -61,7 +73,7 @@ class _PantallaMonedaState extends State<PantallaMoneda> {
                       width: size.width * 0.6,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF0F172A),
+                        color: colorPrimario,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -69,6 +81,7 @@ class _PantallaMonedaState extends State<PantallaMoneda> {
                 ),
               ),
               const SizedBox(height: 36),
+              
               Row(
                 children: [
                   GestureDetector(
@@ -78,29 +91,31 @@ class _PantallaMonedaState extends State<PantallaMoneda> {
                       height: 36,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.white,
+                        color: colorCard,
                         border: Border.all(
-                          color: const Color(0xFFE2E8F0),
+                          color: esOscuro
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : const Color(0xFFE2E8F0),
                           width: 1.0,
                         ),
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Icon(
                           Icons.chevron_left_rounded,
-                          color: Color(0xFF0F172A),
+                          color: colorTexto,
                           size: 20,
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Text(
+                  Text(
                     'Selecciona tu moneda',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF0F172A),
-                      letterSpacing: -0.5,
+                      color: colorTexto,
+                      letterSpacing: -0.8,
                     ),
                   ),
                 ],
@@ -112,25 +127,32 @@ class _PantallaMonedaState extends State<PantallaMoneda> {
                   'Esta será la moneda principal de tu app.',
                   style: TextStyle(
                     fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF0F172A).withValues(alpha: 0.4),
+                    fontWeight: FontWeight.w600,
+                    color: colorSecundario.withValues(alpha: 0.7),
                   ),
                 ),
               ),
               const SizedBox(height: 24),
+              
               // Buscador de Moneda
               Container(
                 height: 52,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
+                  color: colorBuscador,
                   borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: esOscuro
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : Colors.black.withValues(alpha: 0.03),
+                    width: 1.0,
+                  ),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
                     Icon(
                       Icons.search_rounded,
-                      color: const Color(0xFF0F172A).withValues(alpha: 0.35),
+                      color: colorSecundario.withValues(alpha: 0.6),
                       size: 20,
                     ),
                     const SizedBox(width: 10),
@@ -142,17 +164,17 @@ class _PantallaMonedaState extends State<PantallaMoneda> {
                             _searchQuery = val;
                           });
                         },
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF0F172A),
+                          fontWeight: FontWeight.w600,
+                          color: colorTexto,
                         ),
                         decoration: InputDecoration(
                           hintText: 'Buscar moneda o código...',
                           hintStyle: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w500,
-                            color: const Color(0xFF0F172A).withValues(alpha: 0.35),
+                            color: colorSecundario.withValues(alpha: 0.5),
                           ),
                           border: InputBorder.none,
                           isDense: true,
@@ -163,7 +185,8 @@ class _PantallaMonedaState extends State<PantallaMoneda> {
                 ),
               ),
               const SizedBox(height: 20),
-              // Lista de Monedas
+              
+              // Lista de Monedas Bento Style
               Expanded(
                 child: ListView.separated(
                   physics: const BouncingScrollPhysics(),
@@ -178,23 +201,27 @@ class _PantallaMonedaState extends State<PantallaMoneda> {
                       child: Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: colorCard,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                             color: isSelected
-                                ? const Color(0xFF0F172A)
-                                : const Color(0xFFE2E8F0),
-                            width: isSelected ? 1.5 : 1.0,
+                                ? colorPrimario
+                                : (esOscuro
+                                    ? Colors.white.withValues(alpha: 0.08)
+                                    : const Color(0xFFE2E8F0)),
+                            width: isSelected ? 1.8 : 1.0,
                           ),
-                          boxShadow: isSelected
-                              ? [
-                                  BoxShadow(
-                                    color: const Color(0xFF0F172A).withValues(alpha: 0.03),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  )
-                                ]
-                              : [],
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(
+                                alpha: isSelected
+                                    ? (esOscuro ? 0.20 : 0.04)
+                                    : (esOscuro ? 0.05 : 0.01),
+                              ),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
                         child: Row(
                           children: [
@@ -202,16 +229,18 @@ class _PantallaMonedaState extends State<PantallaMoneda> {
                               width: 36,
                               height: 36,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF1F5F9),
+                                color: esOscuro
+                                    ? const Color(0xFF0E0E0E)
+                                    : const Color(0xFFF1F5F9),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Center(
                                 child: Text(
                                   cur['symbol']!,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w900,
-                                    color: Color(0xFF0F172A),
+                                    color: colorTexto,
                                   ),
                                 ),
                               ),
@@ -223,10 +252,11 @@ class _PantallaMonedaState extends State<PantallaMoneda> {
                                 children: [
                                   Text(
                                     cur['name']!,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 15,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF0F172A),
+                                      fontWeight: FontWeight.w800,
+                                      color: colorTexto,
+                                      letterSpacing: -0.2,
                                     ),
                                   ),
                                   const SizedBox(height: 2),
@@ -235,7 +265,7 @@ class _PantallaMonedaState extends State<PantallaMoneda> {
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF0F172A).withValues(alpha: 0.4),
+                                      color: colorSecundario.withValues(alpha: 0.6),
                                     ),
                                   ),
                                 ],
@@ -248,8 +278,8 @@ class _PantallaMonedaState extends State<PantallaMoneda> {
                                 shape: BoxShape.circle,
                                 border: Border.all(
                                   color: isSelected
-                                      ? const Color(0xFF00E676)
-                                      : const Color(0xFFCBD5E1),
+                                      ? colorPrimario
+                                      : colorSecundario.withValues(alpha: 0.35),
                                   width: isSelected ? 6.5 : 1.5,
                                 ),
                               ),
@@ -271,7 +301,8 @@ class _PantallaMonedaState extends State<PantallaMoneda> {
                 ),
               ),
               const SizedBox(height: 20),
-              // Botón Continuar
+              
+              // Botón Continuar Premium
               Container(
                 width: double.infinity,
                 height: 56,
@@ -284,7 +315,7 @@ class _PantallaMonedaState extends State<PantallaMoneda> {
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0F172A),
+                    backgroundColor: colorPrimario,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
@@ -298,7 +329,7 @@ class _PantallaMonedaState extends State<PantallaMoneda> {
                         'Continuar',
                         style: TextStyle(
                           fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w900,
                           letterSpacing: 0.5,
                         ),
                       ),

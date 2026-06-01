@@ -6,10 +6,17 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../services/estado_app.dart';
 import '../helpers/asistente_voz_helper.dart';
 import 'toast_ios.dart';
+import 'interactive_scale.dart';
 
 class PanelTransaccion extends StatefulWidget {
   final ModeloTransaccion? transaccion;
-  const PanelTransaccion({super.key, this.transaccion});
+  final bool iniciarConVoz;
+
+  const PanelTransaccion({
+    super.key,
+    this.transaccion,
+    this.iniciarConVoz = false,
+  });
 
   @override
   State<PanelTransaccion> createState() => _PanelTransaccionState();
@@ -145,6 +152,9 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
         },
       );
       setState(() {});
+      if (widget.iniciarConVoz && _speechEnabled) {
+        _startListening();
+      }
     } catch (e) {
       debugPrint('Error inicializando voz: $e');
     }
@@ -327,7 +337,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
           height: size.height * 0.9,
           decoration: BoxDecoration(
             color: esOscuro
-                ? const Color(0xFF0D0E15).withValues(alpha: 0.65)
+                ? const Color(0xFF0A0A0A).withValues(alpha: 0.65)
                 : Colors.white.withValues(alpha: 0.80),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
             border: Border.all(
@@ -727,22 +737,30 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                   width: double.infinity,
                   height: 56,
                   margin: const EdgeInsets.only(bottom: 12),
-                  child: ElevatedButton(
-                    onPressed: _submitTransaction,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colorTipo,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
+                  child: InteractiveScale(
+                    onTap: _submitTransaction,
+                    child: Container(
+                      width: double.infinity,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: colorTipo,
                         borderRadius: BorderRadius.circular(28),
+                        boxShadow: [
+                          BoxShadow(
+                            color: colorTipo.withValues(alpha: 0.35),
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                      elevation: 0,
-                      shadowColor: colorTipo.withValues(alpha: 0.35),
-                    ),
-                    child: Text(
-                      widget.transaccion != null ? 'Guardar cambios' : 'Registrar movimiento',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                      alignment: Alignment.center,
+                      child: Text(
+                        widget.transaccion != null ? 'Guardar cambios' : 'Registrar movimiento',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
@@ -752,8 +770,8 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                     width: double.infinity,
                     height: 50,
                     margin: const EdgeInsets.only(bottom: 12),
-                    child: TextButton(
-                      onPressed: () {
+                    child: InteractiveScale(
+                      onTap: () {
                         showDialog(
                           context: context,
                           builder: (BuildContext dialogContext) {
@@ -780,18 +798,21 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                           },
                         );
                       },
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.redAccent,
-                        backgroundColor: Colors.redAccent.withValues(alpha: esOscuro ? 0.12 : 0.08),
-                        shape: RoundedRectangleBorder(
+                      child: Container(
+                        width: double.infinity,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent.withValues(alpha: esOscuro ? 0.12 : 0.08),
                           borderRadius: BorderRadius.circular(25),
                         ),
-                      ),
-                      child: const Text(
-                        'Eliminar movimiento',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
+                        alignment: Alignment.center,
+                        child: const Text(
+                          'Eliminar movimiento',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.redAccent,
+                          ),
                         ),
                       ),
                     ),
@@ -867,7 +888,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
     final activeAccount = accounts.firstWhere((a) => a.id == accountId, orElse: () => ModeloCuenta(id: '', name: 'No seleccionada', balance: 0.0, gradientIndex: 0, type: ''));
     final isSelected = activeAccount.id.isNotEmpty;
 
-    return GestureDetector(
+    return InteractiveScale(
       onTap: () => _showAccountSelectorBottomSheet(accounts, accountId, onSelected, esOscuro, colorTexto, colorTipo),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -920,7 +941,8 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: colorTexto.withValues(alpha: 0.4),
+                        color: colorTexto.withValues(alpha: 0.45),
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
                   ],
@@ -950,7 +972,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        final colorFondo = esOscuro ? const Color(0xFF0D0E15) : Colors.white;
+        final colorFondo = esOscuro ? const Color(0xFF0A0A0A) : Colors.white;
 
         return ClipRRect(
           borderRadius: const BorderRadius.only(
@@ -1121,7 +1143,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
     );
     final catColor = Color(int.parse(activeCat.hexColor.replaceFirst('#', '0xFF')));
 
-    return GestureDetector(
+    return InteractiveScale(
       onTap: () => _showCategorySelectorBottomSheet(categories, selectedCategoryName, onSelected, esOscuro, colorTexto, colorTipo),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1199,140 +1221,252 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
     Color colorTexto,
     Color colorTipo,
   ) {
+    final parentCategories = categories.where((cat) => cat.parentId == null).toList();
+    final subcategoriesMap = <String, List<ModeloCategoria>>{};
+    for (var cat in categories) {
+      if (cat.parentId != null) {
+        subcategoriesMap.putIfAbsent(cat.parentId!, () => []).add(cat);
+      }
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        final colorFondo = esOscuro ? const Color(0xFF0D0E15) : Colors.white;
+        final colorFondo = esOscuro ? const Color(0xFF0A0A0A) : Colors.white;
+        final Set<String> expandedParentIds = {}; // Cerrados por defecto
 
-        return ClipRRect(
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(28),
-            topRight: Radius.circular(28),
-          ),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.7,
-              decoration: BoxDecoration(
-                color: colorFondo.withValues(alpha: esOscuro ? 0.85 : 0.90),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(28),
-                  topRight: Radius.circular(28),
-                ),
-                border: Border(
-                  top: BorderSide(
-                    color: esOscuro ? Colors.white.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.65),
-                    width: 1.0,
-                  ),
-                ),
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(28),
+                topRight: Radius.circular(28),
               ),
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 36,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: colorTexto.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(2.5),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                child: Container(
+                  height: MediaQuery.of(context).size.height * 0.7,
+                  decoration: BoxDecoration(
+                    color: colorFondo.withValues(alpha: esOscuro ? 0.85 : 0.90),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(28),
+                      topRight: Radius.circular(28),
+                    ),
+                    border: Border(
+                      top: BorderSide(
+                        color: esOscuro ? Colors.white.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.65),
+                        width: 1.0,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Seleccionar Categoría',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: colorTexto,
+                      Center(
+                        child: Container(
+                          width: 36,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: colorTexto.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(2.5),
+                          ),
                         ),
                       ),
-                      IconButton(
-                        icon: Icon(Icons.close_rounded, color: colorTexto.withValues(alpha: 0.5)),
-                        onPressed: () => Navigator.pop(context),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Seleccionar Categoría',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: colorTexto,
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.close_rounded, color: colorTexto.withValues(alpha: 0.5)),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Expanded(
+                        child: ListView.builder(
+                          physics: const BouncingScrollPhysics(),
+                          itemCount: parentCategories.length,
+                          itemBuilder: (context, idx) {
+                            final parent = parentCategories[idx];
+                            final children = subcategoriesMap[parent.id] ?? [];
+                            final hasChildren = children.isNotEmpty;
+                            final isExpanded = expandedParentIds.contains(parent.id);
+                            final isParentActive = parent.name.toLowerCase() == currentCategoryName.toLowerCase();
+                            final parentColor = Color(int.parse(parent.hexColor.replaceFirst('#', '0xFF')));
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  margin: const EdgeInsets.symmetric(vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: isParentActive
+                                        ? parentColor.withValues(alpha: 0.08)
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            onSelected(parent.name);
+                                            Navigator.pop(context);
+                                          },
+                                          behavior: HitTestBehavior.opaque,
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                                            child: Row(
+                                              children: [
+                                                Container(
+                                                  width: 34,
+                                                  height: 34,
+                                                  decoration: BoxDecoration(
+                                                    color: parentColor.withValues(alpha: 0.1),
+                                                    shape: BoxShape.circle,
+                                                    border: Border.all(
+                                                      color: parentColor.withValues(alpha: 0.25),
+                                                      width: 1.0,
+                                                    ),
+                                                  ),
+                                                  child: Center(
+                                                    child: Icon(
+                                                      _galleryIcons[parent.iconCode] ?? Icons.bubble_chart_rounded,
+                                                      color: parentColor,
+                                                      size: 16,
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                Expanded(
+                                                  child: Text(
+                                                    parent.name,
+                                                    style: TextStyle(
+                                                      fontSize: 14.5,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: colorTexto,
+                                                    ),
+                                                  ),
+                                                ),
+                                                if (isParentActive)
+                                                  Icon(Icons.check_circle_rounded, color: parentColor, size: 20),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      if (hasChildren)
+                                        GestureDetector(
+                                          onTap: () {
+                                            setModalState(() {
+                                              if (expandedParentIds.contains(parent.id)) {
+                                                expandedParentIds.remove(parent.id);
+                                              } else {
+                                                expandedParentIds.add(parent.id);
+                                              }
+                                            });
+                                          },
+                                          behavior: HitTestBehavior.opaque,
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                            child: Icon(
+                                              isExpanded
+                                                  ? Icons.keyboard_arrow_up_rounded
+                                                  : Icons.keyboard_arrow_down_rounded,
+                                              color: colorTexto.withValues(alpha: 0.5),
+                                              size: 24,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                                if (hasChildren && isExpanded)
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 28, bottom: 8),
+                                    child: Column(
+                                      children: children.map((child) {
+                                        final isChildActive = child.name.toLowerCase() == currentCategoryName.toLowerCase();
+                                        final childColor = Color(int.parse(child.hexColor.replaceFirst('#', '0xFF')));
+
+                                        return GestureDetector(
+                                          onTap: () {
+                                            onSelected(child.name);
+                                            Navigator.pop(context);
+                                          },
+                                          child: Container(
+                                            margin: const EdgeInsets.symmetric(vertical: 2),
+                                            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                                            decoration: BoxDecoration(
+                                              color: isChildActive
+                                                  ? childColor.withValues(alpha: 0.08)
+                                                  : Colors.transparent,
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Container(
+                                                  width: 28,
+                                                  height: 28,
+                                                  decoration: BoxDecoration(
+                                                    color: childColor.withValues(alpha: 0.08),
+                                                    shape: BoxShape.circle,
+                                                    border: Border.all(
+                                                      color: childColor.withValues(alpha: 0.20),
+                                                      width: 0.8,
+                                                    ),
+                                                  ),
+                                                  child: Center(
+                                                    child: Icon(
+                                                      _galleryIcons[child.iconCode] ?? Icons.bubble_chart_rounded,
+                                                      color: childColor,
+                                                      size: 13,
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                Expanded(
+                                                  child: Text(
+                                                    child.name,
+                                                    style: TextStyle(
+                                                      fontSize: 13.5,
+                                                      fontWeight: FontWeight.w500,
+                                                      color: colorTexto.withValues(alpha: 0.85),
+                                                    ),
+                                                  ),
+                                                ),
+                                                if (isChildActive)
+                                                  Icon(Icons.check_circle_rounded, color: childColor, size: 18),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: ListView.separated(
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: categories.length,
-                      separatorBuilder: (_, __) => Divider(
-                        color: esOscuro ? Colors.white.withValues(alpha: 0.05) : const Color(0xFF0D0E15).withValues(alpha: 0.05),
-                        height: 1,
-                      ),
-                      itemBuilder: (context, idx) {
-                        final cat = categories[idx];
-                        final isAct = cat.name.toLowerCase() == currentCategoryName.toLowerCase();
-                        final catColor = Color(int.parse(cat.hexColor.replaceFirst('#', '0xFF')));
-                        final isSub = cat.parentId != null;
-
-                        return GestureDetector(
-                          onTap: () {
-                            onSelected(cat.name);
-                            Navigator.pop(context);
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                            decoration: BoxDecoration(
-                              color: isAct 
-                                  ? catColor.withValues(alpha: 0.08)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Row(
-                              children: [
-                                if (isSub) const SizedBox(width: 16),
-                                Container(
-                                  width: 32,
-                                  height: 32,
-                                  decoration: BoxDecoration(
-                                    color: catColor.withValues(alpha: 0.1),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: catColor.withValues(alpha: 0.25),
-                                      width: 1.0,
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: Icon(
-                                      _galleryIcons[cat.iconCode] ?? Icons.bubble_chart_rounded,
-                                      color: catColor,
-                                      size: 14,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    cat.name,
-                                    style: TextStyle(
-                                      fontSize: isSub ? 13.5 : 14.5,
-                                      fontWeight: isSub ? FontWeight.w500 : FontWeight.bold,
-                                      color: colorTexto,
-                                    ),
-                                  ),
-                                ),
-                                if (isAct) Icon(Icons.check_circle_rounded, color: catColor, size: 20),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -1348,7 +1482,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        final colorFondo = esOscuro ? const Color(0xFF0D0E15) : Colors.white;
+        final colorFondo = esOscuro ? const Color(0xFF0A0A0A) : Colors.white;
 
         return StatefulBuilder(
           builder: (context, setModalState) {
@@ -1519,7 +1653,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
         : color.withValues(alpha: 0.08);
     final Color fontColor = color;
 
-    return GestureDetector(
+    return InteractiveScale(
       onTap: () => onPress(label),
       child: Container(
         decoration: BoxDecoration(

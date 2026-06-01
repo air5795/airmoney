@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../services/estado_app.dart';
 import '../../../widgets/hex_color_picker.dart';
+import '../../../widgets/interactive_scale.dart';
 
 class AjustesCuentas extends StatefulWidget {
   final VoidCallback onBack;
@@ -129,7 +130,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 16),
-        GestureDetector(
+        InteractiveScale(
           onTap: () {
             if (_isCreatingOrEditingAccount) {
               setState(() {
@@ -198,7 +199,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
 
     return Column(
       children: [
-        GestureDetector(
+        InteractiveScale(
           onTap: () {
             setState(() {
               _isCreatingOrEditingAccount = true;
@@ -387,6 +388,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
                                      fontWeight: FontWeight.w900,
                                      color: cardContentColor,
                                      letterSpacing: -0.3,
+                                     fontFeatures: const [FontFeature.tabularFigures()],
                                    ),
                                  ),
                                ],
@@ -396,7 +398,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
                        ),
                       Row(
                         children: [
-                          GestureDetector(
+                          InteractiveScale(
                             onTap: () {
                               // Asignar texto a los controladores fuera de setState para prevenir conflictos de listeners recurrentes
                               _accountNameController.text = acc.name;
@@ -447,17 +449,17 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                      GestureDetector(
+                      InteractiveScale(
                         onTap: () async {
                           final messenger = ScaffoldMessenger.of(context);
                           final confirm = await showDialog<bool>(
                             context: context,
                             builder: (context) => AlertDialog(
-                              backgroundColor: esOscuro ? const Color(0xFF0F172A) : Colors.white,
+                              backgroundColor: esOscuro ? const Color(0xFF0A0A0A) : Colors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(24),
                                 side: BorderSide(
-                                  color: esOscuro ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1),
+                                  color: esOscuro ? const Color(0xFF1E1E1E) : const Color(0xFFCBD5E1),
                                   width: 1.0,
                                 ),
                               ),
@@ -475,21 +477,32 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
                                 ),
                               ),
                               actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context, false),
-                                  child: Text(
-                                    'Cancelar',
-                                    style: TextStyle(color: esOscuro ? Colors.white.withValues(alpha: 0.6) : const Color(0xFF0F172A).withValues(alpha: 0.6)),
+                                InteractiveScale(
+                                  onTap: () => Navigator.pop(context, false),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                    child: Text(
+                                      'Cancelar',
+                                      style: TextStyle(
+                                        color: esOscuro ? Colors.white.withValues(alpha: 0.6) : const Color(0xFF0F172A).withValues(alpha: 0.6),
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                                ElevatedButton(
-                                  onPressed: () => Navigator.pop(context, true),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.redAccent,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    elevation: 0,
+                                InteractiveScale(
+                                  onTap: () => Navigator.pop(context, true),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.redAccent,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Text(
+                                      'Eliminar',
+                                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                    ),
                                   ),
-                                  child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
                                 ),
                               ],
                             ),
@@ -544,6 +557,398 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
     ],
   );
 }
+
+  void _mostrarDisenadorDegradado(BuildContext context, EstadoApp estadoApp, {int inicialTab = 0}) {
+    final esOscuro = estadoApp.esTemaOscuro;
+    final colorPrincipal = estadoApp.colorPrincipal;
+    int currentTab = inicialTab;
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: esOscuro ? 0.5 : 0.35),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final double screenHeight = MediaQuery.of(context).size.height;
+            final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
+            
+            final String liveName = _accountNameController.text.isEmpty ? 'Nombre de Cuenta' : _accountNameController.text;
+            final double liveBalance = double.tryParse(_accountBalanceController.text) ?? 0.0;
+            
+            final colorInicio = _parseHexColor(_selectedAccountColorHex, const Color(0xFFB3E5FC));
+            final colorFin = _parseHexColor(_selectedAccountSecondaryColorHex, const Color(0xFFE2E8F0));
+            final bgColors = [
+              colorInicio.withValues(alpha: 0.95),
+              colorFin.withValues(alpha: 0.95),
+            ];
+            final cardContentColor = _selectedAccountUseDarkText ? const Color(0xFF0F172A) : Colors.white;
+
+            return BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+              child: Container(
+                height: screenHeight * 0.88,
+                decoration: BoxDecoration(
+                  color: esOscuro 
+                      ? const Color(0xFF0A0A0A).withValues(alpha: 0.88)
+                      : Colors.white.withValues(alpha: 0.92),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(32),
+                    topRight: Radius.circular(32),
+                  ),
+                  border: Border.all(
+                    color: esOscuro 
+                        ? Colors.white.withValues(alpha: 0.10)
+                        : Colors.white.withValues(alpha: 0.80),
+                    width: 1.0,
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 12),
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: esOscuro ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(2.5),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Diseñador de Degradados',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                                color: colorTexto,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'PERSONALIZA LA APARIENCIA DE TU TARJETA',
+                              style: TextStyle(
+                                fontSize: 8.5,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.8,
+                                color: colorTexto.withValues(alpha: 0.4),
+                              ),
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: Icon(
+                            Icons.close_rounded,
+                            color: colorTexto.withValues(alpha: 0.6),
+                            size: 24,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Center(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          width: 260,
+                          height: 150,
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: bgColors,
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: esOscuro
+                                  ? Colors.white.withValues(alpha: 0.15)
+                                  : Colors.white.withValues(alpha: 0.40),
+                              width: 1.0,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: colorInicio.withValues(alpha: esOscuro ? 0.25 : 0.15),
+                                blurRadius: 16,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: cardContentColor.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: cardContentColor.withValues(alpha: 0.30),
+                                        width: 0.5,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      _selectedAccountType.toUpperCase(),
+                                      style: TextStyle(
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.w900,
+                                        color: cardContentColor,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                  ),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 16,
+                                        height: 16,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: cardContentColor.withValues(alpha: 0.35),
+                                        ),
+                                      ),
+                                      Transform.translate(
+                                        offset: const Offset(-6, 0),
+                                        child: Container(
+                                          width: 16,
+                                          height: 16,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: cardContentColor.withValues(alpha: 0.2),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    liveName.toUpperCase(),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w900,
+                                      color: cardContentColor,
+                                      letterSpacing: -0.2,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Bs ${liveBalance.toStringAsFixed(2)}',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w900,
+                                      color: cardContentColor,
+                                      letterSpacing: -0.3,
+                                      fontFeatures: const [FontFeature.tabularFigures()],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Container(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: esOscuro 
+                            ? Colors.white.withValues(alpha: 0.04)
+                            : Colors.black.withValues(alpha: 0.03),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: esOscuro ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+                          width: 1.0,
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(4),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: InteractiveScale(
+                              onTap: () {
+                                setDialogState(() {
+                                  currentTab = 0;
+                                });
+                              },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 250),
+                                curve: Curves.easeOutCubic,
+                                decoration: BoxDecoration(
+                                  color: currentTab == 0
+                                      ? colorPrincipal
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: currentTab == 0
+                                      ? [
+                                          BoxShadow(
+                                            color: colorPrincipal.withValues(alpha: 0.25),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 2),
+                                          )
+                                        ]
+                                      : null,
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  'Color de Inicio',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: currentTab == 0
+                                        ? Colors.white
+                                        : colorTexto.withValues(alpha: 0.6),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: InteractiveScale(
+                              onTap: () {
+                                setDialogState(() {
+                                  currentTab = 1;
+                                });
+                              },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 250),
+                                curve: Curves.easeOutCubic,
+                                decoration: BoxDecoration(
+                                  color: currentTab == 1
+                                      ? colorPrincipal
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: currentTab == 1
+                                      ? [
+                                          BoxShadow(
+                                            color: colorPrincipal.withValues(alpha: 0.25),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 2),
+                                          )
+                                        ]
+                                      : null,
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  'Color de Fin',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: currentTab == 1
+                                        ? Colors.white
+                                        : colorTexto.withValues(alpha: 0.6),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 200),
+                              child: KeyedSubtree(
+                                key: ValueKey<int>(currentTab),
+                                child: HexColorPicker(
+                                  currentColorHex: currentTab == 0 
+                                      ? _selectedAccountColorHex 
+                                      : _selectedAccountSecondaryColorHex,
+                                  onColorChanged: (hex) {
+                                    setDialogState(() {
+                                      if (currentTab == 0) {
+                                        _selectedAccountColorHex = hex;
+                                      } else {
+                                        _selectedAccountSecondaryColorHex = hex;
+                                      }
+                                    });
+                                    setState(() {
+                                      if (currentTab == 0) {
+                                        _selectedAccountColorHex = hex;
+                                      } else {
+                                        _selectedAccountSecondaryColorHex = hex;
+                                      }
+                                    });
+                                  },
+                                  esOscuro: esOscuro,
+                                  colorPrincipal: colorPrincipal,
+                                  customColors: currentTab == 0 
+                                      ? _strongColorsStart 
+                                      : _strongColorsEnd,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 24, top: 12),
+                      child: InteractiveScale(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: colorPrincipal,
+                            borderRadius: BorderRadius.circular(26),
+                            boxShadow: [
+                              BoxShadow(
+                                color: colorPrincipal.withValues(alpha: 0.3),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          alignment: Alignment.center,
+                          child: const Text(
+                            'Guardar Degradado',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
   Widget _buildAccountFormView(EstadoApp estadoApp) {
     final esOscuro = estadoApp.esTemaOscuro;
@@ -688,6 +1093,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
                                 fontWeight: FontWeight.w900,
                                 color: cardContentColor,
                                 letterSpacing: -0.3,
+                                fontFeatures: const [FontFeature.tabularFigures()],
                               ),
                             ),
                           ],
@@ -772,7 +1178,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
                     value: ['Efectivo', 'Débito', 'Ahorros', 'Crédito', 'Inversión'].contains(_selectedAccountType)
                         ? _selectedAccountType
                         : 'Ahorros',
-                    dropdownColor: esOscuro ? const Color(0xFF1E293B) : Colors.white,
+                    dropdownColor: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
                     style: TextStyle(
                       color: esOscuro ? Colors.white : const Color(0xFF0F172A),
                       fontWeight: FontWeight.bold,
@@ -931,7 +1337,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
         const SizedBox(height: 12),
         if (_useCustomColorForAccount) ...[
           Text(
-            'COLOR DE INICIO (DEGRADADO)',
+            'DISEÑO DEL DEGRADADO',
             style: TextStyle(
               fontSize: 9.5,
               fontWeight: FontWeight.w900,
@@ -939,39 +1345,181 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
               color: esOscuro ? Colors.white.withValues(alpha: 0.4) : const Color(0xFF0F172A).withValues(alpha: 0.4),
             ),
           ),
-          const SizedBox(height: 8),
-          HexColorPicker(
-            currentColorHex: _selectedAccountColorHex,
-            onColorChanged: (hex) {
-              setState(() {
-                _selectedAccountColorHex = hex;
-              });
-            },
-            esOscuro: esOscuro,
-            colorPrincipal: colorPrincipal,
-            customColors: _strongColorsStart,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'COLOR DE FIN (DEGRADADO)',
-            style: TextStyle(
-              fontSize: 9.5,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0.8,
-              color: esOscuro ? Colors.white.withValues(alpha: 0.4) : const Color(0xFF0F172A).withValues(alpha: 0.4),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: esOscuro
+                    ? Colors.white.withValues(alpha: 0.03)
+                    : Colors.black.withValues(alpha: 0.02),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: esOscuro
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.05),
+                  width: 1.0,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      InteractiveScale(
+                        onTap: () => _mostrarDisenadorDegradado(context, estadoApp, inicialTab: 0),
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: _parseHexColor(_selectedAccountColorHex, const Color(0xFFB3E5FC)),
+                                border: Border.all(
+                                  color: esOscuro ? Colors.white.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.15),
+                                  width: 2.0,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: _parseHexColor(_selectedAccountColorHex, const Color(0xFFB3E5FC)).withValues(alpha: 0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.colorize_rounded,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              _selectedAccountColorHex.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.bold,
+                                color: esOscuro ? Colors.white.withValues(alpha: 0.6) : const Color(0xFF0F172A).withValues(alpha: 0.6),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
+                            children: [
+                              Container(
+                                height: 12,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(6),
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      _parseHexColor(_selectedAccountColorHex, const Color(0xFFB3E5FC)),
+                                      _parseHexColor(_selectedAccountSecondaryColorHex, const Color(0xFFE2E8F0)),
+                                    ],
+                                  ),
+                                  border: Border.all(
+                                    color: esOscuro ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.05),
+                                    width: 1.0,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Degradado Activo',
+                                style: TextStyle(
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
+                                  color: esOscuro ? Colors.white.withValues(alpha: 0.3) : const Color(0xFF0F172A).withValues(alpha: 0.3),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      InteractiveScale(
+                        onTap: () => _mostrarDisenadorDegradado(context, estadoApp, inicialTab: 1),
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: _parseHexColor(_selectedAccountSecondaryColorHex, const Color(0xFFE2E8F0)),
+                                border: Border.all(
+                                  color: esOscuro ? Colors.white.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.15),
+                                  width: 2.0,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: _parseHexColor(_selectedAccountSecondaryColorHex, const Color(0xFFE2E8F0)).withValues(alpha: 0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.colorize_rounded,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              _selectedAccountSecondaryColorHex.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.bold,
+                                color: esOscuro ? Colors.white.withValues(alpha: 0.6) : const Color(0xFF0F172A).withValues(alpha: 0.6),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  InteractiveScale(
+                    onTap: () => _mostrarDisenadorDegradado(context, estadoApp, inicialTab: 0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: colorPrincipal.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: colorPrincipal.withValues(alpha: 0.15),
+                          width: 1.0,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.palette_rounded,
+                            color: colorPrincipal,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Personalizar Colores',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: colorPrincipal,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          HexColorPicker(
-            currentColorHex: _selectedAccountSecondaryColorHex,
-            onColorChanged: (hex) {
-              setState(() {
-                _selectedAccountSecondaryColorHex = hex;
-              });
-            },
-            esOscuro: esOscuro,
-            colorPrincipal: colorPrincipal,
-            customColors: _strongColorsEnd,
           ),
           const SizedBox(height: 20),
         ] else ...[
@@ -996,7 +1544,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
                 final grad = _cardGradients[index];
                 final isSelected = _selectedAccountGradientIdx == index;
 
-                return GestureDetector(
+                return InteractiveScale(
                   onTap: () {
                     setState(() {
                       _selectedAccountGradientIdx = index;
@@ -1016,7 +1564,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
                       border: Border.all(
                         color: isSelected
                             ? (esOscuro ? Colors.white : const Color(0xFF0F172A))
-                            : (esOscuro ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1)),
+                             : (esOscuro ? const Color(0xFF1E1E1E) : const Color(0xFFCBD5E1)),
                         width: isSelected ? 2.5 : 1.0,
                       ),
                     ),
@@ -1039,7 +1587,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
         Row(
           children: [
             Expanded(
-              child: GestureDetector(
+              child: InteractiveScale(
                 onTap: () {
                   setState(() {
                     _isCreatingOrEditingAccount = false;
@@ -1053,7 +1601,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
                     color: esOscuro ? Colors.white.withValues(alpha: 0.05) : const Color(0xFF0F172A).withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(28),
                     border: Border.all(
-                      color: esOscuro ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1),
+                      color: esOscuro ? const Color(0xFF1E1E1E) : const Color(0xFFCBD5E1),
                       width: 1.0,
                     ),
                   ),
@@ -1072,7 +1620,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
             ),
             const SizedBox(width: 14),
             Expanded(
-              child: GestureDetector(
+              child: InteractiveScale(
                 onTap: () {
                   final name = _accountNameController.text.trim();
                   final balance = double.tryParse(_accountBalanceController.text.trim()) ?? 0.0;

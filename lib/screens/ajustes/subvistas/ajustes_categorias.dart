@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../services/estado_app.dart';
 import '../../../widgets/hex_color_picker.dart';
+import '../../../widgets/interactive_scale.dart';
 
 class AjustesCategorias extends StatefulWidget {
   final VoidCallback onBack;
@@ -73,7 +74,7 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 16),
-        GestureDetector(
+        InteractiveScale(
           onTap: () {
             if (_isCreatingOrEditingCategory) {
               setState(() {
@@ -264,7 +265,7 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
         const SizedBox(height: 8),
         DropdownButtonFormField<String?>(
           value: _selectedCategoryParentId,
-          dropdownColor: esOscuro ? const Color(0xFF1E293B) : Colors.white,
+          dropdownColor: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
           style: TextStyle(
             color: colorTexto,
             fontWeight: FontWeight.bold,
@@ -329,7 +330,7 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: esOscuro
-                ? const Color(0xFF0D0E15).withValues(alpha: 0.45)
+                ? const Color(0xFF0A0A0A).withValues(alpha: 0.45)
                 : Colors.white.withValues(alpha: 0.60),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
@@ -352,7 +353,7 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
               final icon = _galleryIcons[key]!;
               final isSelected = _selectedCategoryIconCode == key;
 
-              return GestureDetector(
+              return InteractiveScale(
                 onTap: () {
                   setState(() {
                     _selectedCategoryIconCode = key;
@@ -409,7 +410,7 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
         Row(
           children: [
             Expanded(
-              child: GestureDetector(
+              child: InteractiveScale(
                 onTap: () {
                   setState(() {
                     _isCreatingOrEditingCategory = false;
@@ -422,7 +423,7 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
                     color: esOscuro ? Colors.white.withValues(alpha: 0.05) : const Color(0xFF0F172A).withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(4),
                     border: Border.all(
-                      color: esOscuro ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1),
+                      color: esOscuro ? const Color(0xFF1E1E1E) : const Color(0xFFCBD5E1),
                       width: 1.0,
                     ),
                   ),
@@ -441,7 +442,7 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
             ),
             const SizedBox(width: 14),
             Expanded(
-              child: GestureDetector(
+              child: InteractiveScale(
                 onTap: () {
                   final name = _categoryNameController.text.trim();
                   if (name.isEmpty) {
@@ -519,7 +520,7 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        GestureDetector(
+        InteractiveScale(
           onTap: () {
             setState(() {
               _isCreatingOrEditingCategory = true;
@@ -588,10 +589,10 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
 
               return Container(
                 decoration: BoxDecoration(
-                  color: esOscuro ? const Color(0xFF0F172A) : Colors.white,
+                  color: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(
-                    color: esOscuro ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1),
+                    color: esOscuro ? const Color(0xFF1E1E1E) : const Color(0xFFCBD5E1),
                     width: 1.0,
                   ),
                 ),
@@ -645,9 +646,8 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
                               ],
                             ),
                           ),
-                          IconButton(
-                            icon: Icon(Icons.edit_rounded, size: 18, color: colorTexto.withValues(alpha: 0.4)),
-                            onPressed: () {
+                          InteractiveScale(
+                            onTap: () {
                               setState(() {
                                 _isCreatingOrEditingCategory = true;
                                 _selectedCategoryToEdit = cat;
@@ -657,30 +657,37 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
                                 _selectedCategoryColorHex = cat.hexColor;
                               });
                             },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              child: Icon(Icons.edit_rounded, size: 18, color: colorTexto.withValues(alpha: 0.4)),
+                            ),
                           ),
-                          IconButton(
-                            icon: Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent.withValues(alpha: 0.7)),
-                            onPressed: () {
+                          const SizedBox(width: 8),
+                          InteractiveScale(
+                            onTap: () {
                               showDialog(
                                 context: context,
                                 builder: (context) => AlertDialog(
-                                  backgroundColor: esOscuro ? const Color(0xFF0F172A) : Colors.white,
+                                  backgroundColor: esOscuro ? const Color(0xFF0A0A0A) : Colors.white,
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(4),
+                                    borderRadius: BorderRadius.circular(16),
                                     side: BorderSide(
-                                      color: esOscuro ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1),
+                                      color: esOscuro ? const Color(0xFF1E1E1E) : const Color(0xFFCBD5E1),
                                       width: 1.0,
                                     ),
                                   ),
                                   title: const Text('¿Eliminar categoría?', style: TextStyle(fontWeight: FontWeight.bold)),
                                   content: Text('Esto eliminará la categoría "${cat.name}" y todas sus subcategorías de forma permanente.'),
                                   actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      child: Text('Cancelar', style: TextStyle(color: colorTexto)),
+                                    InteractiveScale(
+                                      onTap: () => Navigator.pop(context),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                        child: Text('Cancelar', style: TextStyle(color: colorTexto, fontWeight: FontWeight.bold)),
+                                      ),
                                     ),
-                                    ElevatedButton(
-                                      onPressed: () {
+                                    InteractiveScale(
+                                      onTap: () {
                                         estadoApp.deleteCategory(cat.id);
                                         Navigator.pop(context);
                                         ScaffoldMessenger.of(context).showSnackBar(
@@ -690,24 +697,30 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
                                           ),
                                         );
                                       },
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.redAccent,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                                        elevation: 0,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                        decoration: BoxDecoration(
+                                          color: Colors.redAccent,
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: const Text('Eliminar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                                       ),
-                                      child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
                                     ),
                                   ],
                                 ),
                               );
                             },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              child: Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent.withValues(alpha: 0.7)),
+                            ),
                           ),
                         ],
                       ),
                     ),
                     if (childCategories.isNotEmpty) ...[
                       Divider(
-                        color: esOscuro ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                        color: esOscuro ? const Color(0xFF1E1E1E) : const Color(0xFFE2E8F0),
                         height: 1,
                       ),
                       Container(
@@ -750,7 +763,7 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
                                       ),
                                     ),
                                   ),
-                                  GestureDetector(
+                                  InteractiveScale(
                                     onTap: () {
                                       setState(() {
                                         _isCreatingOrEditingCategory = true;
@@ -761,10 +774,13 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
                                         _selectedCategoryColorHex = child.hexColor;
                                       });
                                     },
-                                    child: Icon(Icons.edit_rounded, size: 14, color: colorTexto.withValues(alpha: 0.35)),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                      child: Icon(Icons.edit_rounded, size: 14, color: colorTexto.withValues(alpha: 0.35)),
+                                    ),
                                   ),
-                                  const SizedBox(width: 14),
-                                  GestureDetector(
+                                  const SizedBox(width: 12),
+                                  InteractiveScale(
                                     onTap: () {
                                       estadoApp.deleteCategory(child.id);
                                       ScaffoldMessenger.of(context).showSnackBar(
@@ -774,7 +790,10 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
                                         ),
                                       );
                                     },
-                                    child: Icon(Icons.close_rounded, size: 15, color: Colors.redAccent.withValues(alpha: 0.5)),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                      child: Icon(Icons.close_rounded, size: 15, color: Colors.redAccent.withValues(alpha: 0.5)),
+                                    ),
                                   ),
                                 ],
                               ),

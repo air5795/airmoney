@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../services/estado_app.dart';
 import '../../../widgets/hex_color_picker.dart';
+import '../../../widgets/interactive_scale.dart';
 
 class AjustesApariencia extends StatelessWidget {
   final VoidCallback onBack;
@@ -21,6 +22,7 @@ class AjustesApariencia extends StatelessWidget {
     final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
 
     final List<Color> selectorColores = [
+      const Color(0xFF000000),
       const Color(0xFFFF2D55),
       const Color(0xFF007AFF),
       const Color(0xFF34C759),
@@ -33,7 +35,7 @@ class AjustesApariencia extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 16),
-        GestureDetector(
+        InteractiveScale(
           onTap: onBack,
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -86,7 +88,7 @@ class AjustesApariencia extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
               decoration: BoxDecoration(
                 color: esOscuro
-                    ? const Color(0xFF0D0E15).withValues(alpha: 0.45)
+                    ? const Color(0xFF0A0A0A).withValues(alpha: 0.45)
                     : Colors.white.withValues(alpha: 0.60),
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
@@ -156,7 +158,7 @@ class AjustesApariencia extends StatelessWidget {
                     height: 1,
                     color: esOscuro
                         ? Colors.white.withValues(alpha: 0.05)
-                        : const Color(0xFF0D0E15).withValues(alpha: 0.05),
+                        : const Color(0xFF0A0A0A).withValues(alpha: 0.05),
                   ),
                   const SizedBox(height: 24),
                   Row(
@@ -212,7 +214,7 @@ class AjustesApariencia extends StatelessWidget {
                         final colorSel = selectorColores[index];
                         final isSelectedColor = colorPrincipal.toARGB32() == colorSel.toARGB32();
 
-                        return GestureDetector(
+                        return InteractiveScale(
                           onTap: () {
                             estadoApp.setColorPrincipal(colorSel);
                           },
@@ -258,7 +260,7 @@ class AjustesApariencia extends StatelessWidget {
                     height: 1,
                     color: esOscuro
                         ? Colors.white.withValues(alpha: 0.05)
-                        : const Color(0xFF0D0E15).withValues(alpha: 0.05),
+                        : const Color(0xFF0A0A0A).withValues(alpha: 0.05),
                   ),
                   const SizedBox(height: 24),
                   Text(

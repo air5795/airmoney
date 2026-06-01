@@ -108,6 +108,58 @@ class ModeloTransaccion {
   }
 }
 
+class ModeloAhorro {
+  final String id;
+  final String name;
+  final double targetAmount;
+  double currentAmount;
+  final DateTime startDate;
+  final DateTime? targetDate;
+  final String hexColor;
+  final String iconCode;
+  final String? linkedAccountId;
+
+  ModeloAhorro({
+    required this.id,
+    required this.name,
+    required this.targetAmount,
+    required this.currentAmount,
+    required this.startDate,
+    this.targetDate,
+    required this.hexColor,
+    required this.iconCode,
+    this.linkedAccountId,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'nombre': name,
+      'montoObjetivo': targetAmount,
+      'montoActual': currentAmount,
+      'fechaInicio': startDate.toIso8601String(),
+      'fechaObjetivo': targetDate?.toIso8601String(),
+      'colorHex': hexColor,
+      'codigoIcono': iconCode,
+      'idCuentaVinculada': linkedAccountId,
+    };
+  }
+
+  factory ModeloAhorro.fromMap(Map<String, dynamic> map) {
+    return ModeloAhorro(
+      id: map['id'] ?? '',
+      name: map['nombre'] ?? '',
+      targetAmount: (map['montoObjetivo'] as num?)?.toDouble() ?? 0.0,
+      currentAmount: (map['montoActual'] as num?)?.toDouble() ?? 0.0,
+      startDate: DateTime.parse(map['fechaInicio'] ?? DateTime.now().toIso8601String()),
+      targetDate: map['fechaObjetivo'] != null ? DateTime.parse(map['fechaObjetivo']) : null,
+      hexColor: map['colorHex'] ?? '#10B981',
+      iconCode: map['codigoIcono'] ?? 'savings_rounded',
+      linkedAccountId: map['idCuentaVinculada'],
+    );
+  }
+}
+
 class ModeloCategoria {
   final String id;
   final String name;
@@ -151,8 +203,11 @@ class EstadoApp extends ChangeNotifier {
   List<ModeloCuenta> _accounts = [];
   List<ModeloTransaccion> _transactions = [];
   List<ModeloCategoria> _categories = [];
+  List<ModeloAhorro> _savingsGoals = [];
   bool _esTemaOscuro = false;
-  Color _colorPrincipal = const Color(0xFFFF2D55);
+  Color _colorPrincipal = const Color(0xFF000000);
+  int _selectedDockIndex = 0;
+  int _selectedSettingsSubView = 0;
 
   String get selectedLanguage => _selectedLanguage;
   String get selectedCurrency => _selectedCurrency;
@@ -162,8 +217,31 @@ class EstadoApp extends ChangeNotifier {
   List<ModeloCategoria> get categories {
     return [...categoriasPorDefecto, ..._categories];
   }
+  List<ModeloAhorro> get savingsGoals {
+    for (var goal in _savingsGoals) {
+      if (goal.linkedAccountId != null) {
+        final accIdx = _accounts.indexWhere((acc) => acc.id == goal.linkedAccountId);
+        if (accIdx != -1) {
+          goal.currentAmount = _accounts[accIdx].balance;
+        }
+      }
+    }
+    return _savingsGoals;
+  }
   bool get esTemaOscuro => _esTemaOscuro;
   Color get colorPrincipal => _colorPrincipal;
+
+  int get selectedDockIndex => _selectedDockIndex;
+  set selectedDockIndex(int val) {
+    _selectedDockIndex = val;
+    notifyListeners();
+  }
+
+  int get selectedSettingsSubView => _selectedSettingsSubView;
+  set selectedSettingsSubView(int val) {
+    _selectedSettingsSubView = val;
+    notifyListeners();
+  }
 
   double get totalBalance {
     double total = 0.0;
@@ -209,7 +287,7 @@ class EstadoApp extends ChangeNotifier {
     _hasCompletedOnboarding = prefs.getBool('app_onboarding_completed') ?? false;
     _esTemaOscuro = prefs.getBool('app_dark_mode') ?? false;
 
-    final int colorVal = prefs.getInt('app_primary_color') ?? const Color(0xFFFF2D55).toARGB32();
+    final int colorVal = prefs.getInt('app_primary_color') ?? const Color(0xFF000000).toARGB32();
     _colorPrincipal = Color(colorVal);
 
     final String? accountsJson = prefs.getString('app_accounts');
@@ -264,7 +342,11 @@ class EstadoApp extends ChangeNotifier {
       }
     }
 
-
+    final String? savingsJson = prefs.getString('app_savings_goals');
+    if (savingsJson != null) {
+      final List<dynamic> decoded = json.decode(savingsJson);
+      _savingsGoals = decoded.map((item) => ModeloAhorro.fromMap(item)).toList();
+    }
 
     notifyListeners();
   }
@@ -287,6 +369,15 @@ class EstadoApp extends ChangeNotifier {
     _esTemaOscuro = value;
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setBool('app_dark_mode', value);
+
+    if (value && _colorPrincipal.toARGB32() == const Color(0xFF000000).toARGB32()) {
+      _colorPrincipal = const Color(0xFFFFFFFF);
+      await prefs.setInt('app_primary_color', const Color(0xFFFFFFFF).toARGB32());
+    } else if (!value && _colorPrincipal.toARGB32() == const Color(0xFFFFFFFF).toARGB32()) {
+      _colorPrincipal = const Color(0xFF000000);
+      await prefs.setInt('app_primary_color', const Color(0xFF000000).toARGB32());
+    }
+
     notifyListeners();
   }
 
@@ -334,9 +425,9 @@ class EstadoApp extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addAccount(String name, String type, double balance, int gradientIndex, {String? customColorHex, String? customColorSecondaryHex, bool useDarkText = false}) async {
+  Future<ModeloCuenta> addAccount(String name, String type, double balance, int gradientIndex, {String? customColorHex, String? customColorSecondaryHex, bool useDarkText = false}) async {
     final newAccount = ModeloCuenta(
-      id: 'acc_${DateTime.now().millisecondsSinceEpoch}',
+      id: 'acc_${DateTime.now().millisecondsSinceEpoch}_${_accounts.length}',
       name: name,
       type: type,
       balance: balance,
@@ -366,6 +457,7 @@ class EstadoApp extends ChangeNotifier {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await _saveAccountsToPrefs(prefs);
     notifyListeners();
+    return newAccount;
   }
 
   Future<void> addTransaction({
@@ -549,6 +641,45 @@ class EstadoApp extends ChangeNotifier {
     await prefs.setString('app_transactions', json.encode(transactionsMapList));
   }
 
+  Future<void> _saveSavingsGoalsToPrefs(SharedPreferences prefs) async {
+    final List<Map<String, dynamic>> mapped = _savingsGoals.map((g) => g.toMap()).toList();
+    await prefs.setString('app_savings_goals', json.encode(mapped));
+  }
+
+  Future<void> addSavingGoal(ModeloAhorro goal) async {
+    _savingsGoals.add(goal);
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await _saveSavingsGoalsToPrefs(prefs);
+    notifyListeners();
+  }
+
+  Future<void> updateSavingGoal(ModeloAhorro goal) async {
+    final idx = _savingsGoals.indexWhere((g) => g.id == goal.id);
+    if (idx != -1) {
+      _savingsGoals[idx] = goal;
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      await _saveSavingsGoalsToPrefs(prefs);
+      notifyListeners();
+    }
+  }
+
+  Future<void> deleteSavingGoal(String id) async {
+    _savingsGoals.removeWhere((g) => g.id == id);
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await _saveSavingsGoalsToPrefs(prefs);
+    notifyListeners();
+  }
+
+  Future<void> addFundsToSavingGoal(String id, double amount) async {
+    final idx = _savingsGoals.indexWhere((g) => g.id == id);
+    if (idx != -1) {
+      _savingsGoals[idx].currentAmount += amount;
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      await _saveSavingsGoalsToPrefs(prefs);
+      notifyListeners();
+    }
+  }
+
   Future<void> editAccount(String id, String name, String type, double balance, int gradientIndex, {String? customColorHex, String? customColorSecondaryHex, bool useDarkText = false}) async {
     final idx = _accounts.indexWhere((acc) => acc.id == id);
     if (idx != -1) {
@@ -587,6 +718,7 @@ class EstadoApp extends ChangeNotifier {
     _accounts.clear();
     _transactions.clear();
     _categories.clear();
+    _savingsGoals.clear();
     _hasCompletedOnboarding = false;
 
     print('=== DEBUG ESTADO: clearAllData - Obteniendo SharedPreferences ===');
@@ -596,6 +728,7 @@ class EstadoApp extends ChangeNotifier {
     await prefs.remove('app_accounts');
     await prefs.remove('app_transactions');
     await prefs.remove('app_categories');
+    await prefs.remove('app_savings_goals');
     
     print('=== DEBUG ESTADO: clearAllData - Notificando listeners ===');
     notifyListeners();
@@ -779,6 +912,11 @@ class EstadoApp extends ChangeNotifier {
             _categories = categoriesData.map((item) => ModeloCategoria.fromMap(Map<String, dynamic>.from(item))).toList();
           }
 
+          if (data['ahorros'] != null) {
+            final List<dynamic> savingsData = data['ahorros'];
+            _savingsGoals = savingsData.map((item) => ModeloAhorro.fromMap(Map<String, dynamic>.from(item))).toList();
+          }
+
           final SharedPreferences prefs = await SharedPreferences.getInstance();
           await prefs.setBool('app_dark_mode', _esTemaOscuro);
           await prefs.setInt('app_primary_color', _colorPrincipal.toARGB32());
@@ -786,6 +924,7 @@ class EstadoApp extends ChangeNotifier {
           await _saveAccountsToPrefs(prefs);
           await _saveTransactionsToPrefs(prefs);
           await _saveCategoriesToPrefs(prefs);
+          await _saveSavingsGoalsToPrefs(prefs);
 
           super.notifyListeners();
         }
@@ -807,6 +946,7 @@ class EstadoApp extends ChangeNotifier {
       final accountsMapList = _accounts.map((acc) => acc.toMap()).toList();
       final transactionsMapList = _transactions.map((tx) => tx.toMap()).toList();
       final categoriesMapList = _categories.map((cat) => cat.toMap()).toList();
+      final savingsMapList = _savingsGoals.map((g) => g.toMap()).toList();
 
       await docRef.set({
         'uid': uid,
@@ -815,6 +955,7 @@ class EstadoApp extends ChangeNotifier {
         'cuentas': accountsMapList,
         'transacciones': transactionsMapList,
         'categorias': categoriesMapList,
+        'ahorros': savingsMapList,
         'ultimaActualizacion': FieldValue.serverTimestamp(),
       }).timeout(const Duration(seconds: 4));
     } catch (e) {

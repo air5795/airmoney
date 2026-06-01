@@ -116,6 +116,20 @@ class ServicioAutenticacion {
     }
   }
 
+  Future<UsuarioApp?> signInDemo() async {
+    await Future.delayed(const Duration(milliseconds: 1000));
+    _currentUser = const UsuarioApp(
+      uid: 'demo_invitado_123',
+      displayName: 'Usuario Invitado',
+      email: 'demo@airmoney.com',
+      photoUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
+      provider: 'Invitado',
+    );
+    await _saveLocalDemoSession(_currentUser!);
+    _userStreamController.add(_currentUser);
+    return _currentUser;
+  }
+
   Future<void> signOut() async {
     if (_isFirebaseInitialized) {
       await FirebaseAuth.instance.signOut();

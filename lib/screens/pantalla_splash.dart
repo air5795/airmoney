@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../services/servicio_autenticacion.dart';
@@ -63,172 +63,184 @@ class _PantallaSplashState extends State<PantallaSplash> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
+    final estadoApp = Provider.of<EstadoApp>(context);
+    final esOscuro = estadoApp.esTemaOscuro;
+    final colorPrimario = estadoApp.colorPrincipal;
+    
+    final colorFondo = esOscuro ? const Color(0xFF000000) : const Color(0xFFF8FAFC);
+    final colorTexto = esOscuro ? const Color(0xFFF1F5F9) : const Color(0xFF0F172A);
+    final colorSecundario = esOscuro ? const Color(0xFF64748B) : const Color(0xFF475569);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
-      body: Stack(
-        children: [
-          Positioned(
-            top: -size.height * 0.15,
-            right: -size.width * 0.25,
-            child: Container(
-              width: 320,
-              height: 320,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFFC5FAD5).withValues(alpha: 0.55),
-                    const Color(0xFFFAFAFA).withValues(alpha: 0.0),
+      backgroundColor: colorFondo,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            // Micro-destello radial de fondo sumamente sutil (no intrusivo)
+            Positioned(
+              top: -120,
+              left: -120,
+              child: Container(
+                width: 320,
+                height: 320,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      colorPrimario.withValues(alpha: esOscuro ? 0.06 : 0.04),
+                      colorFondo.withValues(alpha: 0.0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Logotipo institucional con efecto físico táctil
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      color: esOscuro ? const Color(0xFF0F172A) : Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: esOscuro
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : const Color(0xFFE2E8F0),
+                        width: 1.0,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: esOscuro ? 0.25 : 0.03),
+                          blurRadius: 24,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.account_balance_wallet_rounded,
+                        color: colorPrimario,
+                        size: 44,
+                      ),
+                    ),
+                  )
+                      .animate()
+                      .fadeIn(duration: 800.ms, curve: Curves.easeOutCubic)
+                      .scale(
+                        begin: const Offset(0.85, 0.85),
+                        end: const Offset(1.0, 1.0),
+                        duration: 800.ms,
+                        curve: Curves.easeOutCubic,
+                      ),
+                  
+                  const SizedBox(height: 32),
+                  
+                  // Títulos y marcas de tipografía fina y estable
+                  RichText(
+                    text: TextSpan(
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w800,
+                        color: colorTexto,
+                        fontFamily: 'Roboto',
+                        letterSpacing: -0.8,
+                      ),
+                      children: [
+                        const TextSpan(text: 'Air'),
+                        TextSpan(
+                          text: 'Money',
+                          style: TextStyle(
+                            color: colorPrimario,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                      .animate()
+                      .fadeIn(duration: 800.ms, delay: 200.ms, curve: Curves.easeOutCubic)
+                      .slideY(
+                        begin: 0.15,
+                        end: 0.0,
+                        duration: 800.ms,
+                        delay: 200.ms,
+                        curve: Curves.easeOutCubic,
+                      ),
+                  
+                  const SizedBox(height: 6),
+                  
+                  Text(
+                    'TU DINERO, SEGURO Y LIGERO.',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 4.0,
+                      color: colorSecundario.withValues(alpha: 0.6),
+                    ),
+                  )
+                      .animate()
+                      .fadeIn(duration: 800.ms, delay: 350.ms, curve: Curves.easeOutCubic),
+                  
+                  const SizedBox(height: 36),
+                  
+                  // Indicador lineal de carga/sincronización institucional
+                  SizedBox(
+                    width: 120,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: LinearProgressIndicator(
+                        minHeight: 3,
+                        backgroundColor: esOscuro
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : Colors.black.withValues(alpha: 0.04),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          colorPrimario.withValues(alpha: 0.85),
+                        ),
+                      ),
+                    ),
+                  )
+                      .animate()
+                      .fadeIn(duration: 800.ms, delay: 500.ms, curve: Curves.easeOutCubic),
+                ],
+              ),
+            ),
+            
+            // Pie de pantalla con seguridad implícita
+            Positioned(
+              bottom: 24,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.lock_outline_rounded,
+                      size: 12,
+                      color: colorSecundario.withValues(alpha: 0.4),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'CONEXIÓN CIFRADA DE EXTREMO A EXTREMO',
+                      style: TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                        color: colorSecundario.withValues(alpha: 0.4),
+                      ),
+                    ),
                   ],
                 ),
               ),
             )
-                .animate(onPlay: (controller) => controller.repeat(reverse: true))
-                .scale(
-                  duration: 4.seconds,
-                  begin: const Offset(0.85, 0.85),
-                  end: const Offset(1.15, 1.15),
-                  curve: Curves.easeInOut,
-                ),
-          ),
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 104,
-                  height: 104,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(
-                      color: const Color(0xFF1E293B).withValues(alpha: 0.15),
-                      width: 1.2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF1E293B).withValues(alpha: 0.05),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Container(
-                      width: 90,
-                      height: 90,
-                      decoration: BoxDecoration(
-                        gradient: RadialGradient(
-                          colors: [
-                            const Color(0xFFC5FAD5).withValues(alpha: 0.35),
-                            Colors.white.withValues(alpha: 0.0),
-                          ],
-                          center: Alignment.topLeft,
-                          radius: 1.2,
-                        ),
-                        borderRadius: BorderRadius.circular(22),
-                      ),
-                      child: const Center(
-                        child: Text(
-                          'A',
-                          style: TextStyle(
-                            fontSize: 48,
-                            fontWeight: FontWeight.w900,
-                            color: Color(0xFF0F172A),
-                            letterSpacing: -2,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-                    .animate()
-                    .scale(
-                      duration: 800.ms,
-                      curve: Curves.elasticOut,
-                    )
-                    .then()
-                    .animate(onPlay: (controller) => controller.repeat(reverse: true))
-                    .scale(
-                      duration: 2.seconds,
-                      begin: const Offset(1.0, 1.0),
-                      end: const Offset(1.04, 1.04),
-                      curve: Curves.easeInOut,
-                    ),
-                const SizedBox(height: 32),
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Column(
-                      children: [
-                        RichText(
-                          text: const TextSpan(
-                            style: TextStyle(
-                              fontSize: 34,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF0F172A),
-                              fontFamily: 'Roboto',
-                            ),
-                            children: [
-                              TextSpan(text: 'Air'),
-                              TextSpan(
-                                text: 'Money',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                            .animate()
-                            .fadeIn(duration: 800.ms, delay: 200.ms)
-                            .slideY(
-                              begin: 0.2,
-                              end: 0.0,
-                              duration: 800.ms,
-                              curve: Curves.easeOutCubic,
-                            ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'TU DINERO, LIGERO.',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 4,
-                            color: const Color(0xFF0F172A).withValues(alpha: 0.4),
-                          ),
-                        )
-                            .animate()
-                            .fadeIn(duration: 800.ms, delay: 400.ms),
-                      ],
-                    ),
-                    Positioned(
-                      bottom: 22,
-                      right: size.width * 0.17,
-                      child: Container(
-                        width: 96,
-                        height: 3,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF00E676).withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      )
-                          .animate()
-                          .fadeIn(duration: 1000.ms, delay: 350.ms)
-                          .scaleX(
-                            duration: 1000.ms,
-                            delay: 350.ms,
-                            alignment: Alignment.centerLeft,
-                          ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
+                .animate()
+                .fadeIn(duration: 800.ms, delay: 700.ms, curve: Curves.easeOutCubic),
+          ],
+        ),
       ),
     );
   }

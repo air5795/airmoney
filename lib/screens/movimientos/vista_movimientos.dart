@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/estado_app.dart';
 import '../../widgets/panel_transaccion.dart';
+import '../../widgets/interactive_scale.dart';
 
 class VistaMovimientos extends StatefulWidget {
   const VistaMovimientos({super.key});
@@ -164,7 +165,7 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
       builder: (context) {
         final esOscuro = estadoApp.esTemaOscuro;
         final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
-        final colorFondo = esOscuro ? const Color(0xFF0D0E15) : Colors.white;
+        final colorFondo = esOscuro ? const Color(0xFF0A0A0A) : Colors.white;
 
         return ClipRRect(
           borderRadius: const BorderRadius.only(
@@ -222,7 +223,7 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
                     itemCount: 12,
                     itemBuilder: (context, idx) {
                       final isSelected = _selectedFilterMonth == (idx + 1);
-                      return GestureDetector(
+                      return InteractiveScale(
                         onTap: () {
                           setState(() {
                             _selectedFilterMonth = idx + 1;
@@ -272,7 +273,7 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
       builder: (context) {
         final esOscuro = estadoApp.esTemaOscuro;
         final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
-        final colorFondo = esOscuro ? const Color(0xFF0D0E15) : Colors.white;
+        final colorFondo = esOscuro ? const Color(0xFF0A0A0A) : Colors.white;
         final currentYear = DateTime.now().year;
         final years = List.generate(10, (idx) => currentYear - 5 + idx);
 
@@ -333,7 +334,7 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
                     itemBuilder: (context, idx) {
                       final y = years[idx];
                       final isSelected = _selectedFilterYear == y;
-                      return GestureDetector(
+                      return InteractiveScale(
                         onTap: () {
                           setState(() {
                             _selectedFilterYear = y;
@@ -383,7 +384,7 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
       builder: (context) {
         final esOscuro = estadoApp.esTemaOscuro;
         final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
-        final colorFondo = esOscuro ? const Color(0xFF0D0E15) : Colors.white;
+        final colorFondo = esOscuro ? const Color(0xFF0A0A0A) : Colors.white;
 
         return ClipRRect(
           borderRadius: const BorderRadius.only(
@@ -432,45 +433,47 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: _selectedAccountFilter == null 
-                            ? estadoApp.colorPrincipal.withValues(alpha: 0.15)
-                            : (esOscuro ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03)),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: _selectedAccountFilter == null 
-                              ? estadoApp.colorPrincipal 
-                              : Colors.transparent,
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.account_balance_wallet_rounded,
-                        color: _selectedAccountFilter == null ? estadoApp.colorPrincipal : colorTexto.withValues(alpha: 0.6),
-                        size: 18,
-                      ),
-                    ),
-                    title: Text(
-                      'Todas las cuentas',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: colorTexto,
-                      ),
-                    ),
-                    trailing: _selectedAccountFilter == null
-                        ? Icon(Icons.check_circle_rounded, color: estadoApp.colorPrincipal, size: 20)
-                        : null,
+                  InteractiveScale(
                     onTap: () {
                       setState(() {
                         _selectedAccountFilter = null;
                       });
                       Navigator.pop(context);
                     },
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: _selectedAccountFilter == null 
+                              ? estadoApp.colorPrincipal.withValues(alpha: 0.15)
+                              : (esOscuro ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03)),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: _selectedAccountFilter == null 
+                                ? estadoApp.colorPrincipal 
+                                : Colors.transparent,
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.account_balance_wallet_rounded,
+                          color: _selectedAccountFilter == null ? estadoApp.colorPrincipal : colorTexto.withValues(alpha: 0.6),
+                          size: 18,
+                        ),
+                      ),
+                      title: Text(
+                        'Todas las cuentas',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: colorTexto,
+                        ),
+                      ),
+                      trailing: _selectedAccountFilter == null
+                          ? Icon(Icons.check_circle_rounded, color: estadoApp.colorPrincipal, size: 20)
+                          : null,
+                    ),
                   ),
                   const Divider(height: 20),
                   ConstrainedBox(
@@ -483,43 +486,45 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
                         final acc = estadoApp.accounts[idx];
                         final isSelected = _selectedAccountFilter == acc.id;
 
-                        return ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: isSelected 
-                                  ? estadoApp.colorPrincipal.withValues(alpha: 0.15)
-                                  : (esOscuro ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03)),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isSelected ? estadoApp.colorPrincipal : Colors.transparent,
-                              ),
-                            ),
-                            child: Icon(
-                              Icons.account_balance_rounded,
-                              color: isSelected ? estadoApp.colorPrincipal : colorTexto.withValues(alpha: 0.6),
-                              size: 18,
-                            ),
-                          ),
-                          title: Text(
-                            acc.name,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: colorTexto,
-                            ),
-                          ),
-                          trailing: isSelected
-                              ? Icon(Icons.check_circle_rounded, color: estadoApp.colorPrincipal, size: 20)
-                              : null,
+                        return InteractiveScale(
                           onTap: () {
                             setState(() {
                               _selectedAccountFilter = acc.id;
                             });
                             Navigator.pop(context);
                           },
+                          child: ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: isSelected 
+                                    ? estadoApp.colorPrincipal.withValues(alpha: 0.15)
+                                    : (esOscuro ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03)),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isSelected ? estadoApp.colorPrincipal : Colors.transparent,
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.account_balance_rounded,
+                                color: isSelected ? estadoApp.colorPrincipal : colorTexto.withValues(alpha: 0.6),
+                                size: 18,
+                              ),
+                            ),
+                            title: Text(
+                              acc.name,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: colorTexto,
+                              ),
+                            ),
+                            trailing: isSelected
+                                ? Icon(Icons.check_circle_rounded, color: estadoApp.colorPrincipal, size: 20)
+                                : null,
+                          ),
                         );
                       },
                     ),
@@ -735,13 +740,13 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
                     height: 38,
                     decoration: BoxDecoration(
                       color: esOscuro 
-                          ? Colors.white.withValues(alpha: 0.04) 
-                          : Colors.black.withValues(alpha: 0.03),
+                          ? const Color(0xFF0E0E0E) 
+                          : const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                         color: esOscuro 
                             ? Colors.white.withValues(alpha: 0.08) 
-                            : Colors.black.withValues(alpha: 0.05),
+                            : const Color(0xFFE2E8F0),
                         width: 1.0,
                       ),
                     ),
@@ -780,13 +785,16 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
                           ),
                         ),
                         if (_searchQuery.isNotEmpty)
-                          IconButton(
-                            icon: Icon(Icons.close_rounded, color: colorTexto.withValues(alpha: 0.4), size: 16),
-                            onPressed: () {
+                          InteractiveScale(
+                            onTap: () {
                               setState(() {
                                 _searchQuery = '';
                               });
                             },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                              child: Icon(Icons.close_rounded, color: colorTexto.withValues(alpha: 0.4), size: 16),
+                            ),
                           ),
                       ],
                     ),
@@ -804,13 +812,8 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
           const SizedBox(width: 8),
           Row(
             children: [
-              IconButton(
-                icon: Icon(
-                  _isSearchExpanded ? Icons.search_off_rounded : Icons.search_rounded,
-                  color: _isSearchExpanded ? activeColor : colorTexto.withValues(alpha: 0.6),
-                  size: 20,
-                ),
-                onPressed: () {
+              InteractiveScale(
+                onTap: () {
                   setState(() {
                     _isSearchExpanded = !_isSearchExpanded;
                     if (!_isSearchExpanded) {
@@ -818,22 +821,57 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
                     }
                   });
                 },
-              ),
-              IconButton(
-                icon: Icon(
-                  _hideBalances ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                  color: colorTexto.withValues(alpha: 0.6),
-                  size: 20,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: esOscuro ? const Color(0xFF0E0E0E) : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    _isSearchExpanded ? Icons.search_off_rounded : Icons.search_rounded,
+                    color: _isSearchExpanded ? activeColor : colorTexto.withValues(alpha: 0.6),
+                    size: 20,
+                  ),
                 ),
-                onPressed: () {
+              ),
+              const SizedBox(width: 8),
+              InteractiveScale(
+                onTap: () {
                   setState(() {
                     _hideBalances = !_hideBalances;
                   });
                 },
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: esOscuro ? const Color(0xFF0E0E0E) : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    _hideBalances ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                    color: colorTexto.withValues(alpha: 0.6),
+                    size: 20,
+                  ),
+                ),
               ),
-              IconButton(
-                icon: Icon(Icons.sort_rounded, color: colorTexto.withValues(alpha: 0.6), size: 20),
-                onPressed: _showSortMenu,
+              const SizedBox(width: 8),
+              InteractiveScale(
+                onTap: _showSortMenu,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: esOscuro ? const Color(0xFF0E0E0E) : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.sort_rounded,
+                    color: colorTexto.withValues(alpha: 0.6),
+                    size: 20,
+                  ),
+                ),
               ),
             ],
           ),
@@ -886,7 +924,7 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
               : (esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05));
           final textSelectionColor = isSelected ? chipColor : colorTexto.withValues(alpha: 0.65);
 
-          return GestureDetector(
+          return InteractiveScale(
             onTap: () {
               setState(() {
                 if (isAllChip) {
@@ -940,9 +978,8 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(
-            icon: Icon(Icons.arrow_back_ios_new_rounded, color: colorTexto.withValues(alpha: 0.5), size: 14),
-            onPressed: () {
+          InteractiveScale(
+            onTap: () {
               setState(() {
                 _selectedFilterMonth--;
                 if (_selectedFilterMonth < 1) {
@@ -951,84 +988,95 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
                 }
               });
             },
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: esOscuro ? const Color(0xFF0E0E0E) : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.arrow_back_ios_new_rounded, color: colorTexto.withValues(alpha: 0.6), size: 12),
+            ),
           ),
-          GestureDetector(
+          InteractiveScale(
             onTap: _showMonthSelector,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(20),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  decoration: BoxDecoration(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                decoration: BoxDecoration(
+                  color: esOscuro 
+                      ? const Color(0xFF0E0E0E) 
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
                     color: esOscuro 
-                        ? Colors.white.withValues(alpha: 0.05) 
-                        : Colors.white.withValues(alpha: 0.65),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: esOscuro 
-                          ? Colors.white.withValues(alpha: 0.08) 
-                          : Colors.white.withValues(alpha: 0.6),
-                      width: 1.0,
-                    ),
+                        ? Colors.white.withValues(alpha: 0.08) 
+                        : const Color(0xFFE2E8F0),
+                    width: 1.0,
                   ),
-                  child: Text(
-                    mesTexto,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: activeColor,
-                      letterSpacing: 0.5,
-                    ),
+                ),
+                child: Text(
+                  mesTexto,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: activeColor,
+                    letterSpacing: 0.5,
                   ),
                 ),
               ),
             ),
           ),
-          GestureDetector(
+          InteractiveScale(
             onTap: _showYearSelector,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(20),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: esOscuro 
+                      ? const Color(0xFF0E0E0E) 
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
                     color: esOscuro 
-                        ? Colors.white.withValues(alpha: 0.05) 
-                        : Colors.white.withValues(alpha: 0.65),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: esOscuro 
-                          ? Colors.white.withValues(alpha: 0.08) 
-                          : Colors.white.withValues(alpha: 0.6),
-                      width: 1.0,
-                    ),
+                        ? Colors.white.withValues(alpha: 0.08) 
+                        : const Color(0xFFE2E8F0),
+                    width: 1.0,
                   ),
-                  child: Text(
-                    _selectedFilterYear.toString(),
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: colorTexto.withValues(alpha: 0.7),
-                      letterSpacing: 0.5,
-                    ),
+                ),
+                child: Text(
+                  _selectedFilterYear.toString(),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: colorTexto.withValues(alpha: 0.7),
+                    letterSpacing: 0.5,
                   ),
                 ),
               ),
             ),
           ),
-          IconButton(
-            icon: Icon(
-              Icons.filter_alt_outlined,
-              color: _selectedAccountFilter != null ? activeColor : colorTexto.withValues(alpha: 0.5),
-              size: 20,
+          InteractiveScale(
+            onTap: _showAccountFilterSelector,
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: esOscuro ? const Color(0xFF0E0E0E) : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(8),
+                border: _selectedAccountFilter != null ? Border.all(color: activeColor, width: 1.0) : null,
+              ),
+              child: Icon(
+                Icons.filter_alt_outlined,
+                color: _selectedAccountFilter != null ? activeColor : colorTexto.withValues(alpha: 0.6),
+                size: 16,
+              ),
             ),
-            onPressed: _showAccountFilterSelector,
           ),
-          IconButton(
-            icon: Icon(Icons.arrow_forward_ios_rounded, color: colorTexto.withValues(alpha: 0.5), size: 14),
-            onPressed: () {
+          InteractiveScale(
+            onTap: () {
               setState(() {
                 _selectedFilterMonth++;
                 if (_selectedFilterMonth > 12) {
@@ -1037,6 +1085,15 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
                 }
               });
             },
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: esOscuro ? const Color(0xFF0E0E0E) : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.arrow_forward_ios_rounded, color: colorTexto.withValues(alpha: 0.6), size: 12),
+            ),
           ),
         ],
       ),
@@ -1064,7 +1121,7 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: esOscuro
-            ? const Color(0xFF111625)
+            ? const Color(0xFF0E0E0E)
             : Colors.white,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
@@ -1083,7 +1140,7 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
       ),
       child: Column(
         children: [
-          GestureDetector(
+          InteractiveScale(
             onTap: () {
               setState(() {
                 if (_collapsedDays.contains(claveDiaStr)) {
@@ -1093,7 +1150,6 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
                 }
               });
             },
-            behavior: HitTestBehavior.opaque,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
@@ -1152,6 +1208,7 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
                           fontSize: 13.5,
                           fontWeight: FontWeight.w800,
                           color: isNetoDiaPositivo ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -1161,6 +1218,7 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
                           fontSize: 9,
                           fontWeight: FontWeight.w600,
                           color: colorTexto.withValues(alpha: 0.45),
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
                     ],
@@ -1182,7 +1240,7 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
               height: 1,
               color: esOscuro
                   ? Colors.white.withValues(alpha: 0.05)
-                  : const Color(0xFF0D0E15).withValues(alpha: 0.05),
+                  : const Color(0xFF0A0A0A).withValues(alpha: 0.05),
             ),
             ListView.separated(
               shrinkWrap: true,
@@ -1193,7 +1251,7 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
                 margin: const EdgeInsets.symmetric(horizontal: 16),
                 color: esOscuro
                     ? Colors.white.withValues(alpha: 0.03)
-                    : const Color(0xFF0D0E15).withValues(alpha: 0.03),
+                    : const Color(0xFF0A0A0A).withValues(alpha: 0.03),
               ),
               itemBuilder: (context, idx) {
                 final tx = transacciones[idx];
@@ -1230,8 +1288,7 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
                   }
                 }
 
-                return GestureDetector(
-                  behavior: HitTestBehavior.translucent,
+                return InteractiveScale(
                   onTap: () {
                     showModalBottomSheet(
                       context: context,
@@ -1257,7 +1314,7 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
                                   width: 2.0,
                                   color: esOscuro
                                       ? Colors.white.withValues(alpha: 0.12)
-                                      : const Color(0xFF0D0E15).withValues(alpha: 0.06),
+                                      : const Color(0xFF0A0A0A).withValues(alpha: 0.06),
                                 ),
                               ),
                               Container(
@@ -1267,7 +1324,7 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
                                   color: transIconColor.withValues(alpha: esOscuro ? 0.20 : 0.12),
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: (esOscuro ? const Color(0xFF0D0E15) : Colors.white).withValues(alpha: 0.85),
+                                    color: (esOscuro ? const Color(0xFF000000) : Colors.white).withValues(alpha: 0.85),
                                     width: 1.5,
                                   ),
                                 ),
@@ -1325,6 +1382,7 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
                                   ? const Color(0xFF10B981)
                                   : (isTransfer ? const Color(0xFF3B82F6) : const Color(0xFFEF4444)),
                               letterSpacing: -0.2,
+                              fontFeatures: const [FontFeature.tabularFigures()],
                             ),
                           ),
                         ),

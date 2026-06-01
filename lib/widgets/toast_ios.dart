@@ -110,7 +110,7 @@ class _ToastIOSState extends State<ToastIOS> with SingleTickerProviderStateMixin
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
                         color: esOscuro
-                            ? const Color(0xFF0D0E15).withValues(alpha: 0.70)
+                            ? const Color(0xFF0A0A0A).withValues(alpha: 0.70)
                             : Colors.white.withValues(alpha: 0.80),
                         borderRadius: BorderRadius.circular(28),
                         border: Border.all(
