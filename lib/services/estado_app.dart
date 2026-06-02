@@ -13,6 +13,7 @@ class ModeloCuenta {
   final String? customColorHex;
   final String? customColorSecondaryHex;
   final bool? useDarkText;
+  final String? currency;
 
   ModeloCuenta({
     required this.id,
@@ -23,6 +24,7 @@ class ModeloCuenta {
     this.customColorHex,
     this.customColorSecondaryHex,
     this.useDarkText,
+    this.currency,
   });
 
   Map<String, dynamic> toMap() {
@@ -35,6 +37,7 @@ class ModeloCuenta {
       'colorPersonalizadoHex': customColorHex,
       'colorSecundarioPersonalizadoHex': customColorSecondaryHex,
       'usarTextoOscuro': useDarkText,
+      'moneda': currency,
     };
   }
 
@@ -48,6 +51,7 @@ class ModeloCuenta {
       customColorHex: map['colorPersonalizadoHex'],
       customColorSecondaryHex: map['colorSecundarioPersonalizadoHex'],
       useDarkText: map['usarTextoOscuro'] ?? false,
+      currency: map['moneda'],
     );
   }
 }
@@ -199,6 +203,7 @@ class ModeloCategoria {
 class EstadoApp extends ChangeNotifier {
   String _selectedLanguage = 'es';
   String _selectedCurrency = 'BOB';
+  Map<String, double> _tiposCambio = {};
   bool _hasCompletedOnboarding = false;
   List<ModeloCuenta> _accounts = [];
   List<ModeloTransaccion> _transactions = [];
@@ -208,9 +213,14 @@ class EstadoApp extends ChangeNotifier {
   Color _colorPrincipal = const Color(0xFF000000);
   int _selectedDockIndex = 0;
   int _selectedSettingsSubView = 0;
+  int _lastLocalUpdateMillis = 0;
 
   String get selectedLanguage => _selectedLanguage;
   String get selectedCurrency => _selectedCurrency;
+  Map<String, double> get tiposCambio => _tiposCambio;
+  double get tipoCambioUsd => _tiposCambio['USD'] ?? 6.97;
+  int get lastLocalUpdateMillis => _lastLocalUpdateMillis;
+  String get currencySymbol => getSymbolOfCurrency(_selectedCurrency);
   bool get hasCompletedOnboarding => _hasCompletedOnboarding;
   List<ModeloCuenta> get accounts => _accounts;
   List<ModeloTransaccion> get transactions => _transactions;
@@ -243,13 +253,62 @@ class EstadoApp extends ChangeNotifier {
     notifyListeners();
   }
 
+  double convertirMoneda(double monto, String monedaOrigen, String monedaDestino) {
+    if (monedaOrigen == monedaDestino) return monto;
+    
+    final tasaOrigen = _tiposCambio[monedaOrigen] ?? 1.0;
+    final tasaDestino = _tiposCambio[monedaDestino] ?? 1.0;
+    
+    final montoEnMonedaPrincipal = monto * tasaOrigen;
+    return montoEnMonedaPrincipal / tasaDestino;
+  }
+
+  static String getSymbolOfCurrency(String currencyCode) {
+    switch (currencyCode) {
+      case 'BOB':
+        return 'Bs';
+      case 'MXN':
+      case 'USD':
+        return '\$';
+      case 'EUR':
+        return '€';
+      case 'GBP':
+        return '£';
+      case 'JPY':
+      case 'CNY':
+        return '¥';
+      case 'KRW':
+        return '₩';
+      case 'INR':
+        return '₹';
+      default:
+        return 'Bs';
+    }
+  }
+
+  Future<void> setTasaCambio(String code, double valor) async {
+    _tiposCambio[code] = valor;
+    _tiposCambio[_selectedCurrency] = 1.0; // Siempre forzar divisa principal en 1.0
+    
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('app_tipos_cambio', json.encode(_tiposCambio));
+    notifyListeners();
+  }
+
+  Future<void> setTipoCambioUsd(double valor) async {
+    await setTasaCambio('USD', valor);
+  }
+
   double get totalBalance {
     double total = 0.0;
     for (var acc in _accounts) {
+      final accCurrency = acc.currency ?? _selectedCurrency;
+      final balanceConvertido = convertirMoneda(acc.balance, accCurrency, _selectedCurrency);
+      
       if (acc.type == 'Credito' || acc.type == 'Crédito') {
-        total -= acc.balance;
+        total -= balanceConvertido;
       } else {
-        total += acc.balance;
+        total += balanceConvertido;
       }
     }
     return total;
@@ -259,7 +318,12 @@ class EstadoApp extends ChangeNotifier {
     double total = 0.0;
     for (var tx in _transactions) {
       if (tx.type == 'ingreso') {
-        total += tx.amount;
+        final acc = _accounts.firstWhere(
+          (a) => a.id == tx.accountId,
+          orElse: () => _accounts.isNotEmpty ? _accounts.first : ModeloCuenta(id: '', name: '', type: '', balance: 0, gradientIndex: 0),
+        );
+        final txCurrency = acc.currency ?? _selectedCurrency;
+        total += convertirMoneda(tx.amount, txCurrency, _selectedCurrency);
       }
     }
     return total;
@@ -269,10 +333,29 @@ class EstadoApp extends ChangeNotifier {
     double total = 0.0;
     for (var tx in _transactions) {
       if (tx.type == 'gasto') {
-        total += tx.amount;
+        final acc = _accounts.firstWhere(
+          (a) => a.id == tx.accountId,
+          orElse: () => _accounts.isNotEmpty ? _accounts.first : ModeloCuenta(id: '', name: '', type: '', balance: 0, gradientIndex: 0),
+        );
+        final txCurrency = acc.currency ?? _selectedCurrency;
+        total += convertirMoneda(tx.amount, txCurrency, _selectedCurrency);
       }
     }
     return total;
+  }
+
+  void _inicializarTasasDefecto() {
+    _tiposCambio = {
+      'BOB': 1.0,
+      'USD': 6.97,
+      'EUR': 7.50,
+      'MXN': 0.40,
+      'GBP': 8.80,
+      'JPY': 0.045,
+      'CNY': 0.96,
+      'KRW': 0.005,
+      'INR': 0.08,
+    };
   }
 
   EstadoApp() {
@@ -282,8 +365,24 @@ class EstadoApp extends ChangeNotifier {
   Future<void> _loadFromPreferences() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     
+    _lastLocalUpdateMillis = prefs.getInt('app_last_local_update_millis') ?? 0;
     _selectedLanguage = prefs.getString('app_language') ?? 'es';
     _selectedCurrency = prefs.getString('app_currency') ?? 'BOB';
+    
+    final String? tiposCambioJson = prefs.getString('app_tipos_cambio');
+    if (tiposCambioJson != null) {
+      try {
+        final Map<String, dynamic> decoded = json.decode(tiposCambioJson);
+        _tiposCambio = decoded.map((key, value) => MapEntry(key, (value as num).toDouble()));
+      } catch (_) {
+        _inicializarTasasDefecto();
+      }
+    } else {
+      _inicializarTasasDefecto();
+    }
+    
+    _tiposCambio[_selectedCurrency] = 1.0; // Garantizar que la moneda principal tenga siempre tasa 1.0
+    
     _hasCompletedOnboarding = prefs.getBool('app_onboarding_completed') ?? false;
     _esTemaOscuro = prefs.getBool('app_dark_mode') ?? false;
 
@@ -388,7 +487,7 @@ class EstadoApp extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> completeOnboarding(String firstAccountName, String firstAccountType, double initialBalance) async {
+  Future<void> completeOnboarding(String firstAccountName, String firstAccountType, double initialBalance, {String? currency}) async {
     _accounts.clear();
     _transactions.clear();
 
@@ -398,6 +497,7 @@ class EstadoApp extends ChangeNotifier {
       type: firstAccountType,
       balance: initialBalance,
       gradientIndex: 0,
+      currency: currency ?? _selectedCurrency,
     );
     _accounts.add(firstAccount);
 
@@ -425,7 +525,7 @@ class EstadoApp extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<ModeloCuenta> addAccount(String name, String type, double balance, int gradientIndex, {String? customColorHex, String? customColorSecondaryHex, bool useDarkText = false}) async {
+  Future<ModeloCuenta> addAccount(String name, String type, double balance, int gradientIndex, {String? customColorHex, String? customColorSecondaryHex, bool useDarkText = false, String? currency}) async {
     final newAccount = ModeloCuenta(
       id: 'acc_${DateTime.now().millisecondsSinceEpoch}_${_accounts.length}',
       name: name,
@@ -435,6 +535,7 @@ class EstadoApp extends ChangeNotifier {
       customColorHex: customColorHex,
       customColorSecondaryHex: customColorSecondaryHex,
       useDarkText: useDarkText,
+      currency: currency ?? _selectedCurrency,
     );
     _accounts.add(newAccount);
 
@@ -502,7 +603,13 @@ class EstadoApp extends ChangeNotifier {
         _accounts[originIdx].balance -= amount;
       }
       if (destIdx != -1) {
-        _accounts[destIdx].balance += amount;
+        final originAcc = _accounts[originIdx];
+        final destAcc = _accounts[destIdx];
+        final originCurrency = originAcc.currency ?? _selectedCurrency;
+        final destCurrency = destAcc.currency ?? _selectedCurrency;
+        
+        final amountConvertido = convertirMoneda(amount, originCurrency, destCurrency);
+        _accounts[destIdx].balance += amountConvertido;
       }
     }
 
@@ -548,7 +655,13 @@ class EstadoApp extends ChangeNotifier {
         _accounts[originIdx].balance += oldTx.amount;
       }
       if (destIdx != -1) {
-        _accounts[destIdx].balance -= oldTx.amount;
+        final originAcc = _accounts[originIdx];
+        final destAcc = _accounts[destIdx];
+        final originCurrency = originAcc.currency ?? _selectedCurrency;
+        final destCurrency = destAcc.currency ?? _selectedCurrency;
+        
+        final amountConvertido = convertirMoneda(oldTx.amount, originCurrency, destCurrency);
+        _accounts[destIdx].balance -= amountConvertido;
       }
     }
 
@@ -570,7 +683,13 @@ class EstadoApp extends ChangeNotifier {
         _accounts[originIdx].balance -= amount;
       }
       if (destIdx != -1) {
-        _accounts[destIdx].balance += amount;
+        final originAcc = _accounts[originIdx];
+        final destAcc = _accounts[destIdx];
+        final originCurrency = originAcc.currency ?? _selectedCurrency;
+        final destCurrency = destAcc.currency ?? _selectedCurrency;
+        
+        final amountConvertido = convertirMoneda(amount, originCurrency, destCurrency);
+        _accounts[destIdx].balance += amountConvertido;
       }
     }
 
@@ -618,7 +737,13 @@ class EstadoApp extends ChangeNotifier {
         _accounts[originIdx].balance += oldTx.amount;
       }
       if (destIdx != -1) {
-        _accounts[destIdx].balance -= oldTx.amount;
+        final originAcc = _accounts[originIdx];
+        final destAcc = _accounts[destIdx];
+        final originCurrency = originAcc.currency ?? _selectedCurrency;
+        final destCurrency = destAcc.currency ?? _selectedCurrency;
+        
+        final amountConvertido = convertirMoneda(oldTx.amount, originCurrency, destCurrency);
+        _accounts[destIdx].balance -= amountConvertido;
       }
     }
 
@@ -631,19 +756,27 @@ class EstadoApp extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> _updateLocalTimestamp(SharedPreferences prefs) async {
+    _lastLocalUpdateMillis = DateTime.now().millisecondsSinceEpoch;
+    await prefs.setInt('app_last_local_update_millis', _lastLocalUpdateMillis);
+  }
+
   Future<void> _saveAccountsToPrefs(SharedPreferences prefs) async {
     final List<Map<String, dynamic>> accountsMapList = _accounts.map((acc) => acc.toMap()).toList();
     await prefs.setString('app_accounts', json.encode(accountsMapList));
+    await _updateLocalTimestamp(prefs);
   }
 
   Future<void> _saveTransactionsToPrefs(SharedPreferences prefs) async {
     final List<Map<String, dynamic>> transactionsMapList = _transactions.map((tx) => tx.toMap()).toList();
     await prefs.setString('app_transactions', json.encode(transactionsMapList));
+    await _updateLocalTimestamp(prefs);
   }
 
   Future<void> _saveSavingsGoalsToPrefs(SharedPreferences prefs) async {
     final List<Map<String, dynamic>> mapped = _savingsGoals.map((g) => g.toMap()).toList();
     await prefs.setString('app_savings_goals', json.encode(mapped));
+    await _updateLocalTimestamp(prefs);
   }
 
   Future<void> addSavingGoal(ModeloAhorro goal) async {
@@ -680,7 +813,7 @@ class EstadoApp extends ChangeNotifier {
     }
   }
 
-  Future<void> editAccount(String id, String name, String type, double balance, int gradientIndex, {String? customColorHex, String? customColorSecondaryHex, bool useDarkText = false}) async {
+  Future<void> editAccount(String id, String name, String type, double balance, int gradientIndex, {String? customColorHex, String? customColorSecondaryHex, bool useDarkText = false, String? currency}) async {
     final idx = _accounts.indexWhere((acc) => acc.id == id);
     if (idx != -1) {
        _accounts[idx] = ModeloCuenta(
@@ -692,6 +825,7 @@ class EstadoApp extends ChangeNotifier {
         customColorHex: customColorHex,
         customColorSecondaryHex: customColorSecondaryHex,
         useDarkText: useDarkText,
+        currency: currency ?? _accounts[idx].currency,
       );
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await _saveAccountsToPrefs(prefs);
@@ -737,14 +871,10 @@ class EstadoApp extends ChangeNotifier {
 
   Future<void> eliminarDatosNubeYLocal(String uid) async {
     try {
-      if (!uid.startsWith('demo_')) {
-        print('=== DEBUG ESTADO: Intentando borrar Firestore doc: usuarios/$uid ===');
-        final docRef = FirebaseFirestore.instance.collection('usuarios').doc(uid);
-        await docRef.delete().timeout(const Duration(seconds: 4));
-        print('=== DEBUG ESTADO: Firestore doc borrado con exito ===');
-      } else {
-        print('=== DEBUG ESTADO: Es usuario demo, omitiendo borrado Firestore ===');
-      }
+      print('=== DEBUG ESTADO: Intentando borrar Firestore doc: usuarios/$uid ===');
+      final docRef = FirebaseFirestore.instance.collection('usuarios').doc(uid);
+      await docRef.delete().timeout(const Duration(seconds: 4));
+      print('=== DEBUG ESTADO: Firestore doc borrado con exito ===');
     } catch (e) {
       print('=== DEBUG ESTADO: Error al eliminar datos de la nube: $e ===');
     }
@@ -829,6 +959,7 @@ class EstadoApp extends ChangeNotifier {
   Future<void> _saveCategoriesToPrefs(SharedPreferences prefs) async {
     final List<Map<String, dynamic>> categoriesMapList = _categories.map((cat) => cat.toMap()).toList();
     await prefs.setString('app_categories', json.encode(categoriesMapList));
+    await _updateLocalTimestamp(prefs);
   }
 
   Future<void> addCategory(String name, String? parentId, String iconCode, String hexColor) async {
@@ -887,11 +1018,28 @@ class EstadoApp extends ChangeNotifier {
       if (docSnap.exists) {
         final data = docSnap.data();
         if (data != null) {
+          // Comprobar marcas de tiempo para evitar sobrescribir datos locales offline
+          final dynamic cloudTimestamp = data['ultimaActualizacion'];
+          if (cloudTimestamp != null && cloudTimestamp is Timestamp) {
+            final int cloudMillis = cloudTimestamp.millisecondsSinceEpoch;
+            // Si los datos locales son significativamente mas nuevos, subimos los locales en lugar de descargar
+            if (_lastLocalUpdateMillis > cloudMillis + 2000) {
+              await _subirDatosANube(uid);
+              return true;
+            }
+          }
+
           if (data['esTemaOscuro'] != null) {
             _esTemaOscuro = data['esTemaOscuro'] as bool;
           }
           if (data['colorPrincipal'] != null) {
             _colorPrincipal = Color(data['colorPrincipal'] as int);
+          }
+          if (data['tiposCambio'] != null) {
+            final Map<String, dynamic> mapCloud = data['tiposCambio'] as Map<String, dynamic>;
+            _tiposCambio = mapCloud.map((key, val) => MapEntry(key, (val as num).toDouble()));
+          } else if (data['tipoCambioUsd'] != null) {
+            _tiposCambio['USD'] = (data['tipoCambioUsd'] as num).toDouble();
           }
 
           if (data['cuentas'] != null) {
@@ -920,11 +1068,20 @@ class EstadoApp extends ChangeNotifier {
           final SharedPreferences prefs = await SharedPreferences.getInstance();
           await prefs.setBool('app_dark_mode', _esTemaOscuro);
           await prefs.setInt('app_primary_color', _colorPrincipal.toARGB32());
+          await prefs.setString('app_tipos_cambio', json.encode(_tiposCambio));
+          await prefs.setDouble('app_tipo_cambio_usd', _tiposCambio['USD'] ?? 6.97);
           await prefs.setBool('app_onboarding_completed', _hasCompletedOnboarding);
+          
           await _saveAccountsToPrefs(prefs);
           await _saveTransactionsToPrefs(prefs);
           await _saveCategoriesToPrefs(prefs);
           await _saveSavingsGoalsToPrefs(prefs);
+
+          // Asignar el timestamp oficial de la nube al final para evitar que los metodos de guardado lo pisen
+          if (cloudTimestamp != null && cloudTimestamp is Timestamp) {
+            _lastLocalUpdateMillis = cloudTimestamp.millisecondsSinceEpoch;
+            await prefs.setInt('app_last_local_update_millis', _lastLocalUpdateMillis);
+          }
 
           super.notifyListeners();
         }
@@ -952,12 +1109,19 @@ class EstadoApp extends ChangeNotifier {
         'uid': uid,
         'esTemaOscuro': _esTemaOscuro,
         'colorPrincipal': _colorPrincipal.toARGB32(),
+        'tiposCambio': _tiposCambio,
+        'tipoCambioUsd': _tiposCambio['USD'] ?? 6.97,
         'cuentas': accountsMapList,
         'transacciones': transactionsMapList,
         'categorias': categoriesMapList,
         'ahorros': savingsMapList,
         'ultimaActualizacion': FieldValue.serverTimestamp(),
       }).timeout(const Duration(seconds: 4));
+
+      // Actualizar timestamp local al momento actual tras la subida exitosa
+      _lastLocalUpdateMillis = DateTime.now().millisecondsSinceEpoch;
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('app_last_local_update_millis', _lastLocalUpdateMillis);
     } catch (e) {
       debugPrint('Error al subir datos a la nube: $e');
     }

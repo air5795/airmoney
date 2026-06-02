@@ -38,7 +38,7 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
     final balance = double.tryParse(balanceText) ?? 0.0;
 
     final estadoApp = Provider.of<EstadoApp>(context, listen: false);
-    estadoApp.completeOnboarding(name, _selectedType, balance);
+    estadoApp.completeOnboarding(name, _selectedType, balance, currency: estadoApp.selectedCurrency);
 
     Navigator.pushAndRemoveUntil(
       context,

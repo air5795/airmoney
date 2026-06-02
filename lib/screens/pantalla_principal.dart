@@ -34,7 +34,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final estadoApp = Provider.of<EstadoApp>(context, listen: false);
       final authUser = _servicioAuth.currentUser;
-      if (authUser != null && !authUser.uid.startsWith('demo_')) {
+      if (authUser != null) {
         estadoApp.sincronizarConNube(authUser.uid);
       }
     });

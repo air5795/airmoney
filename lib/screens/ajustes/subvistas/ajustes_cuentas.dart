@@ -26,6 +26,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
   final TextEditingController _accountBalanceController = TextEditingController();
 
   String _selectedAccountType = 'Ahorros';
+  String _selectedAccountCurrency = 'BOB';
   int _selectedAccountGradientIdx = 0;
   String _selectedAccountColorHex = '#B3E5FC';
   String _selectedAccountSecondaryColorHex = '#E2E8F0';
@@ -207,6 +208,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
               _accountNameController.clear();
               _accountBalanceController.text = '0.00';
               _selectedAccountType = 'Ahorros';
+              _selectedAccountCurrency = estadoApp.selectedCurrency;
               _selectedAccountGradientIdx = 0;
               _selectedAccountColorHex = '#B3E5FC';
               _selectedAccountSecondaryColorHex = '#E2E8F0';
@@ -382,7 +384,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
                                    ),
                                  ),
                                  Text(
-                                   'Bs ${acc.balance.toStringAsFixed(2)}',
+                                   '${EstadoApp.getSymbolOfCurrency(acc.currency ?? estadoApp.selectedCurrency)} ${acc.balance.toStringAsFixed(2)}',
                                    style: TextStyle(
                                      fontSize: 12.5,
                                      fontWeight: FontWeight.w900,
@@ -423,6 +425,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
                                   _selectedAccountType = 'Ahorros';
                                 }
                                 
+                                _selectedAccountCurrency = acc.currency ?? estadoApp.selectedCurrency;
                                 _selectedAccountGradientIdx = acc.gradientIndex;
                                 _selectedAccountColorHex = acc.customColorHex ?? '#B3E5FC';
                                 _selectedAccountSecondaryColorHex = acc.customColorSecondaryHex ?? '#E2E8F0';
@@ -1087,7 +1090,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              'Bs ${liveBalance.toStringAsFixed(2)}',
+                              '${EstadoApp.getSymbolOfCurrency(_selectedAccountCurrency)} ${liveBalance.toStringAsFixed(2)}',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w900,
@@ -1285,6 +1288,69 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 20),
+        Text(
+          'MONEDA DE LA CUENTA',
+          style: TextStyle(
+            fontSize: 9.5,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.8,
+            color: esOscuro ? Colors.white.withValues(alpha: 0.4) : const Color(0xFF0F172A).withValues(alpha: 0.4),
+          ),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: ['BOB', 'MXN', 'USD', 'EUR', 'GBP', 'JPY', 'CNY', 'KRW', 'INR'].contains(_selectedAccountCurrency)
+              ? _selectedAccountCurrency
+              : 'BOB',
+          dropdownColor: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
+          style: TextStyle(
+            color: esOscuro ? Colors.white : const Color(0xFF0F172A),
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+          items: const [
+            DropdownMenuItem(value: 'BOB', child: Text('Boliviano (BOB)')),
+            DropdownMenuItem(value: 'USD', child: Text('Dólar estadounidense (USD)')),
+            DropdownMenuItem(value: 'MXN', child: Text('Peso mexicano (MXN)')),
+            DropdownMenuItem(value: 'EUR', child: Text('Euro (EUR)')),
+            DropdownMenuItem(value: 'GBP', child: Text('Libra esterlina (GBP)')),
+            DropdownMenuItem(value: 'JPY', child: Text('Yen japonés (JPY)')),
+          ],
+          onChanged: (val) {
+            if (val != null) {
+              setState(() {
+                _selectedAccountCurrency = val;
+              });
+            }
+          },
+          decoration: InputDecoration(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            filled: true,
+            fillColor: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(
+                color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                width: 1.0,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(
+                color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                width: 1.0,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(
+                color: colorPrincipal,
+                width: 1.0,
+              ),
+            ),
+          ),
         ),
         const SizedBox(height: 24),
         Row(
@@ -1645,6 +1711,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
                       customColorHex: _useCustomColorForAccount ? _selectedAccountColorHex : null,
                       customColorSecondaryHex: _useCustomColorForAccount ? _selectedAccountSecondaryColorHex : null,
                       useDarkText: _selectedAccountUseDarkText,
+                      currency: _selectedAccountCurrency,
                     );
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -1661,6 +1728,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
                       customColorHex: _useCustomColorForAccount ? _selectedAccountColorHex : null,
                       customColorSecondaryHex: _useCustomColorForAccount ? _selectedAccountSecondaryColorHex : null,
                       useDarkText: _selectedAccountUseDarkText,
+                      currency: _selectedAccountCurrency,
                     );
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(

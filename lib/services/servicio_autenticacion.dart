@@ -1,10 +1,8 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/usuario_app.dart';
 
 class ServicioAutenticacion {
@@ -39,23 +37,6 @@ class ServicioAutenticacion {
       });
     } catch (e) {
       _isFirebaseInitialized = false;
-      await _loadLocalDemoSession();
-    }
-  }
-
-  Future<void> _loadLocalDemoSession() async {
-    try {
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
-      final String? userJson = prefs.getString('demo_user_session');
-      if (userJson != null) {
-        final Map<String, dynamic> userMap = json.decode(userJson);
-        _currentUser = UsuarioApp.fromMap(userMap);
-        _userStreamController.add(_currentUser);
-      } else {
-        _currentUser = null;
-        _userStreamController.add(null);
-      }
-    } catch (e) {
       _currentUser = null;
       _userStreamController.add(null);
     }
@@ -84,62 +65,26 @@ class ServicioAutenticacion {
       }
       return null;
     } else {
-      await Future.delayed(const Duration(milliseconds: 1500));
-      _currentUser = const UsuarioApp(
-        uid: 'demo_google_123',
-        displayName: 'Alejandro Google',
-        email: 'alejandro.demo@gmail.com',
-        photoUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
-        provider: 'Google',
-      );
-      await _saveLocalDemoSession(_currentUser!);
-      _userStreamController.add(_currentUser);
-      return _currentUser;
+      // Firebase no esta inicializado, no se permite iniciar sesion en modo demo
+      return null;
     }
   }
 
   Future<UsuarioApp?> signInWithFacebook() async {
-    if (_isFirebaseInitialized) {
-      return null;
-    } else {
-      await Future.delayed(const Duration(milliseconds: 1500));
-      _currentUser = const UsuarioApp(
-        uid: 'demo_facebook_123',
-        displayName: 'Alejandro Facebook',
-        email: 'alejandro.fb.demo@gmail.com',
-        photoUrl: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&q=80',
-        provider: 'Facebook',
-      );
-      await _saveLocalDemoSession(_currentUser!);
-      _userStreamController.add(_currentUser);
-      return _currentUser;
-    }
+    return null;
   }
 
   Future<UsuarioApp?> signInDemo() async {
-    await Future.delayed(const Duration(milliseconds: 1000));
-    _currentUser = const UsuarioApp(
-      uid: 'demo_invitado_123',
-      displayName: 'Usuario Invitado',
-      email: 'demo@airmoney.com',
-      photoUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
-      provider: 'Invitado',
-    );
-    await _saveLocalDemoSession(_currentUser!);
-    _userStreamController.add(_currentUser);
-    return _currentUser;
+    return null;
   }
 
   Future<void> signOut() async {
     if (_isFirebaseInitialized) {
       await FirebaseAuth.instance.signOut();
       await GoogleSignIn().signOut();
-    } else {
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.remove('demo_user_session');
-      _currentUser = null;
-      _userStreamController.add(null);
     }
+    _currentUser = null;
+    _userStreamController.add(null);
   }
 
   Future<bool> deleteFirebaseAccount() async {
@@ -151,21 +96,14 @@ class ServicioAutenticacion {
         return true;
       } catch (e) {
         debugPrint('Error al eliminar cuenta en Firebase Auth: $e');
-        await signOut(); // Fallback: asegurarse de cerrar sesión
+        await signOut(); // Fallback: asegurarse de cerrar sesion
         return false;
       }
     } else {
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.remove('demo_user_session');
       _currentUser = null;
       _userStreamController.add(null);
       return true;
     }
-  }
-
-  Future<void> _saveLocalDemoSession(UsuarioApp user) async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString('demo_user_session', json.encode(user.toMap()));
   }
 
   Future<void> checkInitialSession() async {
@@ -179,7 +117,8 @@ class ServicioAutenticacion {
         _userStreamController.add(null);
       }
     } else {
-      await _loadLocalDemoSession();
+      _currentUser = null;
+      _userStreamController.add(null);
     }
   }
 }

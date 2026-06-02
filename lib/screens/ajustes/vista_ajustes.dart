@@ -8,6 +8,7 @@ import '../pantalla_login.dart';
 import 'subvistas/ajustes_apariencia.dart';
 import 'subvistas/ajustes_cuentas.dart';
 import 'subvistas/ajustes_categorias.dart';
+import 'subvistas/ajustes_tipo_cambio.dart';
 import '../../widgets/interactive_scale.dart';
 
 class VistaAjustes extends StatefulWidget {
@@ -161,6 +162,12 @@ class _VistaAjustesState extends State<VistaAjustes> {
       );
     } else if (estadoApp.selectedSettingsSubView == 3) {
       cuerpoSettings = AjustesCategorias(
+        onBack: () {
+          estadoApp.selectedSettingsSubView = 0;
+        },
+      );
+    } else if (estadoApp.selectedSettingsSubView == 4) {
+      cuerpoSettings = AjustesTipoCambio(
         onBack: () {
           estadoApp.selectedSettingsSubView = 0;
         },
@@ -411,9 +418,9 @@ class _VistaAjustesState extends State<VistaAjustes> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            user != null && !user.uid.startsWith('demo_')
-                                ? 'Copia de seguridad en tiempo real activa'
-                                : 'Modo Demostración (Offline Local)',
+                            user != null
+                                ? 'Copia de seguridad activa y sincronizada'
+                                : 'Modo Sin Conexión',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
@@ -431,24 +438,17 @@ class _VistaAjustesState extends State<VistaAjustes> {
                     Expanded(
                       child: InteractiveScale(
                         onTap: () async {
-                          if (user != null && !user.uid.startsWith('demo_')) {
+                          if (user != null) {
                             // Forzar sincronizacion Firebase
-                            await estadoApp.sincronizarConNube(user.uid);
+                            final bool syncSuccess = await estadoApp.sincronizarConNube(user.uid);
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Sincronización manual completada con éxito'),
+                                SnackBar(
+                                  content: Text(syncSuccess
+                                      ? 'Sincronización manual completada con éxito'
+                                      : 'No se pudo sincronizar. Verifica tu conexión a internet.'),
                                   behavior: SnackBarBehavior.floating,
-                                  backgroundColor: Color(0xFF10B981),
-                                ),
-                              );
-                            }
-                          } else {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Estás en modo demostración local offline'),
-                                  behavior: SnackBarBehavior.floating,
+                                  backgroundColor: syncSuccess ? const Color(0xFF10B981) : Colors.redAccent,
                                 ),
                               );
                             }
@@ -585,6 +585,23 @@ class _VistaAjustesState extends State<VistaAjustes> {
                     esOscuro: esOscuro,
                     onTap: () {
                       estadoApp.selectedSettingsSubView = 1;
+                    },
+                  ),
+                  Container(
+                    height: 1,
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    color: esOscuro
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : const Color(0xFF0A0A0A).withValues(alpha: 0.05),
+                  ),
+                  _buildSettingsMenuItem(
+                    icon: Icons.currency_exchange_rounded,
+                    title: 'Tipo de Cambio',
+                    subtitle: 'Configurar tasa referencial del dolar',
+                    color: colorPrincipal,
+                    esOscuro: esOscuro,
+                    onTap: () {
+                      estadoApp.selectedSettingsSubView = 4;
                     },
                   ),
                   Container(

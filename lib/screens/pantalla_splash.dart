@@ -30,9 +30,7 @@ class _PantallaSplashState extends State<PantallaSplash> {
       final estadoApp = Provider.of<EstadoApp>(context, listen: false);
       
       // Sincronizar con la nube de inmediato en el arranque si hay sesion activa
-      if (!servicioAuth.currentUser!.uid.startsWith('demo_')) {
-        await estadoApp.sincronizarConNube(servicioAuth.currentUser!.uid);
-      }
+      await estadoApp.sincronizarConNube(servicioAuth.currentUser!.uid);
     }
 
     await Future.delayed(const Duration(milliseconds: 1500));
@@ -104,7 +102,7 @@ class _PantallaSplashState extends State<PantallaSplash> {
                     width: 100,
                     height: 100,
                     decoration: BoxDecoration(
-                      color: esOscuro ? const Color(0xFF0F172A) : Colors.white,
+                      color: Colors.black,
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(
                         color: esOscuro
@@ -120,11 +118,14 @@ class _PantallaSplashState extends State<PantallaSplash> {
                         ),
                       ],
                     ),
-                    child: Center(
-                      child: Icon(
-                        Icons.account_balance_wallet_rounded,
-                        color: colorPrimario,
-                        size: 44,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: Padding(
+                        padding: const EdgeInsets.all(3.0),
+                        child: Image.asset(
+                          'assets/images/para_blanco.png',
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ),
                   )

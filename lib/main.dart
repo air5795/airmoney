@@ -23,7 +23,7 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
   } catch (e) {
-    debugPrint('Firebase no se pudo inicializar. Se activara el modo Demo de forma automatica.');
+    debugPrint('Firebase no se pudo inicializar. La aplicacion funcionara en modo local offline.');
   }
 
   runApp(

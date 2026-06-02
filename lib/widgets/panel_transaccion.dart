@@ -329,6 +329,13 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
     final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
     final colorTipo = _getTipoColor();
 
+    final activeAcc = estadoApp.accounts.firstWhere(
+      (a) => a.id == _selectedAccountId,
+      orElse: () => estadoApp.accounts.isNotEmpty ? estadoApp.accounts.first : ModeloCuenta(id: '', name: '', type: '', balance: 0.0, gradientIndex: 0),
+    );
+    final activeCurrency = activeAcc.currency ?? estadoApp.selectedCurrency;
+    final activeSymbol = EstadoApp.getSymbolOfCurrency(activeCurrency);
+
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
       child: BackdropFilter(
@@ -500,7 +507,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                                     ),
                                   ),
                                   child: Text(
-                                    'Bs ${estadoApp.selectedCurrency}',
+                                    '$activeSymbol $activeCurrency',
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
@@ -885,6 +892,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
     required Color colorTexto,
     required Color colorTipo,
   }) {
+    final estadoApp = Provider.of<EstadoApp>(context, listen: false);
     final activeAccount = accounts.firstWhere((a) => a.id == accountId, orElse: () => ModeloCuenta(id: '', name: 'No seleccionada', balance: 0.0, gradientIndex: 0, type: ''));
     final isSelected = activeAccount.id.isNotEmpty;
 
@@ -937,7 +945,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                   if (isSelected) ...[
                     const SizedBox(height: 1),
                     Text(
-                      '${activeAccount.type} • Bs ${activeAccount.balance.toStringAsFixed(0)}',
+                      '${activeAccount.type} • ${EstadoApp.getSymbolOfCurrency(activeAccount.currency ?? estadoApp.selectedCurrency)} ${activeAccount.balance.toStringAsFixed(0)}',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -968,6 +976,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
     Color colorTexto,
     Color colorTipo,
   ) {
+    final estadoApp = Provider.of<EstadoApp>(context, listen: false);
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -1101,7 +1110,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                                   ),
                                 ),
                                 Text(
-                                  'Bs ${acc.balance.toStringAsFixed(2)}',
+                                  '${EstadoApp.getSymbolOfCurrency(acc.currency ?? estadoApp.selectedCurrency)} ${acc.balance.toStringAsFixed(2)}',
                                   style: const TextStyle(
                                     fontSize: 13.5,
                                     fontWeight: FontWeight.bold,

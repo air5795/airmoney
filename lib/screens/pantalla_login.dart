@@ -27,13 +27,24 @@ class _PantallaLoginState extends State<PantallaLogin> {
     });
 
     try {
+      if (!_servicioAuth.isFirebaseInitialized) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'No se pudo conectar con los servicios de Google. Por favor, verifica tu conexion a internet e intenta de nuevo.',
+              style: TextStyle(color: Colors.white),
+            ),
+            backgroundColor: Colors.redAccent.withValues(alpha: 0.85),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
       UsuarioApp? user;
       if (provider == 'google') {
         user = await _servicioAuth.signInWithGoogle();
-      } else if (provider == 'facebook') {
-        user = await _servicioAuth.signInWithFacebook();
-      } else if (provider == 'demo') {
-        user = await _servicioAuth.signInDemo();
       }
 
       if (!mounted) return;
@@ -42,10 +53,7 @@ class _PantallaLoginState extends State<PantallaLogin> {
         final estadoApp = Provider.of<EstadoApp>(context, listen: false);
         
         // Sincronizar con la nube inmediatamente para descargar las cuentas del usuario logueado
-        bool syncSuccess = true;
-        if (!user.uid.startsWith('demo_')) {
-          syncSuccess = await estadoApp.sincronizarConNube(user.uid);
-        }
+        final bool syncSuccess = await estadoApp.sincronizarConNube(user.uid);
 
         if (!mounted) return;
 
@@ -162,7 +170,7 @@ class _PantallaLoginState extends State<PantallaLogin> {
                             width: 80,
                             height: 80,
                             decoration: BoxDecoration(
-                              color: esOscuro ? const Color(0xFF0F172A) : Colors.white,
+                              color: Colors.black,
                               borderRadius: BorderRadius.circular(22),
                               border: Border.all(
                                 color: esOscuro
@@ -178,11 +186,14 @@ class _PantallaLoginState extends State<PantallaLogin> {
                                 ),
                               ],
                             ),
-                            child: Center(
-                              child: Icon(
-                                Icons.account_balance_wallet_rounded,
-                                color: colorPrimario,
-                                size: 36,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(22),
+                              child: Padding(
+                                padding: const EdgeInsets.all(2.0),
+                                child: Image.asset(
+                                  'assets/images/para_blanco.png',
+                                  fit: BoxFit.contain,
+                                ),
                               ),
                             ),
                           )
@@ -215,7 +226,7 @@ class _PantallaLoginState extends State<PantallaLogin> {
                               .slideY(begin: 0.15, end: 0, duration: 600.ms, curve: Curves.easeOutCubic),
                           const SizedBox(height: 6),
                           Text(
-                            'TU DINERO, SEGURO Y LIGERO.',
+                            'ADMINISTRA TUS FINANZAS',
                             style: TextStyle(
                               fontSize: 9,
                               fontWeight: FontWeight.w800,
@@ -276,62 +287,17 @@ class _PantallaLoginState extends State<PantallaLogin> {
                             ),
                             const SizedBox(height: 28),
                             
-                            // Botones de login con Spring Animation sutil en tap
+                            // Botón de login con Spring Animation sutil en tap
                             _buildSocialButton(
                               provider: 'google',
                               label: 'Continuar con Google',
-                              icon: Icons.g_mobiledata_rounded,
+                              assetIcon: 'assets/images/google_logo.png',
                               color: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
                               textColor: colorTexto,
-                              iconColor: const Color(0xFFEA4335),
                               border: BorderSide(
                                 color: esOscuro
                                     ? Colors.white.withValues(alpha: 0.08)
                                     : const Color(0xFFE2E8F0),
-                                width: 1.2,
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            _buildSocialButton(
-                              provider: 'facebook',
-                              label: 'Continuar con Facebook',
-                              icon: Icons.facebook_rounded,
-                              color: const Color(0xFF1877F2),
-                              textColor: Colors.white,
-                              iconColor: Colors.white,
-                            ),
-                            
-                            const SizedBox(height: 20),
-                            Row(
-                              children: [
-                                Expanded(child: Divider(color: colorSecundario.withValues(alpha: 0.15))),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                                  child: Text(
-                                    'O PRUEBA LA APP',
-                                    style: TextStyle(
-                                      fontSize: 8.5,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 0.5,
-                                      color: colorSecundario.withValues(alpha: 0.4),
-                                    ),
-                                  ),
-                                ),
-                                Expanded(child: Divider(color: colorSecundario.withValues(alpha: 0.15))),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                            
-                            // Botón de ingreso local inmediato en Modo Demo
-                            _buildSocialButton(
-                              provider: 'demo',
-                              label: 'Acceso en Modo Demostración',
-                              icon: Icons.auto_awesome_rounded,
-                              color: colorPrimario.withValues(alpha: 0.1),
-                              textColor: colorPrimario,
-                              iconColor: colorPrimario,
-                              border: BorderSide(
-                                color: colorPrimario.withValues(alpha: 0.25),
                                 width: 1.2,
                               ),
                             ),
@@ -380,10 +346,11 @@ class _PantallaLoginState extends State<PantallaLogin> {
   Widget _buildSocialButton({
     required String provider,
     required String label,
-    required IconData icon,
+    IconData? icon,
+    String? assetIcon,
     required Color color,
     required Color textColor,
-    required Color iconColor,
+    Color? iconColor,
     BorderSide? border,
   }) {
     final isThisLoading = _isLoading && _loadingProvider == provider;
@@ -426,11 +393,18 @@ class _PantallaLoginState extends State<PantallaLogin> {
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    icon,
-                    size: icon == Icons.g_mobiledata_rounded ? 34 : 24,
-                    color: iconColor,
-                  ),
+                  if (assetIcon != null)
+                    Image.asset(
+                      assetIcon,
+                      width: 24,
+                      height: 24,
+                    )
+                  else if (icon != null)
+                    Icon(
+                      icon,
+                      size: 24,
+                      color: iconColor,
+                    ),
                   const SizedBox(width: 8),
                   Text(
                     label,

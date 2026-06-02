@@ -40,106 +40,6 @@ class VistaInicio extends StatelessWidget {
     return defaultColor;
   }
 
-  void _showAddAccountDialog(BuildContext context) {
-    final nameController = TextEditingController();
-    String selectedType = 'Ahorros';
-    final balanceController = TextEditingController(text: '1000');
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        final estadoApp = Provider.of<EstadoApp>(context, listen: false);
-        final esOscuro = estadoApp.esTemaOscuro;
-        final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
-        final colorFondo = esOscuro ? const Color(0xFF0E0E0E) : Colors.white;
-
-        return AlertDialog(
-          backgroundColor: colorFondo,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: Text(
-            'Agregar nueva cuenta',
-            style: TextStyle(fontWeight: FontWeight.bold, color: colorTexto, fontSize: 16),
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  style: TextStyle(color: colorTexto, fontSize: 14),
-                  decoration: InputDecoration(
-                    labelText: 'Nombre de la cuenta',
-                    labelStyle: TextStyle(fontSize: 13, color: colorTexto.withValues(alpha: 0.5)),
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: estadoApp.colorPrincipal),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: selectedType,
-                  dropdownColor: colorFondo,
-                  style: TextStyle(color: colorTexto, fontSize: 14),
-                  items: ['Efectivo', 'Débito', 'Ahorros', 'Crédito', 'Inversión']
-                      .map((type) => DropdownMenuItem(
-                            value: type,
-                            child: Text(type, style: TextStyle(color: colorTexto)),
-                          ))
-                      .toList(),
-                  onChanged: (val) {
-                    if (val != null) selectedType = val;
-                  },
-                  decoration: InputDecoration(
-                    labelText: 'Tipo de cuenta',
-                    labelStyle: TextStyle(fontSize: 13, color: colorTexto.withValues(alpha: 0.5)),
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: estadoApp.colorPrincipal),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: balanceController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  style: TextStyle(color: colorTexto, fontSize: 14),
-                  decoration: InputDecoration(
-                    labelText: 'Saldo Inicial',
-                    labelStyle: TextStyle(fontSize: 13, color: colorTexto.withValues(alpha: 0.5)),
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: estadoApp.colorPrincipal),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancelar', style: TextStyle(color: colorTexto.withValues(alpha: 0.6), fontWeight: FontWeight.bold)),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final name = nameController.text.trim();
-                final balance = double.tryParse(balanceController.text.trim()) ?? 0.0;
-                if (name.isNotEmpty) {
-                  final gradientIdx = estadoApp.accounts.length % _cardGradients.length;
-                  estadoApp.addAccount(name, selectedType, balance, gradientIdx);
-                  Navigator.pop(context);
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: estadoApp.colorPrincipal,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text('Agregar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final estadoApp = Provider.of<EstadoApp>(context);
@@ -147,7 +47,8 @@ class VistaInicio extends StatelessWidget {
     final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
     
     final authUser = ServicioAutenticacion().currentUser;
-    final nombreUsuario = authUser?.displayName ?? 'Invitado';
+    final nombreUsuarioCompleto = authUser?.displayName ?? 'Invitado';
+    final nombreUsuario = nombreUsuarioCompleto.trim().split(' ').first;
 
     final textStyleSeccion = TextStyle(
       fontSize: 11,
@@ -162,33 +63,77 @@ class VistaInicio extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 24),
+          const SizedBox(height: 18),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Hola, $nombreUsuario',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      color: colorTexto,
-                      letterSpacing: -0.5,
+              Expanded(
+                child: Row(
+                  children: [
+                    // Contenedor premium Liquid Glass para el logo adaptativo
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.black,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: esOscuro
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : const Color(0xFFE2E8F0),
+                          width: 1.0,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: esOscuro ? 0.15 : 0.02),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(1.0),
+                          child: Image.asset(
+                            'assets/images/para_blanco.png',
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Aquí tienes el resumen de tus finanzas.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: colorTexto.withValues(alpha: 0.55),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Hola, $nombreUsuario',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                              color: colorTexto,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Aquí tienes el resumen de tus finanzas.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: colorTexto.withValues(alpha: 0.55),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               InteractiveScale(
                 onTap: () {
                   estadoApp.selectedSettingsSubView = 0;
@@ -210,9 +155,9 @@ class VistaInicio extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 18),
           _buildBalanceCard(estadoApp),
-          const SizedBox(height: 24),
+          const SizedBox(height: 18),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -242,7 +187,7 @@ class VistaInicio extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           _buildAccountsGrid(context, estadoApp),
-          const SizedBox(height: 24),
+          const SizedBox(height: 18),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -331,8 +276,8 @@ class VistaInicio extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Text(
-                    'Bs ${estadoApp.totalBalance.toStringAsFixed(2)}',
+                   Text(
+                    '${estadoApp.currencySymbol} ${estadoApp.totalBalance.toStringAsFixed(2)}',
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.w900,
@@ -359,7 +304,7 @@ class VistaInicio extends StatelessWidget {
               Expanded(
                 child: _buildBalanceMiniChip(
                   label: 'TOTAL INGRESOS',
-                  amount: '+Bs ${estadoApp.totalIncome.toStringAsFixed(2)}',
+                  amount: '+${estadoApp.currencySymbol} ${estadoApp.totalIncome.toStringAsFixed(2)}',
                   color: const Color(0xFF10B981),
                   esOscuro: esOscuro,
                 ),
@@ -368,7 +313,7 @@ class VistaInicio extends StatelessWidget {
               Expanded(
                 child: _buildBalanceMiniChip(
                   label: 'TOTAL GASTOS',
-                  amount: '-Bs ${estadoApp.totalExpenses.toStringAsFixed(2)}',
+                  amount: '-${estadoApp.currencySymbol} ${estadoApp.totalExpenses.toStringAsFixed(2)}',
                   color: const Color(0xFFEF4444),
                   esOscuro: esOscuro,
                 ),
@@ -435,7 +380,7 @@ class VistaInicio extends StatelessWidget {
 
   Widget _buildAccountsGrid(BuildContext context, EstadoApp estadoApp) {
     final activeAccounts = estadoApp.accounts;
-    const maxGridItems = 4;
+    const maxGridItems = 6;
     final gridCount = activeAccounts.length + 1 > maxGridItems ? maxGridItems : activeAccounts.length + 1;
     final esOscuro = estadoApp.esTemaOscuro;
 
@@ -445,9 +390,9 @@ class VistaInicio extends StatelessWidget {
       itemCount: gridCount,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.55,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 2.4,
       ),
       itemBuilder: (context, index) {
         if (index == activeAccounts.length) {
@@ -460,7 +405,7 @@ class VistaInicio extends StatelessWidget {
               );
             },
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(16),
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
                 child: Container(
@@ -468,7 +413,7 @@ class VistaInicio extends StatelessWidget {
                     color: esOscuro
                         ? const Color(0xFF0A0A0A).withValues(alpha: 0.25)
                         : Colors.white.withValues(alpha: 0.40),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: esOscuro
                           ? Colors.white.withValues(alpha: 0.08)
@@ -482,13 +427,13 @@ class VistaInicio extends StatelessWidget {
                       Icon(
                         Icons.add_circle_outline_rounded,
                         color: estadoApp.colorPrincipal,
-                        size: 26,
+                        size: 20,
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Text(
                         'AGREGAR CUENTA',
                         style: TextStyle(
-                          fontSize: 9.5,
+                          fontSize: 8.5,
                           fontWeight: FontWeight.w800,
                           color: estadoApp.colorPrincipal,
                           letterSpacing: 0.5,
@@ -528,16 +473,16 @@ class VistaInicio extends StatelessWidget {
             // Detalle de cuenta
           },
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             child: Container(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: bgColors,
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: esOscuro
                       ? Colors.white.withValues(alpha: 0.15)
@@ -561,7 +506,7 @@ class VistaInicio extends StatelessWidget {
                     children: [
                       // Tipo de cuenta en capsula acrilica
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                         decoration: BoxDecoration(
                           color: cardContentColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(6),
@@ -573,7 +518,7 @@ class VistaInicio extends StatelessWidget {
                         child: Text(
                           acc.type.toUpperCase(),
                           style: TextStyle(
-                            fontSize: 8.0,
+                            fontSize: 7.5,
                             fontWeight: FontWeight.w900,
                             color: cardContentColor,
                             letterSpacing: 0.3,
@@ -584,18 +529,18 @@ class VistaInicio extends StatelessWidget {
                       Row(
                         children: [
                           Container(
-                            width: 14,
-                            height: 14,
+                            width: 11,
+                            height: 11,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: cardContentColor.withValues(alpha: 0.35),
                             ),
                           ),
                           Transform.translate(
-                            offset: const Offset(-5, 0),
+                            offset: const Offset(-4, 0),
                             child: Container(
-                              width: 14,
-                              height: 14,
+                              width: 11,
+                              height: 11,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: cardContentColor.withValues(alpha: 0.2),
@@ -612,7 +557,7 @@ class VistaInicio extends StatelessWidget {
                       Text(
                         acc.name.toUpperCase(),
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 10.5,
                           fontWeight: FontWeight.w900,
                           color: cardContentColor,
                           letterSpacing: -0.2,
@@ -622,9 +567,9 @@ class VistaInicio extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Bs ${acc.balance.toStringAsFixed(2)}',
+                        '${EstadoApp.getSymbolOfCurrency(acc.currency ?? estadoApp.selectedCurrency)} ${acc.balance.toStringAsFixed(2)}',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 12.5,
                           fontWeight: FontWeight.w900,
                           color: cardContentColor,
                           letterSpacing: -0.3,
@@ -700,10 +645,12 @@ class VistaInicio extends StatelessWidget {
           final isIncome = tx.type == 'ingreso';
           final isTransfer = tx.type == 'transferencia';
 
-          final accName = estadoApp.accounts.firstWhere(
+          final acc = estadoApp.accounts.firstWhere(
             (a) => a.id == tx.accountId,
             orElse: () => ModeloCuenta(id: '', name: 'N/A', type: '', balance: 0.0, gradientIndex: 0),
-          ).name;
+          );
+          final accName = acc.name;
+          final txSymbol = EstadoApp.getSymbolOfCurrency(acc.currency ?? estadoApp.selectedCurrency);
 
           IconData transIcon = Icons.arrow_downward_rounded;
           Color transIconColor = const Color(0xFFEF4444);
@@ -779,10 +726,10 @@ class VistaInicio extends StatelessWidget {
                       children: [
                         Text(
                           isIncome
-                              ? '+Bs ${tx.amount.toStringAsFixed(2)}'
+                              ? '+$txSymbol ${tx.amount.toStringAsFixed(2)}'
                               : isTransfer
-                                  ? 'Bs ${tx.amount.toStringAsFixed(2)}'
-                                  : '-Bs ${tx.amount.toStringAsFixed(2)}',
+                                  ? '$txSymbol ${tx.amount.toStringAsFixed(2)}'
+                                  : '-$txSymbol ${tx.amount.toStringAsFixed(2)}',
                           style: TextStyle(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w800,
