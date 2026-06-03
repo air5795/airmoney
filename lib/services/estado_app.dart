@@ -12,6 +12,10 @@ class ModeloCuenta {
   final int gradientIndex;
   final String? customColorHex;
   final String? customColorSecondaryHex;
+  final String? customColorThirdHex;
+  final double? stop1;
+  final double? stop2;
+  final double? stop3;
   final bool? useDarkText;
   final String? currency;
 
@@ -23,6 +27,10 @@ class ModeloCuenta {
     required this.gradientIndex,
     this.customColorHex,
     this.customColorSecondaryHex,
+    this.customColorThirdHex,
+    this.stop1,
+    this.stop2,
+    this.stop3,
     this.useDarkText,
     this.currency,
   });
@@ -36,6 +44,10 @@ class ModeloCuenta {
       'indiceGradiente': gradientIndex,
       'colorPersonalizadoHex': customColorHex,
       'colorSecundarioPersonalizadoHex': customColorSecondaryHex,
+      'colorTerceroPersonalizadoHex': customColorThirdHex,
+      'stop1': stop1,
+      'stop2': stop2,
+      'stop3': stop3,
       'usarTextoOscuro': useDarkText,
       'moneda': currency,
     };
@@ -50,6 +62,10 @@ class ModeloCuenta {
       gradientIndex: map['indiceGradiente'] ?? 0,
       customColorHex: map['colorPersonalizadoHex'],
       customColorSecondaryHex: map['colorSecundarioPersonalizadoHex'],
+      customColorThirdHex: map['colorTerceroPersonalizadoHex'],
+      stop1: (map['stop1'] as num?)?.toDouble(),
+      stop2: (map['stop2'] as num?)?.toDouble(),
+      stop3: (map['stop3'] as num?)?.toDouble(),
       useDarkText: map['usarTextoOscuro'] ?? false,
       currency: map['moneda'],
     );
@@ -200,6 +216,38 @@ class ModeloCategoria {
   }
 }
 
+class ModeloPresupuesto {
+  final String id;
+  final String categoryName; // E.g., 'Alimentación' or 'Global'
+  final double limitAmount;
+  final String period; // 'mensual'
+
+  ModeloPresupuesto({
+    required this.id,
+    required this.categoryName,
+    required this.limitAmount,
+    this.period = 'mensual',
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'nombreCategoria': categoryName,
+      'montoLimite': limitAmount,
+      'periodo': period,
+    };
+  }
+
+  factory ModeloPresupuesto.fromMap(Map<String, dynamic> map) {
+    return ModeloPresupuesto(
+      id: map['id'] ?? '',
+      categoryName: map['nombreCategoria'] ?? '',
+      limitAmount: (map['montoLimite'] as num?)?.toDouble() ?? 0.0,
+      period: map['periodo'] ?? 'mensual',
+    );
+  }
+}
+
 class EstadoApp extends ChangeNotifier {
   String _selectedLanguage = 'es';
   String _selectedCurrency = 'BOB';
@@ -209,6 +257,7 @@ class EstadoApp extends ChangeNotifier {
   List<ModeloTransaccion> _transactions = [];
   List<ModeloCategoria> _categories = [];
   List<ModeloAhorro> _savingsGoals = [];
+  List<ModeloPresupuesto> _budgets = [];
   bool _esTemaOscuro = false;
   Color _colorPrincipal = const Color(0xFF000000);
   int _selectedDockIndex = 0;
@@ -238,6 +287,7 @@ class EstadoApp extends ChangeNotifier {
     }
     return _savingsGoals;
   }
+  List<ModeloPresupuesto> get budgets => _budgets;
   bool get esTemaOscuro => _esTemaOscuro;
   Color get colorPrincipal => _colorPrincipal;
 
@@ -447,6 +497,12 @@ class EstadoApp extends ChangeNotifier {
       _savingsGoals = decoded.map((item) => ModeloAhorro.fromMap(item)).toList();
     }
 
+    final String? budgetsJson = prefs.getString('app_budgets');
+    if (budgetsJson != null) {
+      final List<dynamic> decoded = json.decode(budgetsJson);
+      _budgets = decoded.map((item) => ModeloPresupuesto.fromMap(item)).toList();
+    }
+
     notifyListeners();
   }
 
@@ -525,7 +581,7 @@ class EstadoApp extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<ModeloCuenta> addAccount(String name, String type, double balance, int gradientIndex, {String? customColorHex, String? customColorSecondaryHex, bool useDarkText = false, String? currency}) async {
+  Future<ModeloCuenta> addAccount(String name, String type, double balance, int gradientIndex, {String? customColorHex, String? customColorSecondaryHex, String? customColorThirdHex, double? stop1, double? stop2, double? stop3, bool useDarkText = false, String? currency}) async {
     final newAccount = ModeloCuenta(
       id: 'acc_${DateTime.now().millisecondsSinceEpoch}_${_accounts.length}',
       name: name,
@@ -534,6 +590,10 @@ class EstadoApp extends ChangeNotifier {
       gradientIndex: gradientIndex,
       customColorHex: customColorHex,
       customColorSecondaryHex: customColorSecondaryHex,
+      customColorThirdHex: customColorThirdHex,
+      stop1: stop1,
+      stop2: stop2,
+      stop3: stop3,
       useDarkText: useDarkText,
       currency: currency ?? _selectedCurrency,
     );
@@ -779,6 +839,12 @@ class EstadoApp extends ChangeNotifier {
     await _updateLocalTimestamp(prefs);
   }
 
+  Future<void> _saveBudgetsToPrefs(SharedPreferences prefs) async {
+    final List<Map<String, dynamic>> mapped = _budgets.map((b) => b.toMap()).toList();
+    await prefs.setString('app_budgets', json.encode(mapped));
+    await _updateLocalTimestamp(prefs);
+  }
+
   Future<void> addSavingGoal(ModeloAhorro goal) async {
     _savingsGoals.add(goal);
     final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -813,7 +879,53 @@ class EstadoApp extends ChangeNotifier {
     }
   }
 
-  Future<void> editAccount(String id, String name, String type, double balance, int gradientIndex, {String? customColorHex, String? customColorSecondaryHex, bool useDarkText = false, String? currency}) async {
+  Future<void> addOrUpdateBudget(String categoryName, double limitAmount) async {
+    final idx = _budgets.indexWhere((b) => b.categoryName.toLowerCase() == categoryName.toLowerCase());
+    if (idx != -1) {
+      _budgets[idx] = ModeloPresupuesto(
+        id: _budgets[idx].id,
+        categoryName: categoryName,
+        limitAmount: limitAmount,
+      );
+    } else {
+      _budgets.add(ModeloPresupuesto(
+        id: 'budget_${DateTime.now().millisecondsSinceEpoch}',
+        categoryName: categoryName,
+        limitAmount: limitAmount,
+      ));
+    }
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await _saveBudgetsToPrefs(prefs);
+    notifyListeners();
+  }
+
+  Future<void> deleteBudget(String id) async {
+    _budgets.removeWhere((b) => b.id == id);
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await _saveBudgetsToPrefs(prefs);
+    notifyListeners();
+  }
+
+  double obtenerGastoMesActual({String? categoria}) {
+    final now = DateTime.now();
+    
+    double total = 0.0;
+    for (var tx in _transactions) {
+      if (tx.type == 'gasto' && tx.date.year == now.year && tx.date.month == now.month) {
+        if (categoria == null || categoria == 'Global' || tx.category.toLowerCase() == categoria.toLowerCase()) {
+          final acc = _accounts.firstWhere(
+            (a) => a.id == tx.accountId,
+            orElse: () => _accounts.isNotEmpty ? _accounts.first : ModeloCuenta(id: '', name: '', type: '', balance: 0, gradientIndex: 0),
+          );
+          final txCurrency = acc.currency ?? _selectedCurrency;
+          total += convertirMoneda(tx.amount, txCurrency, _selectedCurrency);
+        }
+      }
+    }
+    return total;
+  }
+
+  Future<void> editAccount(String id, String name, String type, double balance, int gradientIndex, {String? customColorHex, String? customColorSecondaryHex, String? customColorThirdHex, double? stop1, double? stop2, double? stop3, bool useDarkText = false, String? currency}) async {
     final idx = _accounts.indexWhere((acc) => acc.id == id);
     if (idx != -1) {
        _accounts[idx] = ModeloCuenta(
@@ -824,6 +936,10 @@ class EstadoApp extends ChangeNotifier {
         gradientIndex: gradientIndex,
         customColorHex: customColorHex,
         customColorSecondaryHex: customColorSecondaryHex,
+        customColorThirdHex: customColorThirdHex,
+        stop1: stop1,
+        stop2: stop2,
+        stop3: stop3,
         useDarkText: useDarkText,
         currency: currency ?? _accounts[idx].currency,
       );
@@ -1065,6 +1181,11 @@ class EstadoApp extends ChangeNotifier {
             _savingsGoals = savingsData.map((item) => ModeloAhorro.fromMap(Map<String, dynamic>.from(item))).toList();
           }
 
+          if (data['presupuestos'] != null) {
+            final List<dynamic> budgetsData = data['presupuestos'];
+            _budgets = budgetsData.map((item) => ModeloPresupuesto.fromMap(Map<String, dynamic>.from(item))).toList();
+          }
+
           final SharedPreferences prefs = await SharedPreferences.getInstance();
           await prefs.setBool('app_dark_mode', _esTemaOscuro);
           await prefs.setInt('app_primary_color', _colorPrincipal.toARGB32());
@@ -1076,6 +1197,7 @@ class EstadoApp extends ChangeNotifier {
           await _saveTransactionsToPrefs(prefs);
           await _saveCategoriesToPrefs(prefs);
           await _saveSavingsGoalsToPrefs(prefs);
+          await _saveBudgetsToPrefs(prefs);
 
           // Asignar el timestamp oficial de la nube al final para evitar que los metodos de guardado lo pisen
           if (cloudTimestamp != null && cloudTimestamp is Timestamp) {
@@ -1104,6 +1226,7 @@ class EstadoApp extends ChangeNotifier {
       final transactionsMapList = _transactions.map((tx) => tx.toMap()).toList();
       final categoriesMapList = _categories.map((cat) => cat.toMap()).toList();
       final savingsMapList = _savingsGoals.map((g) => g.toMap()).toList();
+      final budgetsMapList = _budgets.map((b) => b.toMap()).toList();
 
       await docRef.set({
         'uid': uid,
@@ -1115,6 +1238,7 @@ class EstadoApp extends ChangeNotifier {
         'transacciones': transactionsMapList,
         'categorias': categoriesMapList,
         'ahorros': savingsMapList,
+        'presupuestos': budgetsMapList,
         'ultimaActualizacion': FieldValue.serverTimestamp(),
       }).timeout(const Duration(seconds: 4));
 

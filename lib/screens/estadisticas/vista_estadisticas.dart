@@ -759,96 +759,115 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
   }
 
   Widget _buildTypeSelector(bool esOscuro, Color colorTexto, Color colorPrincipal) {
+    final colorFondoSelector = esOscuro
+        ? const Color(0xFF0E0E0E)
+        : const Color(0xFFF1F5F9);
+    final activeColor = _selectedType == 'gasto' 
+        ? colorPrincipal 
+        : const Color(0xFF10B981);
+
     return Container(
+      height: 48,
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: esOscuro 
-            ? Colors.white.withValues(alpha: 0.03) 
-            : Colors.black.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(16),
+        color: colorFondoSelector,
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: esOscuro 
-              ? Colors.white.withValues(alpha: 0.06) 
-              : Colors.black.withValues(alpha: 0.05),
+          color: esOscuro ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFE2E8F0),
           width: 1.0,
         ),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: InteractiveScale(
-              onTap: () {
-                setState(() {
-                  _selectedType = 'gasto';
-                });
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeInOut,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: _selectedType == 'gasto'
-                      ? colorPrincipal.withValues(alpha: esOscuro ? 0.20 : 0.12)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: _selectedType == 'gasto'
-                        ? colorPrincipal
-                        : Colors.transparent,
-                    width: 1.0,
-                  ),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'GASTOS',
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w900,
-                    color: _selectedType == 'gasto' ? colorPrincipal : colorTexto.withValues(alpha: 0.5),
-                    letterSpacing: 0.8,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: InteractiveScale(
-              onTap: () {
-                setState(() {
-                  _selectedType = 'ingreso';
-                });
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeInOut,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: _selectedType == 'ingreso'
-                      ? const Color(0xFF10B981).withValues(alpha: esOscuro ? 0.20 : 0.12)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: _selectedType == 'ingreso'
-                        ? const Color(0xFF10B981)
-                        : Colors.transparent,
-                    width: 1.0,
-                  ),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'INGRESOS',
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w900,
-                    color: _selectedType == 'ingreso' ? const Color(0xFF10B981) : colorTexto.withValues(alpha: 0.5),
-                    letterSpacing: 0.8,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth / 2;
+          return Stack(
+            children: [
+              // Micro-deslizador animado con color adaptativo
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.fastOutSlowIn,
+                left: (_selectedType == 'gasto' ? 0 : 1) * width,
+                top: 0,
+                bottom: 0,
+                width: width,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.fastOutSlowIn,
+                  decoration: BoxDecoration(
+                    color: esOscuro ? activeColor.withValues(alpha: 0.15) : Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: esOscuro
+                        ? []
+                        : [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                    border: Border.all(
+                      color: esOscuro 
+                          ? activeColor.withValues(alpha: 0.3)
+                          : Colors.transparent,
+                      width: 1.0,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
-        ],
+              
+              // Textos de las pestañas
+              Row(
+                children: [
+                  Expanded(
+                    child: InteractiveScale(
+                      onTap: () {
+                        setState(() {
+                          _selectedType = 'gasto';
+                        });
+                      },
+                      child: Center(
+                        child: Text(
+                          'GASTOS',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: _selectedType == 'gasto' ? FontWeight.w900 : FontWeight.bold,
+                            color: _selectedType == 'gasto' 
+                                ? (esOscuro ? colorPrincipal : const Color(0xFF0F172A))
+                                : colorTexto.withValues(alpha: 0.5),
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: InteractiveScale(
+                      onTap: () {
+                        setState(() {
+                          _selectedType = 'ingreso';
+                        });
+                      },
+                      child: Center(
+                        child: Text(
+                          'INGRESOS',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: _selectedType == 'ingreso' ? FontWeight.w900 : FontWeight.bold,
+                            color: _selectedType == 'ingreso' 
+                                ? (esOscuro ? const Color(0xFF10B981) : const Color(0xFF0F172A))
+                                : colorTexto.withValues(alpha: 0.5),
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }

@@ -13,27 +13,31 @@ class PantallaAjustes extends StatelessWidget {
     final colorFondo = esOscuro ? const Color(0xFF000000) : const Color(0xFFF0F2F5);
     final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
 
+    final showAppBar = estadoApp.selectedSettingsSubView == 0;
+
     return Scaffold(
       backgroundColor: colorFondo,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: colorTexto, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Ajustes',
-          style: TextStyle(
-            color: colorTexto,
-            fontWeight: FontWeight.w900,
-            fontSize: 18,
-            letterSpacing: -0.5,
-          ),
-        ),
-        centerTitle: true,
-      ),
+      appBar: showAppBar
+          ? AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              leading: IconButton(
+                icon: Icon(Icons.arrow_back_ios_new_rounded, color: colorTexto, size: 20),
+                onPressed: () => Navigator.pop(context),
+              ),
+              title: Text(
+                'Ajustes',
+                style: TextStyle(
+                  color: colorTexto,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 18,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              centerTitle: true,
+            )
+          : null,
       body: const SafeArea(
         child: VistaAjustes(),
       ),

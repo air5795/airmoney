@@ -6,6 +6,7 @@ import '../../services/servicio_autenticacion.dart';
 import '../../widgets/panel_transaccion.dart';
 import '../../widgets/interactive_scale.dart';
 import '../ajustes/pantalla_ajustes.dart';
+import '../ajustes/subvistas/detalle_cuenta.dart';
 
 class VistaInicio extends StatelessWidget {
   const VistaInicio({super.key});
@@ -38,6 +39,49 @@ class VistaInicio extends StatelessWidget {
       }
     } catch (_) {}
     return defaultColor;
+  }
+
+  LinearGradient _buildAccountGradient(ModeloCuenta acc, {double alpha = 0.95}) {
+    if (acc.customColorHex != null && acc.customColorHex!.isNotEmpty) {
+      final c1 = _parseHexColor(acc.customColorHex, const Color(0xFFB3E5FC));
+      final c2 = _parseHexColor(acc.customColorSecondaryHex ?? acc.customColorHex!, const Color(0xFFE2E8F0));
+      
+      if (acc.customColorThirdHex != null && acc.customColorThirdHex!.isNotEmpty) {
+        final c3 = _parseHexColor(acc.customColorThirdHex, Colors.white);
+        final s1 = acc.stop1 ?? 0.0;
+        final s2 = acc.stop2 ?? 0.5;
+        final s3 = acc.stop3 ?? 1.0;
+        return LinearGradient(
+          colors: [
+            c1.withValues(alpha: alpha),
+            c3.withValues(alpha: alpha),
+            c2.withValues(alpha: alpha),
+          ],
+          stops: [s1, s2, s3],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+      } else {
+        return LinearGradient(
+          colors: [
+            c1.withValues(alpha: alpha),
+            c2.withValues(alpha: alpha),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+      }
+    } else {
+      final grad = _cardGradients[acc.gradientIndex % _cardGradients.length];
+      return LinearGradient(
+        colors: [
+          grad.first.withValues(alpha: alpha),
+          grad.last.withValues(alpha: alpha),
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+    }
   }
 
   @override
@@ -450,38 +494,30 @@ class VistaInicio extends StatelessWidget {
         final acc = activeAccounts[index];
         
         Color colorInicio;
-        Color colorFin;
-        
         if (acc.customColorHex != null && acc.customColorHex!.isNotEmpty) {
           colorInicio = _parseHexColor(acc.customColorHex, const Color(0xFFB3E5FC));
-          colorFin = _parseHexColor(acc.customColorSecondaryHex ?? acc.customColorHex, const Color(0xFFE2E8F0));
         } else {
           final grad = _cardGradients[acc.gradientIndex % _cardGradients.length];
           colorInicio = grad.first;
-          colorFin = grad.last;
         }
-
-        final bgColors = [
-          colorInicio.withValues(alpha: 0.95),
-          colorFin.withValues(alpha: 0.95),
-        ];
 
         final cardContentColor = (acc.useDarkText ?? false) ? const Color(0xFF0F172A) : Colors.white;
 
         return InteractiveScale(
           onTap: () {
-            // Detalle de cuenta
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => VistaDetalleCuenta(account: acc),
+              ),
+            );
           },
           child: ClipRRect(
             borderRadius: BorderRadius.circular(16),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: bgColors,
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                gradient: _buildAccountGradient(acc, alpha: 0.95),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: esOscuro

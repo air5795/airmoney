@@ -111,27 +111,43 @@ class _AjustesTipoCambioState extends State<AjustesTipoCambio> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 16),
-        InteractiveScale(
-          onTap: widget.onBack,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.arrow_back_ios_new_rounded,
-                size: 16,
-                color: colorPrincipal,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            InteractiveScale(
+              onTap: widget.onBack,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    size: 16,
+                    color: colorPrincipal,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Ajustes',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: colorPrincipal,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 6),
-              Text(
-                'Ajustes',
+            ),
+            InteractiveScale(
+              onTap: () => _guardarTiposCambio(estadoApp),
+              child: Text(
+                'Guardar',
                 style: TextStyle(
                   fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.bold,
                   color: colorPrincipal,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
         const SizedBox(height: 20),
         Text(
@@ -358,38 +374,7 @@ class _AjustesTipoCambioState extends State<AjustesTipoCambio> {
         const SizedBox(height: 24),
 
         // Boton de Guardar
-        Container(
-          width: double.infinity,
-          height: 56,
-          margin: const EdgeInsets.only(bottom: 24),
-          child: InteractiveScale(
-            onTap: () => _guardarTiposCambio(estadoApp),
-            child: Container(
-              width: double.infinity,
-              height: 56,
-              decoration: BoxDecoration(
-                color: colorPrincipal,
-                borderRadius: BorderRadius.circular(28),
-                boxShadow: [
-                  BoxShadow(
-                    color: colorPrincipal.withValues(alpha: 0.35),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              alignment: Alignment.center,
-              child: const Text(
-                'Guardar Cambios',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-        ).animate().fadeIn(duration: 350.ms, delay: (monedasSecundarias.length * 50 + 50).ms),
+
         const SizedBox(height: 100),
       ],
     );

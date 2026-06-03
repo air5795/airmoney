@@ -1,11 +1,11 @@
 {
-    "name": "app_gastos",
-    "short_name": "app_gastos",
+    "name": "AirMoney",
+    "short_name": "AirMoney",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "App de control de gastos personales.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

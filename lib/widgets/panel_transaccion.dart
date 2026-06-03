@@ -7,6 +7,7 @@ import '../services/estado_app.dart';
 import '../helpers/asistente_voz_helper.dart';
 import 'toast_ios.dart';
 import 'interactive_scale.dart';
+import 'hex_color_picker.dart';
 
 class PanelTransaccion extends StatefulWidget {
   final ModeloTransaccion? transaccion;
@@ -341,7 +342,9 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
-          height: size.height * 0.9,
+          height: widget.transaccion != null
+              ? (size.height * 0.72).clamp(550.0, 720.0)
+              : (size.height * 0.62).clamp(480.0, 620.0),
           decoration: BoxDecoration(
             color: esOscuro
                 ? const Color(0xFF0A0A0A).withValues(alpha: 0.65)
@@ -454,96 +457,96 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildLabel('TÍTULO', esOscuro),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _titleController,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: colorTexto,
-                          ),
-                          decoration: _buildInputDecoration('Ej. Almuerzo familiar', esOscuro, colorTipo),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Por favor ingresa un título';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 20),
-                        
-                        _buildLabel('IMPORTE', esOscuro),
-                        const SizedBox(height: 8),
-                        
-                        // Input de Importe interactivo
-                        GestureDetector(
-                          onTap: () => _showCalculatorBottomSheet(esOscuro, colorTexto, colorTipo),
-                          child: AbsBottomKeyboard(
-                            child: TextFormField(
-                              controller: _amountController,
-                              enabled: false, // Bloquear el teclado normal
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: colorTexto,
-                              ),
-                              decoration: InputDecoration(
-                                hintText: '0.00',
-                                hintStyle: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: colorTexto.withValues(alpha: 0.25),
-                                ),
-                                prefixIcon: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                  margin: const EdgeInsets.only(right: 12, left: 4),
-                                  decoration: BoxDecoration(
-                                    color: colorTipo.withValues(alpha: 0.08),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: colorTipo.withValues(alpha: 0.2),
-                                      width: 1.0,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    '$activeSymbol $activeCurrency',
+                        // Fila 1: Título e Importe
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 6,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildLabel('TÍTULO', esOscuro),
+                                  const SizedBox(height: 4),
+                                  TextFormField(
+                                    controller: _titleController,
                                     style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: colorTipo,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: colorTexto,
+                                    ),
+                                    decoration: _buildInputDecoration('Ej. Almuerzo familiar', esOscuro, colorTipo).copyWith(
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                    ),
+                                    validator: (value) {
+                                      if (value == null || value.trim().isEmpty) {
+                                        return 'Ingresa un título';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              flex: 4,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildLabel('IMPORTE ($activeSymbol)', esOscuro),
+                                  const SizedBox(height: 4),
+                                  GestureDetector(
+                                    onTap: () => _showCalculatorBottomSheet(esOscuro, colorTexto, colorTipo),
+                                    child: AbsBottomKeyboard(
+                                      child: TextFormField(
+                                        controller: _amountController,
+                                        enabled: false,
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          color: colorTexto,
+                                        ),
+                                        decoration: InputDecoration(
+                                          hintText: '0.00',
+                                          hintStyle: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.bold,
+                                            color: colorTexto.withValues(alpha: 0.25),
+                                          ),
+                                          suffixIcon: Icon(
+                                            Icons.calculate_rounded,
+                                            color: colorTipo,
+                                            size: 18,
+                                          ),
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                          filled: true,
+                                          fillColor: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
+                                          disabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(16),
+                                            borderSide: BorderSide(
+                                              color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                                              width: 1.0,
+                                            ),
+                                          ),
+                                        ),
+                                        validator: (value) {
+                                          if (value == null || value.trim().isEmpty || double.tryParse(value) == 0.0) {
+                                            return 'Requerido';
+                                          }
+                                          return null;
+                                        },
+                                      ),
                                     ),
                                   ),
-                                ),
-                                suffixIcon: Icon(
-                                  Icons.calculate_rounded,
-                                  color: colorTipo,
-                                  size: 24,
-                                ),
-                                prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                filled: true,
-                                fillColor: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
-                                disabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                  borderSide: BorderSide(
-                                    color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
-                                    width: 1.0,
-                                  ),
-                                ),
+                                ],
                               ),
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty || double.tryParse(value) == 0.0) {
-                                  return 'Por favor ingresa un importe válido';
-                                }
-                                return null;
-                              },
                             ),
-                          ),
+                          ],
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 12),
                         
-                        // Selector de cuentas redondeado
+                        // Fila 2: Cuenta y Categoría / Cuentas Origen-Destino
                         if (_tabController.index == 2) ...[
                           Row(
                             children: [
@@ -552,7 +555,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     _buildLabel('ORIGEN', esOscuro),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 4),
                                     _buildAccountSelectorCard(
                                       accountId: _selectedAccountId,
                                       accounts: estadoApp.accounts,
@@ -564,17 +567,18 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                                       esOscuro: esOscuro,
                                       colorTexto: colorTexto,
                                       colorTipo: colorTipo,
+                                      compacto: true,
                                     ),
                                   ],
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 10),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     _buildLabel('DESTINO', esOscuro),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 4),
                                     _buildAccountSelectorCard(
                                       accountId: _selectedToAccountId,
                                       accounts: estadoApp.accounts,
@@ -586,6 +590,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                                       esOscuro: esOscuro,
                                       colorTexto: colorTexto,
                                       colorTipo: colorTipo,
+                                      compacto: true,
                                     ),
                                   ],
                                 ),
@@ -593,147 +598,190 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                             ],
                           ),
                         ] else ...[
-                          _buildLabel(_tabController.index == 0 ? 'CUENTA ORIGEN' : 'CUENTA DESTINO', esOscuro),
-                          const SizedBox(height: 8),
-                          _buildAccountSelectorCard(
-                            accountId: _selectedAccountId,
-                            accounts: estadoApp.accounts,
-                            onSelected: (val) {
-                              setState(() {
-                                _selectedAccountId = val;
-                              });
-                            },
-                            esOscuro: esOscuro,
-                            colorTexto: colorTexto,
-                            colorTipo: colorTipo,
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildLabel(_tabController.index == 0 ? 'CUENTA ORIGEN' : 'CUENTA DESTINO', esOscuro),
+                                    const SizedBox(height: 4),
+                                    _buildAccountSelectorCard(
+                                      accountId: _selectedAccountId,
+                                      accounts: estadoApp.accounts,
+                                      onSelected: (val) {
+                                        setState(() {
+                                          _selectedAccountId = val;
+                                        });
+                                      },
+                                      esOscuro: esOscuro,
+                                      colorTexto: colorTexto,
+                                      colorTipo: colorTipo,
+                                      compacto: true,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildLabel('CATEGORÍA', esOscuro),
+                                    const SizedBox(height: 4),
+                                    _buildCategorySelectorCard(
+                                      selectedCategoryName: _selectedCategory,
+                                      categories: estadoApp.categories,
+                                      onSelected: (val) {
+                                        setState(() {
+                                          _selectedCategory = val;
+                                        });
+                                      },
+                                      esOscuro: esOscuro,
+                                      colorTexto: colorTexto,
+                                      colorTipo: colorTipo,
+                                      compacto: true,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ],
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 12),
                         
-                        // Selector de categorias redondeado
-                        if (_tabController.index != 2) ...[
-                          _buildLabel('CATEGORÍA', esOscuro),
-                          const SizedBox(height: 8),
-                          _buildCategorySelectorCard(
-                            selectedCategoryName: _selectedCategory,
-                            categories: estadoApp.categories,
-                            onSelected: (val) {
-                              setState(() {
-                                _selectedCategory = val;
-                              });
-                            },
-                            esOscuro: esOscuro,
-                            colorTexto: colorTexto,
-                            colorTipo: colorTipo,
-                          ),
-                          const SizedBox(height: 20),
-                        ],
-                        
-                        _buildLabel('FECHA', esOscuro),
-                        const SizedBox(height: 8),
-                        GestureDetector(
-                          onTap: () => _selectDate(context),
-                          child: Container(
-                            height: 52,
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            decoration: BoxDecoration(
-                              color: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
-                                width: 1.0,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: colorTexto,
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.calendar_month_rounded,
-                                  color: colorTipo,
-                                  size: 20,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        
-                        _buildLabel('COMENTARIO', esOscuro),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _commentController,
-                          maxLines: 2,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: colorTexto,
-                          ),
-                          decoration: _buildInputDecoration('Ej. Pago de la cena de cumple...', esOscuro, colorTipo),
-                        ),
-                        const SizedBox(height: 20),
-                        
-                        _buildLabel('FOTO ADJUNTA', esOscuro),
-                        const SizedBox(height: 8),
-                        GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _simulatedPhotoPath = 'photo_simulated_path.jpg';
-                            });
-                            ToastHelper.showInfo(context, 'Foto simulada adjuntada correctamente');
-                          },
-                          child: Container(
-                            height: 60,
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: _simulatedPhotoPath != null
-                                    ? const Color(0xFF10B981)
-                                    : (esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05)),
-                                width: 1.0,
-                              ),
-                            ),
-                            child: Center(
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                        // Fila 3: Fecha y Foto
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(
-                                    _simulatedPhotoPath != null
-                                        ? Icons.check_circle_rounded
-                                        : Icons.camera_alt_rounded,
-                                    color: _simulatedPhotoPath != null
-                                        ? const Color(0xFF10B981)
-                                        : colorTexto.withValues(alpha: 0.4),
-                                    size: 22,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    _simulatedPhotoPath != null
-                                        ? 'Foto cargada con éxito'
-                                        : 'Agregar foto',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: _simulatedPhotoPath != null
-                                          ? const Color(0xFF10B981)
-                                          : colorTexto.withValues(alpha: 0.5),
+                                  _buildLabel('FECHA', esOscuro),
+                                  const SizedBox(height: 4),
+                                  GestureDetector(
+                                    onTap: () => _selectDate(context),
+                                    child: Container(
+                                      height: 46,
+                                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                                      decoration: BoxDecoration(
+                                        color: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                                          width: 1.0,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                                            style: TextStyle(
+                                              fontSize: 13.5,
+                                              fontWeight: FontWeight.bold,
+                                              color: colorTexto,
+                                            ),
+                                          ),
+                                          Icon(
+                                            Icons.calendar_month_rounded,
+                                            color: colorTipo,
+                                            size: 16,
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                          ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildLabel('FOTO ADJUNTA', esOscuro),
+                                  const SizedBox(height: 4),
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _simulatedPhotoPath = 'photo_simulated_path.jpg';
+                                      });
+                                      ToastHelper.showInfo(context, 'Foto simulada adjuntada correctamente');
+                                    },
+                                    child: Container(
+                                      height: 46,
+                                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                                      decoration: BoxDecoration(
+                                        color: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: _simulatedPhotoPath != null
+                                              ? const Color(0xFF10B981)
+                                              : (esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05)),
+                                          width: 1.0,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            _simulatedPhotoPath != null
+                                                ? Icons.check_circle_rounded
+                                                : Icons.camera_alt_rounded,
+                                            color: _simulatedPhotoPath != null
+                                                ? const Color(0xFF10B981)
+                                                : colorTexto.withValues(alpha: 0.4),
+                                            size: 16,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Flexible(
+                                            child: Text(
+                                              _simulatedPhotoPath != null
+                                                  ? 'Foto cargada'
+                                                  : 'Agregar foto',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.bold,
+                                                color: _simulatedPhotoPath != null
+                                                    ? const Color(0xFF10B981)
+                                                    : colorTexto.withValues(alpha: 0.5),
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 36),
+                        const SizedBox(height: 12),
+                        
+                        // Fila 4: Comentario
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildLabel('COMENTARIO', esOscuro),
+                            const SizedBox(height: 4),
+                            TextFormField(
+                              controller: _commentController,
+                              maxLines: 1,
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w500,
+                                color: colorTexto,
+                              ),
+                              decoration: _buildInputDecoration('Ej. Pago de la cena...', esOscuro, colorTipo).copyWith(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
                       ],
                     ),
                   ),
@@ -891,6 +939,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
     required bool esOscuro,
     required Color colorTexto,
     required Color colorTipo,
+    bool compacto = false,
   }) {
     final estadoApp = Provider.of<EstadoApp>(context, listen: false);
     final activeAccount = accounts.firstWhere((a) => a.id == accountId, orElse: () => ModeloCuenta(id: '', name: 'No seleccionada', balance: 0.0, gradientIndex: 0, type: ''));
@@ -899,7 +948,11 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
     return InteractiveScale(
       onTap: () => _showAccountSelectorBottomSheet(accounts, accountId, onSelected, esOscuro, colorTexto, colorTipo),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: EdgeInsets.symmetric(
+          horizontal: compacto ? 10 : 16,
+          vertical: compacto ? 6 : 12,
+        ),
+        height: compacto ? 46 : null,
         decoration: BoxDecoration(
           color: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
           borderRadius: BorderRadius.circular(16),
@@ -911,8 +964,8 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
         child: Row(
           children: [
             Container(
-              width: 38,
-              height: 38,
+              width: compacto ? 28 : 38,
+              height: compacto ? 28 : 38,
               decoration: BoxDecoration(
                 color: isSelected ? colorTipo.withValues(alpha: 0.08) : (esOscuro ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF3F4F6)),
                 shape: BoxShape.circle,
@@ -924,25 +977,26 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
               child: Icon(
                 Icons.account_balance_wallet_rounded,
                 color: isSelected ? colorTipo : colorTexto.withValues(alpha: 0.5),
-                size: 18,
+                size: compacto ? 14 : 18,
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: compacto ? 8 : 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     activeAccount.name,
                     style: TextStyle(
-                      fontSize: 14.5,
+                      fontSize: compacto ? 13 : 14.5,
                       fontWeight: FontWeight.bold,
                       color: colorTexto,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  if (isSelected) ...[
+                  if (isSelected && !compacto) ...[
                     const SizedBox(height: 1),
                     Text(
                       '${activeAccount.type} • ${EstadoApp.getSymbolOfCurrency(activeAccount.currency ?? estadoApp.selectedCurrency)} ${activeAccount.balance.toStringAsFixed(0)}',
@@ -960,7 +1014,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
             Icon(
               Icons.keyboard_arrow_down_rounded,
               color: colorTexto.withValues(alpha: 0.5),
-              size: 20,
+              size: compacto ? 16 : 20,
             ),
           ],
         ),
@@ -1145,6 +1199,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
     required bool esOscuro,
     required Color colorTexto,
     required Color colorTipo,
+    bool compacto = false,
   }) {
     final activeCat = categories.firstWhere(
       (cat) => cat.name.toLowerCase() == selectedCategoryName.toLowerCase(),
@@ -1155,7 +1210,11 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
     return InteractiveScale(
       onTap: () => _showCategorySelectorBottomSheet(categories, selectedCategoryName, onSelected, esOscuro, colorTexto, colorTipo),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: EdgeInsets.symmetric(
+          horizontal: compacto ? 10 : 16,
+          vertical: compacto ? 6 : 12,
+        ),
+        height: compacto ? 46 : null,
         decoration: BoxDecoration(
           color: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
           borderRadius: BorderRadius.circular(16),
@@ -1167,8 +1226,8 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
         child: Row(
           children: [
             Container(
-              width: 38,
-              height: 38,
+              width: compacto ? 28 : 38,
+              height: compacto ? 28 : 38,
               decoration: BoxDecoration(
                 color: catColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
@@ -1181,40 +1240,42 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                 child: Icon(
                   _galleryIcons[activeCat.iconCode] ?? Icons.bubble_chart_rounded,
                   color: catColor,
-                  size: 16,
+                  size: compacto ? 13 : 16,
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: compacto ? 8 : 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     activeCat.name,
                     style: TextStyle(
-                      fontSize: 14.5,
+                      fontSize: compacto ? 13 : 14.5,
                       fontWeight: FontWeight.bold,
                       color: colorTexto,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  Text(
-                    activeCat.parentId == null ? 'Categoría Principal' : 'Subcategoría',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: colorTexto.withValues(alpha: 0.4),
+                  if (!compacto)
+                    Text(
+                      activeCat.parentId == null ? 'Categoría Principal' : 'Subcategoría',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: colorTexto.withValues(alpha: 0.4),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
             Icon(
               Icons.keyboard_arrow_down_rounded,
               color: colorTexto.withValues(alpha: 0.5),
-              size: 20,
+              size: compacto ? 16 : 20,
             ),
           ],
         ),
@@ -1286,7 +1347,6 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                       ),
                       const SizedBox(height: 16),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
                             'Seleccionar Categoría',
@@ -1296,6 +1356,27 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                               color: colorTexto,
                             ),
                           ),
+                          const Spacer(),
+                          TextButton.icon(
+                            onPressed: () => _showQuickCreateCategoryDialog(context, esOscuro, colorTexto, colorTipo, onSelected),
+                            icon: Icon(Icons.add_rounded, size: 16, color: colorTipo),
+                            label: Text(
+                              'Nueva',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: colorTipo,
+                              ),
+                            ),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              backgroundColor: colorTipo.withValues(alpha: 0.08),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           IconButton(
                             icon: Icon(Icons.close_rounded, color: colorTexto.withValues(alpha: 0.5)),
                             onPressed: () => Navigator.pop(context),
@@ -1474,6 +1555,257 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                   ),
                 ),
               ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showQuickCreateCategoryDialog(
+    BuildContext context,
+    bool esOscuro,
+    Color colorTexto,
+    Color colorTipo,
+    ValueChanged<String> onSelected,
+  ) {
+    final estadoApp = Provider.of<EstadoApp>(context, listen: false);
+    final parentCategories = estadoApp.categories.where((cat) => cat.parentId == null).toList();
+    
+    final nameController = TextEditingController();
+    String? selectedParentId;
+    String selectedIcon = 'category';
+    String selectedColor = '#FFE0B2';
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return AlertDialog(
+              backgroundColor: esOscuro ? const Color(0xFF0F172A) : Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              title: Text(
+                'Nueva Categoría',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: colorTexto,
+                ),
+              ),
+              content: SizedBox(
+                width: MediaQuery.of(context).size.width * 0.9,
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Nombre input
+                      Text(
+                        'NOMBRE',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: colorTexto.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: nameController,
+                        style: TextStyle(color: colorTexto),
+                        decoration: _buildInputDecoration('Ej. Regalos, Gym...', esOscuro, colorTipo).copyWith(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Categoría Padre dropdown
+                      Text(
+                        'CATEGORÍA SUPERIOR (OPCIONAL)',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: colorTexto.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                          ),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String?>(
+                            value: selectedParentId,
+                            hint: Text(
+                              'Ninguna (Principal)',
+                              style: TextStyle(color: colorTexto.withValues(alpha: 0.5), fontSize: 14),
+                            ),
+                            dropdownColor: esOscuro ? const Color(0xFF0F172A) : Colors.white,
+                            icon: Icon(Icons.keyboard_arrow_down_rounded, color: colorTexto.withValues(alpha: 0.5)),
+                            isExpanded: true,
+                            items: [
+                              DropdownMenuItem<String?>(
+                                value: null,
+                                child: Text(
+                                  'Ninguna (Principal)',
+                                  style: TextStyle(color: colorTexto, fontSize: 14, fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                              ...parentCategories.map((cat) {
+                                return DropdownMenuItem<String?>(
+                                  value: cat.id,
+                                  child: Text(
+                                    cat.name,
+                                    style: TextStyle(color: colorTexto, fontSize: 14, fontWeight: FontWeight.w500),
+                                  ),
+                                );
+                              }),
+                            ],
+                            onChanged: (val) {
+                              setDialogState(() {
+                                selectedParentId = val;
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Selector de icono rápido
+                      Text(
+                        'SELECCIONAR ICONO',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: colorTexto.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 130,
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: esOscuro
+                              ? const Color(0xFF0A0A0A).withValues(alpha: 0.45)
+                              : Colors.white.withValues(alpha: 0.60),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: esOscuro
+                                ? Colors.white.withValues(alpha: 0.12)
+                                : Colors.white.withValues(alpha: 0.65),
+                            width: 1.0,
+                          ),
+                        ),
+                        child: GridView.builder(
+                          physics: const BouncingScrollPhysics(),
+                          itemCount: _galleryIcons.length,
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 6,
+                            crossAxisSpacing: 6,
+                            mainAxisSpacing: 6,
+                          ),
+                          itemBuilder: (dialogContext, index) {
+                            final key = _galleryIcons.keys.elementAt(index);
+                            final icon = _galleryIcons[key]!;
+                            final isSelected = selectedIcon == key;
+
+                            return InteractiveScale(
+                              onTap: () {
+                                setDialogState(() {
+                                  selectedIcon = key;
+                                });
+                              },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 150),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? colorTipo.withValues(alpha: 0.1)
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: isSelected ? colorTipo : Colors.transparent,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Icon(
+                                    icon,
+                                    color: isSelected ? colorTipo : colorTexto.withValues(alpha: 0.6),
+                                    size: 18,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Selector de color avanzado
+                      Text(
+                        'COLOR DE LA CATEGORÍA',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: colorTexto.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      HexColorPicker(
+                        currentColorHex: selectedColor,
+                        onColorChanged: (hex) {
+                          setDialogState(() {
+                            selectedColor = hex;
+                          });
+                        },
+                        esOscuro: esOscuro,
+                        colorPrincipal: colorTipo,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancelar', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    final name = nameController.text.trim();
+                    if (name.isEmpty) {
+                      ToastHelper.showError(context, 'Ingresa un nombre para la categoría');
+                      return;
+                    }
+                    
+                    await estadoApp.addCategory(
+                      name,
+                      selectedParentId,
+                      selectedIcon,
+                      selectedColor,
+                    );
+                    
+                    if (!dialogContext.mounted) return;
+                    // Cerrar el diálogo de creación
+                    Navigator.pop(dialogContext);
+                    
+                    if (!context.mounted) return;
+                    // Invocar callback de selección y cerrar selector de categorías
+                    onSelected(name);
+                    Navigator.pop(context);
+                    
+                    ToastHelper.showSuccess(context, 'Categoría "$name" creada con éxito');
+                  },
+                  child: Text('Crear', style: TextStyle(color: colorTipo, fontWeight: FontWeight.bold)),
+                ),
+              ],
             );
           },
         );

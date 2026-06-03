@@ -167,7 +167,7 @@ class _DockLiquidGlassState extends State<DockLiquidGlass> with SingleTickerProv
                             if (index == 0) return 56.0; // "Inicio"
                             if (index == 1) return 78.0; // "Movimientos"
                             if (index == 2) return 80.0; // "Estadísticas"
-                            if (index == 3) return 58.0; // "Ahorro"
+                            if (index == 3) return 58.0; // "Planes"
                             return 56.0;
                           }
 
@@ -225,7 +225,7 @@ class _DockLiquidGlassState extends State<DockLiquidGlass> with SingleTickerProv
                             ),
                           ),
                           _buildDockItem(2, Icons.bar_chart_rounded, 'Estadísticas', estadoApp),
-                          _buildDockItem(3, Icons.savings_rounded, 'Ahorro', estadoApp),
+                          _buildDockItem(3, Icons.savings_rounded, 'Planes', estadoApp),
                         ],
                       ),
                     ],

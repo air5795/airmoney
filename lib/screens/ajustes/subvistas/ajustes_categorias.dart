@@ -25,6 +25,7 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
   String? _selectedCategoryParentId;
   String _selectedCategoryIconCode = 'restaurant';
   String _selectedCategoryColorHex = '#FFE0B2';
+  final Set<String> _expandedParentIds = {};
 
   static final Map<String, IconData> _galleryIcons = {
     'restaurant': Icons.restaurant_rounded,
@@ -63,6 +64,53 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
     super.dispose();
   }
 
+  void _guardarCategoria(EstadoApp estadoApp) {
+    final name = _categoryNameController.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor, ingresa un nombre para la categoría.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    if (_selectedCategoryToEdit != null) {
+      estadoApp.editCategory(
+        _selectedCategoryToEdit!.id,
+        name,
+        _selectedCategoryParentId,
+        _selectedCategoryIconCode,
+        _selectedCategoryColorHex,
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Categoría actualizada con éxito.'),
+          backgroundColor: Color(0xFF34C759),
+        ),
+      );
+    } else {
+      estadoApp.addCategory(
+        name,
+        _selectedCategoryParentId,
+        _selectedCategoryIconCode,
+        _selectedCategoryColorHex,
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Categoría creada con éxito.'),
+          backgroundColor: Color(0xFF34C759),
+        ),
+      );
+    }
+
+    setState(() {
+      _isCreatingOrEditingCategory = false;
+      _selectedCategoryToEdit = null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final estadoApp = Provider.of<EstadoApp>(context);
@@ -74,36 +122,53 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 16),
-        InteractiveScale(
-          onTap: () {
-            if (_isCreatingOrEditingCategory) {
-              setState(() {
-                _isCreatingOrEditingCategory = false;
-                _selectedCategoryToEdit = null;
-              });
-            } else {
-              widget.onBack();
-            }
-          },
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.arrow_back_ios_new_rounded,
-                size: 16,
-                color: colorPrincipal,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            InteractiveScale(
+              onTap: () {
+                if (_isCreatingOrEditingCategory) {
+                  setState(() {
+                    _isCreatingOrEditingCategory = false;
+                    _selectedCategoryToEdit = null;
+                  });
+                } else {
+                  widget.onBack();
+                }
+              },
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    size: 16,
+                    color: colorPrincipal,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _isCreatingOrEditingCategory ? 'Categorías' : 'Ajustes',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: colorPrincipal,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 6),
-              Text(
-                'Ajustes',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: colorPrincipal,
+            ),
+            if (_isCreatingOrEditingCategory)
+              InteractiveScale(
+                onTap: () => _guardarCategoria(estadoApp),
+                child: Text(
+                  'Guardar',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: colorPrincipal,
+                  ),
                 ),
               ),
-            ],
-          ),
+          ],
         ),
         const SizedBox(height: 20),
         Text(
@@ -405,111 +470,7 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
           esOscuro: esOscuro,
           colorPrincipal: colorPrincipal,
         ),
-        const SizedBox(height: 36),
 
-        Row(
-          children: [
-            Expanded(
-              child: InteractiveScale(
-                onTap: () {
-                  setState(() {
-                    _isCreatingOrEditingCategory = false;
-                    _selectedCategoryToEdit = null;
-                  });
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  decoration: BoxDecoration(
-                    color: esOscuro ? Colors.white.withValues(alpha: 0.05) : const Color(0xFF0F172A).withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: esOscuro ? const Color(0xFF1E1E1E) : const Color(0xFFCBD5E1),
-                      width: 1.0,
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      'Cancelar',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: esOscuro ? Colors.white.withValues(alpha: 0.6) : const Color(0xFF0F172A).withValues(alpha: 0.6),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: InteractiveScale(
-                onTap: () {
-                  final name = _categoryNameController.text.trim();
-                  if (name.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Por favor, ingresa un nombre para la categoría.'),
-                        backgroundColor: Colors.redAccent,
-                      ),
-                    );
-                    return;
-                  }
-
-                  if (_selectedCategoryToEdit != null) {
-                    estadoApp.editCategory(
-                      _selectedCategoryToEdit!.id,
-                      name,
-                      _selectedCategoryParentId,
-                      _selectedCategoryIconCode,
-                      _selectedCategoryColorHex,
-                    );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Categoría actualizada con éxito.'),
-                        backgroundColor: Color(0xFF34C759),
-                      ),
-                    );
-                  } else {
-                    estadoApp.addCategory(
-                      name,
-                      _selectedCategoryParentId,
-                      _selectedCategoryIconCode,
-                      _selectedCategoryColorHex,
-                    );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Categoría creada con éxito.'),
-                        backgroundColor: Color(0xFF34C759),
-                      ),
-                    );
-                  }
-
-                  setState(() {
-                    _isCreatingOrEditingCategory = false;
-                    _selectedCategoryToEdit = null;
-                  });
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  decoration: BoxDecoration(
-                    color: colorPrincipal,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Center(
-                    child: Text(
-                      'Guardar Categoría',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
       ],
     );
   }
@@ -535,7 +496,7 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
             padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
             decoration: BoxDecoration(
               color: colorPrincipal.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: colorPrincipal.withValues(alpha: 0.2),
                 width: 1.0,
@@ -586,15 +547,27 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
               final hexColor = cat.hexColor;
               final Color catColor = Color(int.parse(hexColor.replaceFirst('#', '0xFF')));
               final childCategories = estadoApp.categories.where((child) => child.parentId == cat.id).toList();
+              final isExpanded = _expandedParentIds.contains(cat.id);
 
               return Container(
                 decoration: BoxDecoration(
-                  color: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
-                  borderRadius: BorderRadius.circular(4),
+                  color: esOscuro 
+                      ? const Color(0xFF0E0E0E).withValues(alpha: 0.55) 
+                      : Colors.white.withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: esOscuro ? const Color(0xFF1E1E1E) : const Color(0xFFCBD5E1),
+                    color: esOscuro 
+                        ? Colors.white.withValues(alpha: 0.08) 
+                        : Colors.black.withValues(alpha: 0.08),
                     width: 1.0,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: esOscuro ? 0.15 : 0.03),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: Column(
                   children: [
@@ -602,50 +575,93 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
                       padding: const EdgeInsets.all(16),
                       child: Row(
                         children: [
-                          Container(
-                            width: 38,
-                            height: 38,
-                            decoration: BoxDecoration(
-                              color: catColor.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(
-                                color: catColor.withValues(alpha: 0.25),
-                                width: 1.0,
-                              ),
-                            ),
-                            child: Center(
-                              child: Icon(
-                                _galleryIcons[cat.iconCode] ?? Icons.bubble_chart_rounded,
-                                color: catColor,
-                                size: 18,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 14),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  cat.name,
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: colorTexto,
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () {
+                                if (childCategories.isNotEmpty) {
+                                  setState(() {
+                                    if (_expandedParentIds.contains(cat.id)) {
+                                      _expandedParentIds.remove(cat.id);
+                                    } else {
+                                      _expandedParentIds.add(cat.id);
+                                    }
+                                  });
+                                }
+                              },
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 38,
+                                    height: 38,
+                                    decoration: BoxDecoration(
+                                      color: catColor.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: catColor.withValues(alpha: 0.25),
+                                        width: 1.0,
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Icon(
+                                        _galleryIcons[cat.iconCode] ?? Icons.bubble_chart_rounded,
+                                        color: catColor,
+                                        size: 18,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  '${childCategories.length} subcategorías',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                    color: colorTexto.withValues(alpha: 0.4),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          cat.name,
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.bold,
+                                            color: colorTexto,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '${childCategories.length} subcategorías',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                            color: colorTexto.withValues(alpha: 0.4),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
+                          if (childCategories.isNotEmpty)
+                            InteractiveScale(
+                              onTap: () {
+                                setState(() {
+                                  if (_expandedParentIds.contains(cat.id)) {
+                                    _expandedParentIds.remove(cat.id);
+                                  } else {
+                                    _expandedParentIds.add(cat.id);
+                                  }
+                                });
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                child: Icon(
+                                  isExpanded
+                                      ? Icons.keyboard_arrow_up_rounded
+                                      : Icons.keyboard_arrow_down_rounded,
+                                  size: 20,
+                                  color: colorTexto.withValues(alpha: 0.4),
+                                ),
+                              ),
+                            ),
+                          const SizedBox(width: 4),
                           InteractiveScale(
                             onTap: () {
                               setState(() {
@@ -662,7 +678,7 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
                               child: Icon(Icons.edit_rounded, size: 18, color: colorTexto.withValues(alpha: 0.4)),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 4),
                           InteractiveScale(
                             onTap: () {
                               showDialog(
@@ -670,7 +686,7 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
                                 builder: (context) => AlertDialog(
                                   backgroundColor: esOscuro ? const Color(0xFF0A0A0A) : Colors.white,
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
+                                    borderRadius: BorderRadius.circular(24),
                                     side: BorderSide(
                                       color: esOscuro ? const Color(0xFF1E1E1E) : const Color(0xFFCBD5E1),
                                       width: 1.0,
@@ -701,7 +717,7 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
                                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                                         decoration: BoxDecoration(
                                           color: Colors.redAccent,
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(12),
                                         ),
                                         child: const Text('Eliminar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                                       ),
@@ -718,14 +734,17 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
                         ],
                       ),
                     ),
-                    if (childCategories.isNotEmpty) ...[
+                    if (childCategories.isNotEmpty && isExpanded) ...[
                       Divider(
                         color: esOscuro ? const Color(0xFF1E1E1E) : const Color(0xFFE2E8F0),
                         height: 1,
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(vertical: 8),
-                        color: esOscuro ? Colors.white.withValues(alpha: 0.01) : const Color(0xFFF8FAFC).withValues(alpha: 0.3),
+                        decoration: BoxDecoration(
+                          color: esOscuro ? Colors.white.withValues(alpha: 0.01) : const Color(0xFFF8FAFC).withValues(alpha: 0.3),
+                          borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+                        ),
                         child: ListView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
@@ -744,7 +763,7 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
                                     margin: const EdgeInsets.only(right: 12),
                                     decoration: BoxDecoration(
                                       color: colorTexto.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(1),
+                                      borderRadius: BorderRadius.circular(2),
                                     ),
                                   ),
                                   Icon(
