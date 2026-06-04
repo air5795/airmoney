@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -126,6 +127,12 @@ class ModeloTransaccion {
       photoPath: map['rutaFoto'],
     );
   }
+
+  // Identifica si es una transaccion automatica de apertura de cuenta
+  bool get esRegistroApertura =>
+      description == 'Monto de apertura de cuenta' ||
+      title == 'Saldo inicial' ||
+      title == 'Carga inicial';
 }
 
 class ModeloAhorro {
@@ -263,6 +270,7 @@ class EstadoApp extends ChangeNotifier {
   int _selectedDockIndex = 0;
   int _selectedSettingsSubView = 0;
   int _lastLocalUpdateMillis = 0;
+  StreamSubscription<DocumentSnapshot>? _nubeSubscription;
 
   String get selectedLanguage => _selectedLanguage;
   String get selectedCurrency => _selectedCurrency;
@@ -367,7 +375,7 @@ class EstadoApp extends ChangeNotifier {
   double get totalIncome {
     double total = 0.0;
     for (var tx in _transactions) {
-      if (tx.type == 'ingreso') {
+      if (tx.type == 'ingreso' && !tx.esRegistroApertura) {
         final acc = _accounts.firstWhere(
           (a) => a.id == tx.accountId,
           orElse: () => _accounts.isNotEmpty ? _accounts.first : ModeloCuenta(id: '', name: '', type: '', balance: 0, gradientIndex: 0),
@@ -965,6 +973,7 @@ class EstadoApp extends ChangeNotifier {
 
   Future<void> clearAllData() async {
     print('=== DEBUG ESTADO: clearAllData - Iniciando ===');
+    desactivarEscuchaTiempoReal();
     _accounts.clear();
     _transactions.clear();
     _categories.clear();
@@ -1127,6 +1136,7 @@ class EstadoApp extends ChangeNotifier {
   }
 
   Future<bool> sincronizarConNube(String uid) async {
+    activarEscuchaTiempoReal(uid);
     try {
       final docRef = FirebaseFirestore.instance.collection('usuarios').doc(uid);
       final docSnap = await docRef.get().timeout(const Duration(seconds: 4));
@@ -1249,5 +1259,98 @@ class EstadoApp extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error al subir datos a la nube: $e');
     }
+  }
+
+  void activarEscuchaTiempoReal(String uid) {
+    _nubeSubscription?.cancel();
+    _nubeSubscription = FirebaseFirestore.instance
+        .collection('usuarios')
+        .doc(uid)
+        .snapshots()
+        .listen((docSnap) async {
+      if (docSnap.exists) {
+        final data = docSnap.data();
+        if (data != null) {
+          final dynamic cloudTimestamp = data['ultimaActualizacion'];
+          if (cloudTimestamp != null && cloudTimestamp is Timestamp) {
+            final int cloudMillis = cloudTimestamp.millisecondsSinceEpoch;
+            if (_lastLocalUpdateMillis > cloudMillis + 2000) {
+              return;
+            }
+            if (_lastLocalUpdateMillis == cloudMillis) {
+              return;
+            }
+          }
+
+          if (data['esTemaOscuro'] != null) {
+            _esTemaOscuro = data['esTemaOscuro'] as bool;
+          }
+          if (data['colorPrincipal'] != null) {
+            _colorPrincipal = Color(data['colorPrincipal'] as int);
+          }
+          if (data['tiposCambio'] != null) {
+            final Map<String, dynamic> mapCloud = data['tiposCambio'] as Map<String, dynamic>;
+            _tiposCambio = mapCloud.map((key, val) => MapEntry(key, (val as num).toDouble()));
+          } else if (data['tipoCambioUsd'] != null) {
+            _tiposCambio['USD'] = (data['tipoCambioUsd'] as num).toDouble();
+          }
+
+          if (data['cuentas'] != null) {
+            final List<dynamic> accountsData = data['cuentas'];
+            _accounts = accountsData.map((item) => ModeloCuenta.fromMap(Map<String, dynamic>.from(item))).toList();
+            if (_accounts.isNotEmpty) {
+              _hasCompletedOnboarding = true;
+            }
+          }
+
+          if (data['transacciones'] != null) {
+            final List<dynamic> transactionsData = data['transacciones'];
+            _transactions = transactionsData.map((item) => ModeloTransaccion.fromMap(Map<String, dynamic>.from(item))).toList();
+          }
+
+          if (data['categorias'] != null) {
+            final List<dynamic> categoriesData = data['categorias'];
+            _categories = categoriesData.map((item) => ModeloCategoria.fromMap(Map<String, dynamic>.from(item))).toList();
+          }
+
+          if (data['ahorros'] != null) {
+            final List<dynamic> savingsData = data['ahorros'];
+            _savingsGoals = savingsData.map((item) => ModeloAhorro.fromMap(Map<String, dynamic>.from(item))).toList();
+          }
+
+          if (data['presupuestos'] != null) {
+            final List<dynamic> budgetsData = data['presupuestos'];
+            _budgets = budgetsData.map((item) => ModeloPresupuesto.fromMap(Map<String, dynamic>.from(item))).toList();
+          }
+
+          final SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('app_dark_mode', _esTemaOscuro);
+          await prefs.setInt('app_primary_color', _colorPrincipal.toARGB32());
+          await prefs.setString('app_tipos_cambio', json.encode(_tiposCambio));
+          await prefs.setDouble('app_tipo_cambio_usd', _tiposCambio['USD'] ?? 6.97);
+          await prefs.setBool('app_onboarding_completed', _hasCompletedOnboarding);
+          
+          await _saveAccountsToPrefs(prefs);
+          await _saveTransactionsToPrefs(prefs);
+          await _saveCategoriesToPrefs(prefs);
+          await _saveSavingsGoalsToPrefs(prefs);
+          await _saveBudgetsToPrefs(prefs);
+
+          if (cloudTimestamp != null && cloudTimestamp is Timestamp) {
+            _lastLocalUpdateMillis = cloudTimestamp.millisecondsSinceEpoch;
+            await prefs.setInt('app_last_local_update_millis', _lastLocalUpdateMillis);
+          }
+
+          notifyListeners();
+        }
+      }
+    }, onError: (error) {
+      debugPrint('Error en la escucha en tiempo real: $error');
+    });
+  }
+
+  void desactivarEscuchaTiempoReal() {
+    _nubeSubscription?.cancel();
+    _nubeSubscription = null;
   }
 }

@@ -97,36 +97,13 @@ class _PantallaSplashState extends State<PantallaSplash> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logotipo institucional con efecto físico táctil
-                  Container(
+                  // Logotipo institucional con efecto fisico tactil
+                  SizedBox(
                     width: 100,
                     height: 100,
-                    decoration: BoxDecoration(
-                      color: Colors.black,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: esOscuro
-                            ? Colors.white.withValues(alpha: 0.08)
-                            : const Color(0xFFE2E8F0),
-                        width: 1.0,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: esOscuro ? 0.25 : 0.03),
-                          blurRadius: 24,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(24),
-                      child: Padding(
-                        padding: const EdgeInsets.all(3.0),
-                        child: Image.asset(
-                          'assets/images/para_blanco.png',
-                          fit: BoxFit.contain,
-                        ),
-                      ),
+                    child: Image.asset(
+                      'assets/images/512-trans.png',
+                      fit: BoxFit.contain,
                     ),
                   )
                       .animate()

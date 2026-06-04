@@ -96,7 +96,7 @@ class VistaDetalleCuenta extends StatelessWidget {
 
     // Obtener y filtrar movimientos de la cuenta (origen o destino)
     final accountTxs = estadoApp.transactions
-        .where((tx) => tx.accountId == account.id || tx.toAccountId == account.id)
+        .where((tx) => (tx.accountId == account.id || tx.toAccountId == account.id) && !tx.esRegistroApertura)
         .toList();
 
     // Buscar la cuenta fresca del estado para reflejar balances actualizados en tiempo real

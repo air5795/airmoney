@@ -602,6 +602,7 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
     }
 
     List<ModeloTransaccion> txsFiltradas = estadoApp.transactions.where((tx) {
+      if (tx.esRegistroApertura) return false;
       final matchesMonth = tx.date.month == _selectedFilterMonth;
       final matchesYear = tx.date.year == _selectedFilterYear;
       bool matchesAccount = true;

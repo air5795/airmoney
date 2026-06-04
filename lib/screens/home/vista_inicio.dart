@@ -115,35 +115,12 @@ class VistaInicio extends StatelessWidget {
                 child: Row(
                   children: [
                     // Contenedor premium Liquid Glass para el logo adaptativo
-                    Container(
+                    SizedBox(
                       width: 40,
                       height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.black,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: esOscuro
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : const Color(0xFFE2E8F0),
-                          width: 1.0,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: esOscuro ? 0.15 : 0.02),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Padding(
-                          padding: const EdgeInsets.all(1.0),
-                          child: Image.asset(
-                            'assets/images/para_blanco.png',
-                            fit: BoxFit.contain,
-                          ),
-                        ),
+                      child: Image.asset(
+                        'assets/images/512-trans.png',
+                        fit: BoxFit.contain,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -273,7 +250,7 @@ class VistaInicio extends StatelessWidget {
     double gastosMes = 0.0;
     for (var tx in estadoApp.transactions) {
       if (tx.date.month == ahora.month && tx.date.year == ahora.year) {
-        if (tx.type == 'ingreso') {
+        if (tx.type == 'ingreso' && !tx.esRegistroApertura) {
           ingresosMes += tx.amount;
         } else if (tx.type == 'gasto') {
           gastosMes += tx.amount;
@@ -624,7 +601,7 @@ class VistaInicio extends StatelessWidget {
   }
 
   Widget _buildTransactionList(EstadoApp estadoApp) {
-    final txs = estadoApp.transactions;
+    final txs = estadoApp.transactions.where((tx) => !tx.esRegistroApertura).toList();
     final esOscuro = estadoApp.esTemaOscuro;
     final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
 

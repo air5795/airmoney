@@ -166,35 +166,12 @@ class _PantallaLoginState extends State<PantallaLogin> {
                       // Cabecera unificada con Splash para consistencia de marca
                       Column(
                         children: [
-                          Container(
+                          SizedBox(
                             width: 80,
                             height: 80,
-                            decoration: BoxDecoration(
-                              color: Colors.black,
-                              borderRadius: BorderRadius.circular(22),
-                              border: Border.all(
-                                color: esOscuro
-                                    ? Colors.white.withValues(alpha: 0.08)
-                                    : const Color(0xFFE2E8F0),
-                                width: 1.0,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: esOscuro ? 0.20 : 0.03),
-                                  blurRadius: 15,
-                                  offset: const Offset(0, 6),
-                                ),
-                              ],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(22),
-                              child: Padding(
-                                padding: const EdgeInsets.all(2.0),
-                                child: Image.asset(
-                                  'assets/images/para_blanco.png',
-                                  fit: BoxFit.contain,
-                                ),
-                              ),
+                            child: Image.asset(
+                              'assets/images/512-trans.png',
+                              fit: BoxFit.contain,
                             ),
                           )
                               .animate()

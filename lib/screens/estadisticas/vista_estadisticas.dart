@@ -461,6 +461,9 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
       final matchesMonth = tx.date.month == _selectedFilterMonth;
       final matchesYear = tx.date.year == _selectedFilterYear;
       final matchesType = tx.type == _selectedType;
+      if (_selectedType == 'ingreso' && tx.esRegistroApertura) {
+        return false;
+      }
       bool matchesAccount = true;
       if (_selectedAccountFilter != null) {
         matchesAccount = tx.accountId == _selectedAccountFilter || tx.toAccountId == _selectedAccountFilter;
@@ -483,6 +486,9 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
       final matchesMonth = tx.date.month == mesAnterior;
       final matchesYear = tx.date.year == anioAnterior;
       final matchesType = tx.type == _selectedType;
+      if (_selectedType == 'ingreso' && tx.esRegistroApertura) {
+        return false;
+      }
       bool matchesAccount = true;
       if (_selectedAccountFilter != null) {
         matchesAccount = tx.accountId == _selectedAccountFilter || tx.toAccountId == _selectedAccountFilter;
