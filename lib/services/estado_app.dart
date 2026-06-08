@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:crypto/crypto.dart';
 import 'servicio_autenticacion.dart';
 
 class ModeloCuenta {
@@ -19,6 +20,7 @@ class ModeloCuenta {
   final double? stop3;
   final bool? useDarkText;
   final String? currency;
+  final bool? contabilizable;
 
   ModeloCuenta({
     required this.id,
@@ -34,6 +36,7 @@ class ModeloCuenta {
     this.stop3,
     this.useDarkText,
     this.currency,
+    this.contabilizable,
   });
 
   Map<String, dynamic> toMap() {
@@ -51,6 +54,7 @@ class ModeloCuenta {
       'stop3': stop3,
       'usarTextoOscuro': useDarkText,
       'moneda': currency,
+      'contabilizable': contabilizable,
     };
   }
 
@@ -69,6 +73,7 @@ class ModeloCuenta {
       stop3: (map['stop3'] as num?)?.toDouble(),
       useDarkText: map['usarTextoOscuro'] ?? false,
       currency: map['moneda'],
+      contabilizable: map['contabilizable'] ?? true,
     );
   }
 }
@@ -84,6 +89,9 @@ class ModeloTransaccion {
   final String accountId;
   final String? toAccountId;
   final String? photoPath;
+  final bool esProgramada;
+  final bool pagada;
+  final String? recurrencia;
 
   ModeloTransaccion({
     required this.id,
@@ -96,6 +104,9 @@ class ModeloTransaccion {
     required this.accountId,
     this.toAccountId,
     this.photoPath,
+    this.esProgramada = false,
+    this.pagada = true,
+    this.recurrencia,
   });
 
   Map<String, dynamic> toMap() {
@@ -110,6 +121,9 @@ class ModeloTransaccion {
       'idCuenta': accountId,
       'idCuentaDestino': toAccountId,
       'rutaFoto': photoPath,
+      'esProgramada': esProgramada,
+      'pagada': pagada,
+      'recurrencia': recurrencia,
     };
   }
 
@@ -125,6 +139,9 @@ class ModeloTransaccion {
       accountId: map['idCuenta'] ?? '',
       toAccountId: map['idCuentaDestino'],
       photoPath: map['rutaFoto'],
+      esProgramada: map['esProgramada'] ?? false,
+      pagada: map['pagada'] ?? true,
+      recurrencia: map['recurrencia'],
     );
   }
 
@@ -271,6 +288,11 @@ class EstadoApp extends ChangeNotifier {
   int _selectedSettingsSubView = 0;
   int _lastLocalUpdateMillis = 0;
   StreamSubscription<DocumentSnapshot>? _nubeSubscription;
+  bool _isSyncing = false;
+  Timer? _debounceSubida;
+  bool _biometricEnabled = false;
+  bool _pinEnabled = false;
+  String _hashedPin = '';
 
   String get selectedLanguage => _selectedLanguage;
   String get selectedCurrency => _selectedCurrency;
@@ -298,6 +320,10 @@ class EstadoApp extends ChangeNotifier {
   List<ModeloPresupuesto> get budgets => _budgets;
   bool get esTemaOscuro => _esTemaOscuro;
   Color get colorPrincipal => _colorPrincipal;
+
+  bool get biometricEnabled => _biometricEnabled;
+  bool get pinEnabled => _pinEnabled;
+  String get hashedPin => _hashedPin;
 
   int get selectedDockIndex => _selectedDockIndex;
   set selectedDockIndex(int val) {
@@ -350,7 +376,7 @@ class EstadoApp extends ChangeNotifier {
     
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('app_tipos_cambio', json.encode(_tiposCambio));
-    notifyListeners();
+    _notificarYSincronizar();
   }
 
   Future<void> setTipoCambioUsd(double valor) async {
@@ -360,6 +386,7 @@ class EstadoApp extends ChangeNotifier {
   double get totalBalance {
     double total = 0.0;
     for (var acc in _accounts) {
+      if (acc.contabilizable == false) continue;
       final accCurrency = acc.currency ?? _selectedCurrency;
       final balanceConvertido = convertirMoneda(acc.balance, accCurrency, _selectedCurrency);
       
@@ -375,11 +402,13 @@ class EstadoApp extends ChangeNotifier {
   double get totalIncome {
     double total = 0.0;
     for (var tx in _transactions) {
+      if (!tx.pagada) continue;
       if (tx.type == 'ingreso' && !tx.esRegistroApertura) {
         final acc = _accounts.firstWhere(
           (a) => a.id == tx.accountId,
           orElse: () => _accounts.isNotEmpty ? _accounts.first : ModeloCuenta(id: '', name: '', type: '', balance: 0, gradientIndex: 0),
         );
+        if (acc.contabilizable == false) continue;
         final txCurrency = acc.currency ?? _selectedCurrency;
         total += convertirMoneda(tx.amount, txCurrency, _selectedCurrency);
       }
@@ -390,11 +419,13 @@ class EstadoApp extends ChangeNotifier {
   double get totalExpenses {
     double total = 0.0;
     for (var tx in _transactions) {
+      if (!tx.pagada) continue;
       if (tx.type == 'gasto') {
         final acc = _accounts.firstWhere(
           (a) => a.id == tx.accountId,
           orElse: () => _accounts.isNotEmpty ? _accounts.first : ModeloCuenta(id: '', name: '', type: '', balance: 0, gradientIndex: 0),
         );
+        if (acc.contabilizable == false) continue;
         final txCurrency = acc.currency ?? _selectedCurrency;
         total += convertirMoneda(tx.amount, txCurrency, _selectedCurrency);
       }
@@ -443,6 +474,10 @@ class EstadoApp extends ChangeNotifier {
     
     _hasCompletedOnboarding = prefs.getBool('app_onboarding_completed') ?? false;
     _esTemaOscuro = prefs.getBool('app_dark_mode') ?? false;
+
+    _biometricEnabled = prefs.getBool('app_biometric_enabled') ?? false;
+    _pinEnabled = prefs.getBool('app_pin_enabled') ?? false;
+    _hashedPin = prefs.getString('app_pin_code') ?? '';
 
     final int colorVal = prefs.getInt('app_primary_color') ?? const Color(0xFF000000).toARGB32();
     _colorPrincipal = Color(colorVal);
@@ -518,14 +553,14 @@ class EstadoApp extends ChangeNotifier {
     _selectedLanguage = lang;
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('app_language', lang);
-    notifyListeners();
+    _notificarYSincronizar();
   }
 
   Future<void> setCurrency(String currency) async {
     _selectedCurrency = currency;
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('app_currency', currency);
-    notifyListeners();
+    _notificarYSincronizar();
   }
 
   Future<void> toggleTema(bool value) async {
@@ -541,14 +576,51 @@ class EstadoApp extends ChangeNotifier {
       await prefs.setInt('app_primary_color', const Color(0xFF000000).toARGB32());
     }
 
-    notifyListeners();
+    _notificarYSincronizar();
   }
 
   Future<void> setColorPrincipal(Color color) async {
     _colorPrincipal = color;
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setInt('app_primary_color', color.toARGB32());
+    _notificarYSincronizar();
+  }
+
+  String _hashPin(String pin) {
+    final bytes = utf8.encode(pin);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
+  }
+
+  Future<void> setBiometricEnabled(bool value) async {
+    _biometricEnabled = value;
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('app_biometric_enabled', value);
     notifyListeners();
+  }
+
+  Future<void> setPin(String pin) async {
+    final hashed = _hashPin(pin);
+    _hashedPin = hashed;
+    _pinEnabled = true;
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('app_pin_code', hashed);
+    await prefs.setBool('app_pin_enabled', true);
+    notifyListeners();
+  }
+
+  Future<void> disablePin() async {
+    _hashedPin = '';
+    _pinEnabled = false;
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove('app_pin_code');
+    await prefs.setBool('app_pin_enabled', false);
+    notifyListeners();
+  }
+
+  bool verifyPin(String pin) {
+    if (!_pinEnabled || _hashedPin.isEmpty) return false;
+    return _hashPin(pin) == _hashedPin;
   }
 
   Future<void> completeOnboarding(String firstAccountName, String firstAccountType, double initialBalance, {String? currency}) async {
@@ -586,10 +658,10 @@ class EstadoApp extends ChangeNotifier {
     await _saveAccountsToPrefs(prefs);
     await _saveTransactionsToPrefs(prefs);
 
-    notifyListeners();
+    _notificarYSincronizar();
   }
 
-  Future<ModeloCuenta> addAccount(String name, String type, double balance, int gradientIndex, {String? customColorHex, String? customColorSecondaryHex, String? customColorThirdHex, double? stop1, double? stop2, double? stop3, bool useDarkText = false, String? currency}) async {
+  Future<ModeloCuenta> addAccount(String name, String type, double balance, int gradientIndex, {String? customColorHex, String? customColorSecondaryHex, String? customColorThirdHex, double? stop1, double? stop2, double? stop3, bool useDarkText = false, String? currency, bool contabilizable = true}) async {
     final newAccount = ModeloCuenta(
       id: 'acc_${DateTime.now().millisecondsSinceEpoch}_${_accounts.length}',
       name: name,
@@ -604,6 +676,7 @@ class EstadoApp extends ChangeNotifier {
       stop3: stop3,
       useDarkText: useDarkText,
       currency: currency ?? _selectedCurrency,
+      contabilizable: contabilizable,
     );
     _accounts.add(newAccount);
 
@@ -625,7 +698,7 @@ class EstadoApp extends ChangeNotifier {
 
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await _saveAccountsToPrefs(prefs);
-    notifyListeners();
+    _notificarYSincronizar();
     return newAccount;
   }
 
@@ -638,46 +711,56 @@ class EstadoApp extends ChangeNotifier {
     required String accountId,
     String? toAccountId,
     String? photoPath,
+    DateTime? date,
+    bool esProgramada = false,
+    bool pagada = true,
+    String? recurrencia,
   }) async {
+    final transactionDate = date ?? DateTime.now();
     final newTx = ModeloTransaccion(
       id: 'tx_${DateTime.now().millisecondsSinceEpoch}',
       title: title,
       description: description,
       amount: amount,
       category: category,
-      date: DateTime.now(),
+      date: transactionDate,
       type: type,
       accountId: accountId,
       toAccountId: toAccountId,
       photoPath: photoPath,
+      esProgramada: esProgramada,
+      pagada: pagada,
+      recurrencia: recurrencia,
     );
 
     _transactions.insert(0, newTx);
 
-    if (type == 'gasto') {
-      final idx = _accounts.indexWhere((acc) => acc.id == accountId);
-      if (idx != -1) {
-        _accounts[idx].balance -= amount;
-      }
-    } else if (type == 'ingreso') {
-      final idx = _accounts.indexWhere((acc) => acc.id == accountId);
-      if (idx != -1) {
-        _accounts[idx].balance += amount;
-      }
-    } else if (type == 'transferencia' && toAccountId != null) {
-      final originIdx = _accounts.indexWhere((acc) => acc.id == accountId);
-      final destIdx = _accounts.indexWhere((acc) => acc.id == toAccountId);
-      if (originIdx != -1) {
-        _accounts[originIdx].balance -= amount;
-      }
-      if (destIdx != -1) {
-        final originAcc = _accounts[originIdx];
-        final destAcc = _accounts[destIdx];
-        final originCurrency = originAcc.currency ?? _selectedCurrency;
-        final destCurrency = destAcc.currency ?? _selectedCurrency;
-        
-        final amountConvertido = convertirMoneda(amount, originCurrency, destCurrency);
-        _accounts[destIdx].balance += amountConvertido;
+    if (pagada) {
+      if (type == 'gasto') {
+        final idx = _accounts.indexWhere((acc) => acc.id == accountId);
+        if (idx != -1) {
+          _accounts[idx].balance -= amount;
+        }
+      } else if (type == 'ingreso') {
+        final idx = _accounts.indexWhere((acc) => acc.id == accountId);
+        if (idx != -1) {
+          _accounts[idx].balance += amount;
+        }
+      } else if (type == 'transferencia' && toAccountId != null) {
+        final originIdx = _accounts.indexWhere((acc) => acc.id == accountId);
+        final destIdx = _accounts.indexWhere((acc) => acc.id == toAccountId);
+        if (originIdx != -1) {
+          _accounts[originIdx].balance -= amount;
+        }
+        if (originIdx != -1 && destIdx != -1) {
+          final originAcc = _accounts[originIdx];
+          final destAcc = _accounts[destIdx];
+          final originCurrency = originAcc.currency ?? _selectedCurrency;
+          final destCurrency = destAcc.currency ?? _selectedCurrency;
+          
+          final amountConvertido = convertirMoneda(amount, originCurrency, destCurrency);
+          _accounts[destIdx].balance += amountConvertido;
+        }
       }
     }
 
@@ -685,7 +768,7 @@ class EstadoApp extends ChangeNotifier {
     await _saveAccountsToPrefs(prefs);
     await _saveTransactionsToPrefs(prefs);
 
-    notifyListeners();
+    _notificarYSincronizar();
   }
 
   Future<void> updateTransaction({
@@ -699,65 +782,72 @@ class EstadoApp extends ChangeNotifier {
     String? toAccountId,
     String? photoPath,
     required DateTime date,
+    bool esProgramada = false,
+    bool pagada = true,
+    String? recurrencia,
   }) async {
     // Buscar la transaccion original
     final idxTx = _transactions.indexWhere((tx) => tx.id == id);
     if (idxTx == -1) return;
     final oldTx = _transactions[idxTx];
 
-    // Revertir balances de la transaccion original
-    if (oldTx.type == 'gasto') {
-      final idx = _accounts.indexWhere((acc) => acc.id == oldTx.accountId);
-      if (idx != -1) {
-        _accounts[idx].balance += oldTx.amount;
-      }
-    } else if (oldTx.type == 'ingreso') {
-      final idx = _accounts.indexWhere((acc) => acc.id == oldTx.accountId);
-      if (idx != -1) {
-        _accounts[idx].balance -= oldTx.amount;
-      }
-    } else if (oldTx.type == 'transferencia' && oldTx.toAccountId != null) {
-      final originIdx = _accounts.indexWhere((acc) => acc.id == oldTx.accountId);
-      final destIdx = _accounts.indexWhere((acc) => acc.id == oldTx.toAccountId);
-      if (originIdx != -1) {
-        _accounts[originIdx].balance += oldTx.amount;
-      }
-      if (destIdx != -1) {
-        final originAcc = _accounts[originIdx];
-        final destAcc = _accounts[destIdx];
-        final originCurrency = originAcc.currency ?? _selectedCurrency;
-        final destCurrency = destAcc.currency ?? _selectedCurrency;
-        
-        final amountConvertido = convertirMoneda(oldTx.amount, originCurrency, destCurrency);
-        _accounts[destIdx].balance -= amountConvertido;
+    // Revertir balances de la transaccion original si estaba pagada
+    if (oldTx.pagada) {
+      if (oldTx.type == 'gasto') {
+        final idx = _accounts.indexWhere((acc) => acc.id == oldTx.accountId);
+        if (idx != -1) {
+          _accounts[idx].balance += oldTx.amount;
+        }
+      } else if (oldTx.type == 'ingreso') {
+        final idx = _accounts.indexWhere((acc) => acc.id == oldTx.accountId);
+        if (idx != -1) {
+          _accounts[idx].balance -= oldTx.amount;
+        }
+      } else if (oldTx.type == 'transferencia' && oldTx.toAccountId != null) {
+        final originIdx = _accounts.indexWhere((acc) => acc.id == oldTx.accountId);
+        final destIdx = _accounts.indexWhere((acc) => acc.id == oldTx.toAccountId);
+        if (originIdx != -1) {
+          _accounts[originIdx].balance += oldTx.amount;
+        }
+        if (originIdx != -1 && destIdx != -1) {
+          final originAcc = _accounts[originIdx];
+          final destAcc = _accounts[destIdx];
+          final originCurrency = originAcc.currency ?? _selectedCurrency;
+          final destCurrency = destAcc.currency ?? _selectedCurrency;
+          
+          final amountConvertido = convertirMoneda(oldTx.amount, originCurrency, destCurrency);
+          _accounts[destIdx].balance -= amountConvertido;
+        }
       }
     }
 
-    // Aplicar balances de la nueva transaccion
-    if (type == 'gasto') {
-      final idx = _accounts.indexWhere((acc) => acc.id == accountId);
-      if (idx != -1) {
-        _accounts[idx].balance -= amount;
-      }
-    } else if (type == 'ingreso') {
-      final idx = _accounts.indexWhere((acc) => acc.id == accountId);
-      if (idx != -1) {
-        _accounts[idx].balance += amount;
-      }
-    } else if (type == 'transferencia' && toAccountId != null) {
-      final originIdx = _accounts.indexWhere((acc) => acc.id == accountId);
-      final destIdx = _accounts.indexWhere((acc) => acc.id == toAccountId);
-      if (originIdx != -1) {
-        _accounts[originIdx].balance -= amount;
-      }
-      if (destIdx != -1) {
-        final originAcc = _accounts[originIdx];
-        final destAcc = _accounts[destIdx];
-        final originCurrency = originAcc.currency ?? _selectedCurrency;
-        final destCurrency = destAcc.currency ?? _selectedCurrency;
-        
-        final amountConvertido = convertirMoneda(amount, originCurrency, destCurrency);
-        _accounts[destIdx].balance += amountConvertido;
+    // Aplicar balances de la nueva transaccion si está pagada
+    if (pagada) {
+      if (type == 'gasto') {
+        final idx = _accounts.indexWhere((acc) => acc.id == accountId);
+        if (idx != -1) {
+          _accounts[idx].balance -= amount;
+        }
+      } else if (type == 'ingreso') {
+        final idx = _accounts.indexWhere((acc) => acc.id == accountId);
+        if (idx != -1) {
+          _accounts[idx].balance += amount;
+        }
+      } else if (type == 'transferencia' && toAccountId != null) {
+        final originIdx = _accounts.indexWhere((acc) => acc.id == accountId);
+        final destIdx = _accounts.indexWhere((acc) => acc.id == toAccountId);
+        if (originIdx != -1) {
+          _accounts[originIdx].balance -= amount;
+        }
+        if (originIdx != -1 && destIdx != -1) {
+          final originAcc = _accounts[originIdx];
+          final destAcc = _accounts[destIdx];
+          final originCurrency = originAcc.currency ?? _selectedCurrency;
+          final destCurrency = destAcc.currency ?? _selectedCurrency;
+          
+          final amountConvertido = convertirMoneda(amount, originCurrency, destCurrency);
+          _accounts[destIdx].balance += amountConvertido;
+        }
       }
     }
 
@@ -773,13 +863,16 @@ class EstadoApp extends ChangeNotifier {
       accountId: accountId,
       toAccountId: toAccountId,
       photoPath: photoPath,
+      esProgramada: esProgramada,
+      pagada: pagada,
+      recurrencia: recurrencia,
     );
 
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await _saveAccountsToPrefs(prefs);
     await _saveTransactionsToPrefs(prefs);
 
-    notifyListeners();
+    _notificarYSincronizar();
   }
 
   Future<void> deleteTransaction(String id) async {
@@ -787,31 +880,33 @@ class EstadoApp extends ChangeNotifier {
     if (idxTx == -1) return;
     final oldTx = _transactions[idxTx];
 
-    // Revertir balances antes de eliminar
-    if (oldTx.type == 'gasto') {
-      final idx = _accounts.indexWhere((acc) => acc.id == oldTx.accountId);
-      if (idx != -1) {
-        _accounts[idx].balance += oldTx.amount;
-      }
-    } else if (oldTx.type == 'ingreso') {
-      final idx = _accounts.indexWhere((acc) => acc.id == oldTx.accountId);
-      if (idx != -1) {
-        _accounts[idx].balance -= oldTx.amount;
-      }
-    } else if (oldTx.type == 'transferencia' && oldTx.toAccountId != null) {
-      final originIdx = _accounts.indexWhere((acc) => acc.id == oldTx.accountId);
-      final destIdx = _accounts.indexWhere((acc) => acc.id == oldTx.toAccountId);
-      if (originIdx != -1) {
-        _accounts[originIdx].balance += oldTx.amount;
-      }
-      if (destIdx != -1) {
-        final originAcc = _accounts[originIdx];
-        final destAcc = _accounts[destIdx];
-        final originCurrency = originAcc.currency ?? _selectedCurrency;
-        final destCurrency = destAcc.currency ?? _selectedCurrency;
-        
-        final amountConvertido = convertirMoneda(oldTx.amount, originCurrency, destCurrency);
-        _accounts[destIdx].balance -= amountConvertido;
+    // Revertir balances antes de eliminar si estaba pagada
+    if (oldTx.pagada) {
+      if (oldTx.type == 'gasto') {
+        final idx = _accounts.indexWhere((acc) => acc.id == oldTx.accountId);
+        if (idx != -1) {
+          _accounts[idx].balance += oldTx.amount;
+        }
+      } else if (oldTx.type == 'ingreso') {
+        final idx = _accounts.indexWhere((acc) => acc.id == oldTx.accountId);
+        if (idx != -1) {
+          _accounts[idx].balance -= oldTx.amount;
+        }
+      } else if (oldTx.type == 'transferencia' && oldTx.toAccountId != null) {
+        final originIdx = _accounts.indexWhere((acc) => acc.id == oldTx.accountId);
+        final destIdx = _accounts.indexWhere((acc) => acc.id == oldTx.toAccountId);
+        if (originIdx != -1) {
+          _accounts[originIdx].balance += oldTx.amount;
+        }
+        if (originIdx != -1 && destIdx != -1) {
+          final originAcc = _accounts[originIdx];
+          final destAcc = _accounts[destIdx];
+          final originCurrency = originAcc.currency ?? _selectedCurrency;
+          final destCurrency = destAcc.currency ?? _selectedCurrency;
+          
+          final amountConvertido = convertirMoneda(oldTx.amount, originCurrency, destCurrency);
+          _accounts[destIdx].balance -= amountConvertido;
+        }
       }
     }
 
@@ -821,7 +916,99 @@ class EstadoApp extends ChangeNotifier {
     await _saveAccountsToPrefs(prefs);
     await _saveTransactionsToPrefs(prefs);
 
-    notifyListeners();
+    _notificarYSincronizar();
+  }
+
+  DateTime calcularProximaFecha(DateTime fecha, String recurrencia) {
+    if (recurrencia == 'diario') {
+      return fecha.add(const Duration(days: 1));
+    } else if (recurrencia == 'semanal') {
+      return fecha.add(const Duration(days: 7));
+    } else if (recurrencia == 'mensual') {
+      return DateTime(fecha.year, fecha.month + 1, fecha.day);
+    } else if (recurrencia == 'anual') {
+      return DateTime(fecha.year + 1, fecha.month, fecha.day);
+    }
+    return fecha;
+  }
+
+  Future<void> confirmarPagoTransaccion(String id, {DateTime? fechaPago}) async {
+    final idxTx = _transactions.indexWhere((tx) => tx.id == id);
+    if (idxTx == -1) return;
+    final tx = _transactions[idxTx];
+    if (tx.pagada) return;
+
+    // Modificar saldo real de la cuenta
+    if (tx.type == 'gasto') {
+      final idx = _accounts.indexWhere((acc) => acc.id == tx.accountId);
+      if (idx != -1) {
+        _accounts[idx].balance -= tx.amount;
+      }
+    } else if (tx.type == 'ingreso') {
+      final idx = _accounts.indexWhere((acc) => acc.id == tx.accountId);
+      if (idx != -1) {
+        _accounts[idx].balance += tx.amount;
+      }
+    } else if (tx.type == 'transferencia' && tx.toAccountId != null) {
+      final originIdx = _accounts.indexWhere((acc) => acc.id == tx.accountId);
+      final destIdx = _accounts.indexWhere((acc) => acc.id == tx.toAccountId);
+      if (originIdx != -1) {
+        _accounts[originIdx].balance -= tx.amount;
+      }
+      if (originIdx != -1 && destIdx != -1) {
+        final originAcc = _accounts[originIdx];
+        final destAcc = _accounts[destIdx];
+        final originCurrency = originAcc.currency ?? _selectedCurrency;
+        final destCurrency = destAcc.currency ?? _selectedCurrency;
+        
+        final amountConvertido = convertirMoneda(tx.amount, originCurrency, destCurrency);
+        _accounts[destIdx].balance += amountConvertido;
+      }
+    }
+
+    // Actualizar transacción a pagada = true, y cambiar su fecha a la de hoy o la elegida
+    _transactions[idxTx] = ModeloTransaccion(
+      id: tx.id,
+      title: tx.title,
+      description: tx.description,
+      amount: tx.amount,
+      category: tx.category,
+      date: fechaPago ?? DateTime.now(),
+      type: tx.type,
+      accountId: tx.accountId,
+      toAccountId: tx.toAccountId,
+      photoPath: tx.photoPath,
+      esProgramada: tx.esProgramada,
+      pagada: true,
+      recurrencia: tx.recurrencia,
+    );
+
+    // Si tiene recurrencia, generar la siguiente transacción programada para el futuro
+    if (tx.recurrencia != null && tx.recurrencia != 'una_vez') {
+      final proximaFecha = calcularProximaFecha(tx.date, tx.recurrencia!);
+      final proximaTx = ModeloTransaccion(
+        id: 'tx_${DateTime.now().millisecondsSinceEpoch + 1}',
+        title: tx.title,
+        description: tx.description,
+        amount: tx.amount,
+        category: tx.category,
+        date: proximaFecha,
+        type: tx.type,
+        accountId: tx.accountId,
+        toAccountId: tx.toAccountId,
+        photoPath: tx.photoPath,
+        esProgramada: true,
+        pagada: false,
+        recurrencia: tx.recurrencia,
+      );
+      _transactions.insert(0, proximaTx);
+    }
+
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await _saveAccountsToPrefs(prefs);
+    await _saveTransactionsToPrefs(prefs);
+
+    _notificarYSincronizar();
   }
 
   Future<void> _updateLocalTimestamp(SharedPreferences prefs) async {
@@ -857,7 +1044,7 @@ class EstadoApp extends ChangeNotifier {
     _savingsGoals.add(goal);
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await _saveSavingsGoalsToPrefs(prefs);
-    notifyListeners();
+    _notificarYSincronizar();
   }
 
   Future<void> updateSavingGoal(ModeloAhorro goal) async {
@@ -866,7 +1053,7 @@ class EstadoApp extends ChangeNotifier {
       _savingsGoals[idx] = goal;
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await _saveSavingsGoalsToPrefs(prefs);
-      notifyListeners();
+      _notificarYSincronizar();
     }
   }
 
@@ -874,7 +1061,7 @@ class EstadoApp extends ChangeNotifier {
     _savingsGoals.removeWhere((g) => g.id == id);
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await _saveSavingsGoalsToPrefs(prefs);
-    notifyListeners();
+    _notificarYSincronizar();
   }
 
   Future<void> addFundsToSavingGoal(String id, double amount) async {
@@ -883,7 +1070,7 @@ class EstadoApp extends ChangeNotifier {
       _savingsGoals[idx].currentAmount += amount;
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await _saveSavingsGoalsToPrefs(prefs);
-      notifyListeners();
+      _notificarYSincronizar();
     }
   }
 
@@ -904,14 +1091,14 @@ class EstadoApp extends ChangeNotifier {
     }
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await _saveBudgetsToPrefs(prefs);
-    notifyListeners();
+    _notificarYSincronizar();
   }
 
   Future<void> deleteBudget(String id) async {
     _budgets.removeWhere((b) => b.id == id);
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await _saveBudgetsToPrefs(prefs);
-    notifyListeners();
+    _notificarYSincronizar();
   }
 
   double obtenerGastoMesActual({String? categoria}) {
@@ -919,7 +1106,7 @@ class EstadoApp extends ChangeNotifier {
     
     double total = 0.0;
     for (var tx in _transactions) {
-      if (tx.type == 'gasto' && tx.date.year == now.year && tx.date.month == now.month) {
+      if (tx.pagada && tx.type == 'gasto' && tx.date.year == now.year && tx.date.month == now.month) {
         if (categoria == null || categoria == 'Global' || tx.category.toLowerCase() == categoria.toLowerCase()) {
           final acc = _accounts.firstWhere(
             (a) => a.id == tx.accountId,
@@ -933,7 +1120,7 @@ class EstadoApp extends ChangeNotifier {
     return total;
   }
 
-  Future<void> editAccount(String id, String name, String type, double balance, int gradientIndex, {String? customColorHex, String? customColorSecondaryHex, String? customColorThirdHex, double? stop1, double? stop2, double? stop3, bool useDarkText = false, String? currency}) async {
+  Future<void> editAccount(String id, String name, String type, double balance, int gradientIndex, {String? customColorHex, String? customColorSecondaryHex, String? customColorThirdHex, double? stop1, double? stop2, double? stop3, bool useDarkText = false, String? currency, bool contabilizable = true}) async {
     final idx = _accounts.indexWhere((acc) => acc.id == id);
     if (idx != -1) {
        _accounts[idx] = ModeloCuenta(
@@ -950,10 +1137,11 @@ class EstadoApp extends ChangeNotifier {
         stop3: stop3,
         useDarkText: useDarkText,
         currency: currency ?? _accounts[idx].currency,
+        contabilizable: contabilizable,
       );
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await _saveAccountsToPrefs(prefs);
-      notifyListeners();
+      _notificarYSincronizar();
     }
   }
 
@@ -967,7 +1155,7 @@ class EstadoApp extends ChangeNotifier {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await _saveAccountsToPrefs(prefs);
     await _saveTransactionsToPrefs(prefs);
-    notifyListeners();
+    _notificarYSincronizar();
     return true;
   }
 
@@ -979,6 +1167,9 @@ class EstadoApp extends ChangeNotifier {
     _categories.clear();
     _savingsGoals.clear();
     _hasCompletedOnboarding = false;
+    _biometricEnabled = false;
+    _pinEnabled = false;
+    _hashedPin = '';
 
     print('=== DEBUG ESTADO: clearAllData - Obteniendo SharedPreferences ===');
     final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -988,6 +1179,9 @@ class EstadoApp extends ChangeNotifier {
     await prefs.remove('app_transactions');
     await prefs.remove('app_categories');
     await prefs.remove('app_savings_goals');
+    await prefs.remove('app_biometric_enabled');
+    await prefs.remove('app_pin_enabled');
+    await prefs.remove('app_pin_code');
     
     print('=== DEBUG ESTADO: clearAllData - Notificando listeners ===');
     notifyListeners();
@@ -1007,6 +1201,128 @@ class EstadoApp extends ChangeNotifier {
     await clearAllData();
     print('=== DEBUG ESTADO: clearAllData completado ===');
   }
+
+  static final Map<String, IconData> galleryIcons = {
+    // Alimentos y Bebidas
+    'restaurant': Icons.restaurant_rounded,
+    'local_cafe': Icons.local_cafe_rounded,
+    'fastfood': Icons.fastfood_rounded,
+    'local_bar': Icons.local_bar_rounded,
+    'bakery_dining': Icons.bakery_dining_rounded,
+    'icecream': Icons.icecream_rounded,
+    'local_pizza': Icons.local_pizza_rounded,
+    'cake': Icons.cake_rounded,
+    'soup_kitchen': Icons.soup_kitchen_rounded,
+
+    // Compras y Retail
+    'shopping_cart': Icons.shopping_cart_rounded,
+    'shopping_bag': Icons.shopping_bag_rounded,
+    'store': Icons.store_rounded,
+    'sell': Icons.sell_rounded,
+    'checkroom': Icons.checkroom_rounded,
+    'local_mall': Icons.local_mall_rounded,
+    'loyalty': Icons.loyalty_rounded,
+    'storefront': Icons.storefront_rounded,
+    'local_offer': Icons.local_offer_rounded,
+    'outlet': Icons.outlet_rounded,
+
+    // Transporte y Viajes
+    'directions_car': Icons.directions_car_rounded,
+    'directions_bus': Icons.directions_bus_rounded,
+    'directions_subway': Icons.directions_subway_rounded,
+    'flight': Icons.flight_rounded,
+    'local_taxi': Icons.local_taxi_rounded,
+    'pedal_bike': Icons.pedal_bike_rounded,
+    'train': Icons.train_rounded,
+    'hotel': Icons.hotel_rounded,
+    'beach_access': Icons.beach_access_rounded,
+    'commute': Icons.commute_rounded,
+    'luggage': Icons.luggage_rounded,
+
+    // Servicios y Facturas
+    'electrical_services': Icons.electrical_services_rounded,
+    'water_drop': Icons.water_drop_rounded,
+    'router': Icons.router_rounded,
+    'tv': Icons.tv_rounded,
+    'phone_android': Icons.phone_android_rounded,
+    'bolt': Icons.bolt_rounded,
+    'lightbulb': Icons.lightbulb_rounded,
+    'wifi': Icons.wifi_rounded,
+    'gas_meter': Icons.gas_meter_rounded,
+    'power': Icons.power_rounded,
+
+    // Entretenimiento y Ocio
+    'sports_esports': Icons.sports_esports_rounded,
+    'movie': Icons.movie_rounded,
+    'celebration': Icons.celebration_rounded,
+    'music_note': Icons.music_note_rounded,
+    'sports_soccer': Icons.sports_soccer_rounded,
+    'palette': Icons.palette_rounded,
+    'casino': Icons.casino_rounded,
+    'theater_comedy': Icons.theater_comedy_rounded,
+    'brush': Icons.brush_rounded,
+    'confirmation_number': Icons.confirmation_number_rounded,
+
+    // Hogar y Familia
+    'home': Icons.home_rounded,
+    'pets': Icons.pets_rounded,
+    'child_care': Icons.child_care_rounded,
+    'family_restroom': Icons.family_restroom_rounded,
+    'handyman': Icons.handyman_rounded,
+    'chair': Icons.chair_rounded,
+    'house': Icons.house_rounded,
+    'grass': Icons.grass_rounded,
+    'cleaning_services': Icons.cleaning_services_rounded,
+    'weekend': Icons.weekend_rounded,
+
+    // Educación y Trabajo
+    'school': Icons.school_rounded,
+    'work': Icons.work_rounded,
+    'laptop': Icons.laptop_chromebook_rounded,
+    'laptop_chromebook': Icons.laptop_chromebook_rounded,
+    'business_center': Icons.business_center_rounded,
+    'menu_book': Icons.menu_book_rounded,
+    'assignment': Icons.assignment_rounded,
+    'science': Icons.science_rounded,
+    'psychology': Icons.psychology_rounded,
+    'draw': Icons.draw_rounded,
+
+    // Salud y Bienestar
+    'local_hospital': Icons.local_hospital_rounded,
+    'fitness_center': Icons.fitness_center_rounded,
+    'medication': Icons.medication_rounded,
+    'spa': Icons.spa_rounded,
+    'self_improvement': Icons.self_improvement_rounded,
+    'healing': Icons.healing_rounded,
+    'medical_services': Icons.medical_services_rounded,
+    'face': Icons.face_rounded,
+    'masks': Icons.masks_rounded,
+
+    // Finanzas
+    'savings': Icons.savings_rounded,
+    'payments': Icons.payments_rounded,
+    'trending_up': Icons.trending_up_rounded,
+    'account_balance': Icons.account_balance_rounded,
+    'monetization_on': Icons.monetization_on_rounded,
+    'show_chart': Icons.show_chart_rounded,
+    'attach_money': Icons.attach_money_rounded,
+    'wallet': Icons.wallet_rounded,
+    'percent': Icons.percent_rounded,
+    'credit_card': Icons.credit_card_rounded,
+
+    // Otros y Varios
+    'category': Icons.category_rounded,
+    'card_giftcard': Icons.card_giftcard_rounded,
+    'local_gas_station': Icons.local_gas_station_rounded,
+    'build': Icons.build_rounded,
+    'volunteer_activism': Icons.volunteer_activism_rounded,
+    'redeem': Icons.redeem_rounded,
+    'verified_user': Icons.verified_user_rounded,
+    'clean_hands': Icons.clean_hands_rounded,
+    'vpn_key': Icons.vpn_key_rounded,
+    'favorite': Icons.favorite_rounded,
+    'remove_circle_outline': Icons.remove_circle_outline_rounded,
+  };
 
   static final List<ModeloCategoria> categoriasPorDefecto = [
     // ALIMENTACIÓN (Comida)
@@ -1099,7 +1415,7 @@ class EstadoApp extends ChangeNotifier {
 
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await _saveCategoriesToPrefs(prefs);
-    notifyListeners();
+    _notificarYSincronizar();
   }
 
   Future<void> editCategory(String id, String name, String? parentId, String iconCode, String hexColor) async {
@@ -1114,7 +1430,7 @@ class EstadoApp extends ChangeNotifier {
       );
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await _saveCategoriesToPrefs(prefs);
-      notifyListeners();
+      _notificarYSincronizar();
     }
   }
 
@@ -1123,20 +1439,34 @@ class EstadoApp extends ChangeNotifier {
 
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await _saveCategoriesToPrefs(prefs);
-    notifyListeners();
+    _notificarYSincronizar();
   }
 
-  @override
-  void notifyListeners() {
-    super.notifyListeners();
+  /// Notifica la UI y programa sincronizacion con la nube.
+  /// Usar SOLO en metodos que modifican datos persistentes.
+  void _notificarYSincronizar() {
+    notifyListeners();
+    _programarSubidaANube();
+  }
+
+  /// Programa una subida a Firestore con debounce de 3 segundos.
+  /// Seguro de llamar multiples veces: agrupa las llamadas.
+  void _programarSubidaANube() {
+    if (_isSyncing) return;
     final user = ServicioAutenticacion().currentUser;
-    if (user != null && !user.uid.startsWith('demo_') && _accounts.isNotEmpty) {
-      _subirDatosANube(user.uid);
-    }
+    if (user == null || user.uid.startsWith('demo_') || _accounts.isEmpty) return;
+    
+    _debounceSubida?.cancel();
+    _debounceSubida = Timer(const Duration(seconds: 3), () {
+      if (!_isSyncing) {
+        _subirDatosANube(user.uid);
+      }
+    });
   }
 
   Future<bool> sincronizarConNube(String uid) async {
     activarEscuchaTiempoReal(uid);
+    _isSyncing = true; // Bloquear re-subida durante sincronizacion inicial
     try {
       final docRef = FirebaseFirestore.instance.collection('usuarios').doc(uid);
       final docSnap = await docRef.get().timeout(const Duration(seconds: 4));
@@ -1226,6 +1556,8 @@ class EstadoApp extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error en la sincronizacion con la nube: $e');
       return false;
+    } finally {
+      _isSyncing = false; // Siempre desbloquear al terminar
     }
   }
 
@@ -1268,20 +1600,22 @@ class EstadoApp extends ChangeNotifier {
         .doc(uid)
         .snapshots()
         .listen((docSnap) async {
-      if (docSnap.exists) {
+      try {
+        if (!docSnap.exists) return;
         final data = docSnap.data();
-        if (data != null) {
-          final dynamic cloudTimestamp = data['ultimaActualizacion'];
-          if (cloudTimestamp != null && cloudTimestamp is Timestamp) {
-            final int cloudMillis = cloudTimestamp.millisecondsSinceEpoch;
-            if (_lastLocalUpdateMillis > cloudMillis + 2000) {
-              return;
-            }
-            if (_lastLocalUpdateMillis == cloudMillis) {
-              return;
-            }
-          }
+        if (data == null) return;
 
+        // Verificar timestamps ANTES de bloquear
+        final dynamic cloudTimestamp = data['ultimaActualizacion'];
+        if (cloudTimestamp != null && cloudTimestamp is Timestamp) {
+          final int cloudMillis = cloudTimestamp.millisecondsSinceEpoch;
+          if (_lastLocalUpdateMillis > cloudMillis + 2000) return;
+          if (_lastLocalUpdateMillis == cloudMillis) return;
+        }
+
+        // Solo ahora bloquear la sincronizacion (despues de las comprobaciones de early-return)
+        _isSyncing = true;
+        try {
           if (data['esTemaOscuro'] != null) {
             _esTemaOscuro = data['esTemaOscuro'] as bool;
           }
@@ -1341,10 +1675,16 @@ class EstadoApp extends ChangeNotifier {
             await prefs.setInt('app_last_local_update_millis', _lastLocalUpdateMillis);
           }
 
-          notifyListeners();
+          notifyListeners(); // Ya no hay override, es seguro llamar directamente
+        } finally {
+          _isSyncing = false; // SIEMPRE desbloquear, incluso si hay error
         }
+      } catch (e) {
+        _isSyncing = false;
+        debugPrint('Error en la escucha en tiempo real: $e');
       }
     }, onError: (error) {
+      _isSyncing = false;
       debugPrint('Error en la escucha en tiempo real: $error');
     });
   }

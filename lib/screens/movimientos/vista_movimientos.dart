@@ -28,36 +28,7 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
     'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'
   ];
 
-  static final Map<String, IconData> _galleryIcons = {
-    'restaurant': Icons.restaurant_rounded,
-    'shopping_cart': Icons.shopping_cart_rounded,
-    'directions_car': Icons.directions_car_rounded,
-    'work': Icons.work_rounded,
-    'electrical_services': Icons.electrical_services_rounded,
-    'sports_esports': Icons.sports_esports_rounded,
-    'category': Icons.category_rounded,
-    'movie': Icons.movie_rounded,
-    'local_hospital': Icons.local_hospital_rounded,
-    'card_giftcard': Icons.card_giftcard_rounded,
-    'home': Icons.home_rounded,
-    'flight': Icons.flight_rounded,
-    'pets': Icons.pets_rounded,
-    'school': Icons.school_rounded,
-    'fitness_center': Icons.fitness_center_rounded,
-    'local_cafe': Icons.local_cafe_rounded,
-    'savings': Icons.savings_rounded,
-    'phone_android': Icons.phone_android_rounded,
-    'celebration': Icons.celebration_rounded,
-    'water_drop': Icons.water_drop_rounded,
-    'router': Icons.router_rounded,
-    'tv': Icons.tv_rounded,
-    'local_gas_station': Icons.local_gas_station_rounded,
-    'build': Icons.build_rounded,
-    'payments': Icons.payments_rounded,
-    'laptop': Icons.laptop_chromebook_rounded,
-    'trending_up': Icons.trending_up_rounded,
-    'directions_bus': Icons.directions_bus_rounded,
-  };
+  static final Map<String, IconData> _galleryIcons = EstadoApp.galleryIcons;
 
   String _formatCurrency(double amount, String currency, {bool showSign = false}) {
     if (_hideBalances) {
@@ -565,6 +536,8 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
     for (var tx in todasLasTxs) {
       saldoHistoricoTxs[tx.id] = runningBalance;
       
+      if (!tx.pagada) continue; // Ignorar transacciones pendientes en la línea temporal de saldo real
+      
       if (_selectedAccountFilter == null) {
         if (tx.type == 'ingreso') {
           runningBalance -= tx.amount;
@@ -583,6 +556,7 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
     // Obtener las categorias unicas que tienen transacciones en el periodo actual
     final Set<String> categoriasUsadas = {};
     for (var tx in estadoApp.transactions) {
+      if (!tx.pagada) continue;
       final matchesMonth = tx.date.month == _selectedFilterMonth;
       final matchesYear = tx.date.year == _selectedFilterYear;
       bool matchesAccount = true;
@@ -603,6 +577,7 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
 
     List<ModeloTransaccion> txsFiltradas = estadoApp.transactions.where((tx) {
       if (tx.esRegistroApertura) return false;
+      if (!tx.pagada) return false; // HIDE unpaid planned transactions
       final matchesMonth = tx.date.month == _selectedFilterMonth;
       final matchesYear = tx.date.year == _selectedFilterYear;
       bool matchesAccount = true;
@@ -696,6 +671,7 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
                     final fechaDia = DateTime(parts[0], parts[1], parts[2]);
 
                     double netoDia = transaccionesDia.fold(0.0, (sum, tx) {
+                      if (!tx.pagada) return sum; // Ignorar transacciones pendientes en el neto del día
                       if (_selectedAccountFilter == null) {
                         if (tx.type == 'ingreso') return sum + tx.amount;
                         if (tx.type == 'gasto') return sum - tx.amount;
@@ -1346,16 +1322,23 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                tx.title,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: colorTexto,
-                                  letterSpacing: -0.2,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      tx.title,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: colorTexto,
+                                        letterSpacing: -0.2,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: 2),
                               Text(
@@ -1372,19 +1355,24 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
                           ),
                         ),
                         Expanded(
-                          flex: 2,
-                          child: Text(
-                            _formatCurrency(isIncome ? tx.amount : (isTransfer ? tx.amount : -tx.amount), currency, showSign: isIncome),
-                            textAlign: TextAlign.right,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              color: isIncome
-                                  ? const Color(0xFF10B981)
-                                  : (isTransfer ? const Color(0xFF3B82F6) : const Color(0xFFEF4444)),
-                              letterSpacing: -0.2,
-                              fontFeatures: const [FontFeature.tabularFigures()],
-                            ),
+                          flex: 3,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                _formatCurrency(isIncome ? tx.amount : (isTransfer ? tx.amount : -tx.amount), currency, showSign: isIncome),
+                                textAlign: TextAlign.right,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: isIncome
+                                      ? const Color(0xFF10B981)
+                                      : (isTransfer ? const Color(0xFF3B82F6) : const Color(0xFFEF4444)),
+                                  letterSpacing: -0.2,
+                                  fontFeatures: const [FontFeature.tabularFigures()],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],

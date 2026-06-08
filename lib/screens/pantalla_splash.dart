@@ -5,6 +5,7 @@ import '../services/servicio_autenticacion.dart';
 import '../services/estado_app.dart';
 import 'pantalla_login.dart';
 import 'pantalla_principal.dart';
+import 'pantalla_bloqueo.dart';
 import 'onboarding/pantalla_idioma.dart';
 
 class PantallaSplash extends StatefulWidget {
@@ -40,15 +41,19 @@ class _PantallaSplashState extends State<PantallaSplash> {
     final estadoApp = Provider.of<EstadoApp>(context, listen: false);
 
     if (servicioAuth.currentUser != null) {
-      if (estadoApp.hasCompletedOnboarding) {
+      final Widget target = estadoApp.hasCompletedOnboarding
+          ? const PantallaPrincipal()
+          : const PantallaIdioma();
+
+      if (estadoApp.biometricEnabled || estadoApp.pinEnabled) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const PantallaPrincipal()),
+          MaterialPageRoute(builder: (_) => PantallaBloqueo(targetScreen: target)),
         );
       } else {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const PantallaIdioma()),
+          MaterialPageRoute(builder: (_) => target),
         );
       }
     } else {

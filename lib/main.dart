@@ -1,8 +1,12 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:ui';
 import 'package:app_gastos/http_overrides.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'firebase_options.dart';
@@ -10,28 +14,71 @@ import 'services/estado_app.dart';
 import 'screens/pantalla_splash.dart';
 
 void main() async {
-  HttpOverrides.global = MyHttpOverrides();
-  WidgetsFlutterBinding.ensureInitialized();
+  // Capturar TODOS los errores async no manejados para evitar crashes silenciosos
+  runZonedGuarded(() async {
+    HttpOverrides.global = MyHttpOverrides();
+    WidgetsFlutterBinding.ensureInitialized();
 
-  SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+    // Capturar errores del framework Flutter (widgets, rendering, etc.)
+    FlutterError.onError = (FlutterErrorDetails details) {
+      debugPrint('============================================');
+      debugPrint('ERROR FLUTTER CAPTURADO:');
+      debugPrint(details.exceptionAsString());
+      debugPrint('${details.stack}');
+      debugPrint('============================================');
+    };
 
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
+    // Capturar errores de plataforma (Dart VM, isolates)
+    PlatformDispatcher.instance.onError = (error, stack) {
+      debugPrint('============================================');
+      debugPrint('ERROR PLATAFORMA CAPTURADO:');
+      debugPrint('$error');
+      debugPrint('$stack');
+      debugPrint('============================================');
+      return true; // true = error manejado, no crashear
+    };
+
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      
+      // Limpiar la persistencia corrupta acumulada por la recursión anterior una sola vez
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final backlogCleared = prefs.getBool('firestore_backlog_cleared_v1') ?? false;
+        if (!backlogCleared) {
+          debugPrint('Limpiando base de datos local de Firestore para sanear el backlog corrupto...');
+          await FirebaseFirestore.instance.clearPersistence();
+          await prefs.setBool('firestore_backlog_cleared_v1', true);
+          debugPrint('Base de datos local saneada con éxito.');
+        }
+      } catch (persistErr) {
+        debugPrint('Error al limpiar persistencia de Firestore: $persistErr');
+      }
+    } catch (e) {
+      debugPrint('Firebase no se pudo inicializar. La aplicacion funcionara en modo local offline.');
+    }
+
+    runApp(
+      ChangeNotifierProvider(
+        create: (_) => EstadoApp(),
+        child: const GastosApp(),
+      ),
     );
-  } catch (e) {
-    debugPrint('Firebase no se pudo inicializar. La aplicacion funcionara en modo local offline.');
-  }
-
-  runApp(
-    ChangeNotifierProvider(
-      create: (_) => EstadoApp(),
-      child: const GastosApp(),
-    ),
-  );
+  }, (error, stack) {
+    // Capturar errores async no manejados (Futures sin try-catch, etc.)
+    debugPrint('============================================');
+    debugPrint('ERROR ASYNC NO MANEJADO:');
+    debugPrint('$error');
+    debugPrint('$stack');
+    debugPrint('============================================');
+  });
 }
 
 class GastosApp extends StatelessWidget {

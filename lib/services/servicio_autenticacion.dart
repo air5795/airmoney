@@ -108,13 +108,32 @@ class ServicioAutenticacion {
 
   Future<void> checkInitialSession() async {
     if (_isFirebaseInitialized) {
-      final User? user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        _currentUser = UsuarioApp.fromFirebase(user);
-        _userStreamController.add(_currentUser);
-      } else {
-        _currentUser = null;
-        _userStreamController.add(null);
+      try {
+        // Esperar el primer evento de authStateChanges para garantizar que se restaure la sesión local
+        final User? user = await FirebaseAuth.instance
+            .authStateChanges()
+            .first
+            .timeout(
+              const Duration(seconds: 2),
+              onTimeout: () => FirebaseAuth.instance.currentUser,
+            );
+        if (user != null) {
+          _currentUser = UsuarioApp.fromFirebase(user);
+          _userStreamController.add(_currentUser);
+        } else {
+          _currentUser = null;
+          _userStreamController.add(null);
+        }
+      } catch (e) {
+        // Fallback en caso de error o timeout
+        final User? user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          _currentUser = UsuarioApp.fromFirebase(user);
+          _userStreamController.add(_currentUser);
+        } else {
+          _currentUser = null;
+          _userStreamController.add(null);
+        }
       }
     } else {
       _currentUser = null;

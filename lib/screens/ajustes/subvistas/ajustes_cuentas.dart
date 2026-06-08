@@ -37,6 +37,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
   double _selectedAccountStop3 = 1.0;
   bool _useCustomColorForAccount = false;
   bool _selectedAccountUseDarkText = false;
+  bool _selectedAccountContabilizable = true;
 
   Color _parseHexColor(String? hexStr, Color defaultColor) {
     if (hexStr == null || hexStr.isEmpty) return defaultColor;
@@ -198,6 +199,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
         stop3: _useCustomColorForAccount ? _selectedAccountStop3 : null,
         useDarkText: _selectedAccountUseDarkText,
         currency: _selectedAccountCurrency,
+        contabilizable: _selectedAccountContabilizable,
       );
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -219,6 +221,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
         stop3: _useCustomColorForAccount ? _selectedAccountStop3 : null,
         useDarkText: _selectedAccountUseDarkText,
         currency: _selectedAccountCurrency,
+        contabilizable: _selectedAccountContabilizable,
       );
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -232,6 +235,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
       _isCreatingOrEditingAccount = false;
       _selectedAccountToEdit = null;
       _selectedAccountUseDarkText = false;
+      _selectedAccountContabilizable = true;
     });
   }
 
@@ -350,6 +354,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
               _selectedAccountStop3 = 1.0;
               _useCustomColorForAccount = false;
               _selectedAccountUseDarkText = false;
+              _selectedAccountContabilizable = true;
             });
           },
           child: ClipRRect(
@@ -580,14 +585,17 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
                                 ),
                               ),
                             ),
-                            Text(
-                              '${EstadoApp.getSymbolOfCurrency(acc.currency ?? estadoApp.selectedCurrency)} ${acc.balance.toStringAsFixed(2)}',
-                              style: TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w900,
-                                color: colorTexto,
-                                letterSpacing: -0.3,
-                                fontFeatures: const [FontFeature.tabularFigures()],
+                            Flexible(
+                              child: Text(
+                                '${EstadoApp.getSymbolOfCurrency(acc.currency ?? estadoApp.selectedCurrency)} ${acc.balance.toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w900,
+                                  color: colorTexto,
+                                  letterSpacing: -0.3,
+                                  fontFeatures: const [FontFeature.tabularFigures()],
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
@@ -595,190 +603,190 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
                       ],
                     ),
                   ),
-                  Row(
-                    children: [
-                      InteractiveScale(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => VistaDetalleCuenta(account: acc),
-                            ),
-                          );
-                        },
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: esOscuro ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.08),
-                              width: 1.0,
-                            ),
-                          ),
-                          child: Icon(
-                            Icons.visibility_rounded,
-                            color: colorTexto.withValues(alpha: 0.8),
-                            size: 16,
-                          ),
-                        ),
+                  PopupMenuButton<String>(
+                    tooltip: 'Opciones',
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      side: BorderSide(
+                        color: esOscuro ? const Color(0xFF1E1E1E) : const Color(0xFFCBD5E1),
+                        width: 1.0,
                       ),
-                      const SizedBox(width: 8),
-                      InteractiveScale(
-                        onTap: () {
-                          // Asignar texto a los controladores fuera de setState para prevenir conflictos de listeners recurrentes
-                          _accountNameController.text = acc.name;
-                          _accountBalanceController.text = acc.balance.toStringAsFixed(2);
-
-                          setState(() {
-                            _selectedAccountToEdit = acc;
-                            _isCreatingOrEditingAccount = true;
-                            
-                            final typeUpper = acc.type.toUpperCase();
-                            if (typeUpper.contains('AHORRO')) {
-                              _selectedAccountType = 'Ahorros';
-                            } else if (typeUpper.contains('DEBITO') || typeUpper.contains('DÉBITO')) {
-                              _selectedAccountType = 'Débito';
-                            } else if (typeUpper.contains('CREDITO') || typeUpper.contains('CRÉDITO')) {
-                              _selectedAccountType = 'Crédito';
-                            } else if (typeUpper.contains('EFECTIVO')) {
-                              _selectedAccountType = 'Efectivo';
-                            } else if (typeUpper.contains('INVERSION') || typeUpper.contains('INVERSIÓN')) {
-                              _selectedAccountType = 'Inversión';
-                            } else {
-                              _selectedAccountType = 'Ahorros';
-                            }
-                            
-                            _selectedAccountCurrency = acc.currency ?? estadoApp.selectedCurrency;
-                            _selectedAccountGradientIdx = acc.gradientIndex;
-                            _selectedAccountColorHex = acc.customColorHex ?? '#B3E5FC';
-                            _selectedAccountSecondaryColorHex = acc.customColorSecondaryHex ?? '#E2E8F0';
-                            _selectedAccountThirdColorHex = acc.customColorThirdHex ?? '#FFFFFF';
-                            _selectedAccountStop1 = acc.stop1 ?? 0.0;
-                            _selectedAccountStop2 = acc.stop2 ?? 0.5;
-                            _selectedAccountStop3 = acc.stop3 ?? 1.0;
-                            _useCustomColorForAccount = acc.customColorHex != null;
-                            _selectedAccountUseDarkText = acc.useDarkText ?? false;
-                          });
-                        },
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: esOscuro ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.08),
-                              width: 1.0,
-                            ),
+                    ),
+                    color: esOscuro ? const Color(0xFF0A0A0A) : Colors.white,
+                    elevation: 6,
+                    onSelected: (value) async {
+                      if (value == 'ver') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => VistaDetalleCuenta(account: acc),
                           ),
-                          child: Icon(
-                            Icons.edit_rounded,
-                            color: colorTexto.withValues(alpha: 0.8),
-                            size: 16,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      InteractiveScale(
-                        onTap: () async {
-                          final messenger = ScaffoldMessenger.of(context);
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              backgroundColor: esOscuro ? const Color(0xFF0A0A0A) : Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(24),
-                                side: BorderSide(
-                                  color: esOscuro ? const Color(0xFF1E1E1E) : const Color(0xFFCBD5E1),
-                                  width: 1.0,
-                                ),
-                              ),
-                              title: Text(
-                                'Eliminar Cuenta',
-                                style: TextStyle(
-                                  color: esOscuro ? Colors.white : const Color(0xFF0F172A),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              content: Text(
-                                '¿Está seguro de que desea eliminar la cuenta "${acc.name}"? Esta acción eliminará todos sus movimientos y no se puede deshacer.',
-                                style: TextStyle(
-                                  color: esOscuro ? Colors.white.withValues(alpha: 0.7) : const Color(0xFF0F172A).withValues(alpha: 0.7),
-                                ),
-                              ),
-                              actions: [
-                                InteractiveScale(
-                                  onTap: () => Navigator.pop(context, false),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                    child: Text(
-                                      'Cancelar',
-                                      style: TextStyle(
-                                        color: esOscuro ? Colors.white.withValues(alpha: 0.6) : const Color(0xFF0F172A).withValues(alpha: 0.6),
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                InteractiveScale(
-                                  onTap: () => Navigator.pop(context, true),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                    decoration: BoxDecoration(
-                                      color: Colors.redAccent,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: const Text(
-                                      'Eliminar',
-                                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
+                        );
+                      } else if (value == 'editar') {
+                        // Asignar texto a los controladores fuera de setState para prevenir conflictos de listeners recurrentes
+                        _accountNameController.text = acc.name;
+                        _accountBalanceController.text = acc.balance.toStringAsFixed(2);
 
-                          if (confirm == true) {
-                            final success = await estadoApp.deleteAccount(acc.id);
-                            if (!mounted) return;
-                            if (!success) {
-                              messenger.showSnackBar(
-                                const SnackBar(
-                                  content: Text('No es posible eliminar la última cuenta activa.'),
-                                  backgroundColor: Colors.redAccent,
-                                ),
-                              );
-                            } else {
-                              messenger.showSnackBar(
-                                const SnackBar(
-                                  content: Text('Cuenta eliminada correctamente.'),
-                                  backgroundColor: Color(0xFF34C759),
-                                ),
-                              );
-                            }
+                        setState(() {
+                          _selectedAccountToEdit = acc;
+                          _isCreatingOrEditingAccount = true;
+                          
+                          final typeUpper = acc.type.toUpperCase();
+                          if (typeUpper.contains('AHORRO')) {
+                            _selectedAccountType = 'Ahorros';
+                          } else if (typeUpper.contains('DEBITO') || typeUpper.contains('DÉBITO')) {
+                            _selectedAccountType = 'Débito';
+                          } else if (typeUpper.contains('CREDITO') || typeUpper.contains('CRÉDITO')) {
+                            _selectedAccountType = 'Crédito';
+                          } else if (typeUpper.contains('EFECTIVO')) {
+                            _selectedAccountType = 'Efectivo';
+                          } else if (typeUpper.contains('INVERSION') || typeUpper.contains('INVERSIÓN')) {
+                            _selectedAccountType = 'Inversión';
+                          } else {
+                            _selectedAccountType = 'Ahorros';
                           }
-                        },
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: Colors.redAccent.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.redAccent.withValues(alpha: 0.2),
-                              width: 1.0,
+                          
+                          _selectedAccountCurrency = acc.currency ?? estadoApp.selectedCurrency;
+                          _selectedAccountGradientIdx = acc.gradientIndex;
+                          _selectedAccountColorHex = acc.customColorHex ?? '#B3E5FC';
+                          _selectedAccountSecondaryColorHex = acc.customColorSecondaryHex ?? '#E2E8F0';
+                          _selectedAccountThirdColorHex = acc.customColorThirdHex ?? '#FFFFFF';
+                          _selectedAccountStop1 = acc.stop1 ?? 0.0;
+                          _selectedAccountStop2 = acc.stop2 ?? 0.5;
+                          _selectedAccountStop3 = acc.stop3 ?? 1.0;
+                          _useCustomColorForAccount = acc.customColorHex != null;
+                          _selectedAccountUseDarkText = acc.useDarkText ?? false;
+                          _selectedAccountContabilizable = acc.contabilizable ?? true;
+                        });
+                      } else if (value == 'eliminar') {
+                        final messenger = ScaffoldMessenger.of(context);
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            backgroundColor: esOscuro ? const Color(0xFF0A0A0A) : Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24),
+                              side: BorderSide(
+                                color: esOscuro ? const Color(0xFF1E1E1E) : const Color(0xFFCBD5E1),
+                                width: 1.0,
+                              ),
                             ),
+                            title: Text(
+                              'Eliminar Cuenta',
+                              style: TextStyle(
+                                color: esOscuro ? Colors.white : const Color(0xFF0F172A),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            content: Text(
+                              '¿Está seguro de que desea eliminar la cuenta "${acc.name}"? Esta acción eliminará todos sus movimientos y no se puede deshacer.',
+                              style: TextStyle(
+                                color: esOscuro ? Colors.white.withValues(alpha: 0.7) : const Color(0xFF0F172A).withValues(alpha: 0.7),
+                              ),
+                            ),
+                            actions: [
+                              InteractiveScale(
+                                onTap: () => Navigator.pop(context, false),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                  child: Text(
+                                    'Cancelar',
+                                    style: TextStyle(
+                                      color: esOscuro ? Colors.white.withValues(alpha: 0.6) : const Color(0xFF0F172A).withValues(alpha: 0.6),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              InteractiveScale(
+                                onTap: () => Navigator.pop(context, true),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.redAccent,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Text(
+                                    'Eliminar',
+                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          child: const Icon(
-                            Icons.delete_outline_rounded,
-                            color: Colors.redAccent,
-                            size: 16,
-                          ),
+                        );
+
+                        if (confirm == true) {
+                          final success = await estadoApp.deleteAccount(acc.id);
+                          if (!mounted) return;
+                          if (!success) {
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text('No es posible eliminar la última cuenta activa.'),
+                                backgroundColor: Colors.redAccent,
+                              ),
+                            );
+                          } else {
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text('Cuenta eliminada correctamente.'),
+                                backgroundColor: Color(0xFF34C759),
+                              ),
+                            );
+                          }
+                        }
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem<String>(
+                        value: 'ver',
+                        child: Row(
+                          children: [
+                            Icon(Icons.visibility_rounded, color: colorTexto.withValues(alpha: 0.8), size: 18),
+                            const SizedBox(width: 12),
+                            Text('Ver detalle', style: TextStyle(color: colorTexto, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'editar',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_rounded, color: colorTexto.withValues(alpha: 0.8), size: 18),
+                            const SizedBox(width: 12),
+                            Text('Editar cuenta', style: TextStyle(color: colorTexto, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuDivider(height: 1),
+                      PopupMenuItem<String>(
+                        value: 'eliminar',
+                        child: const Row(
+                          children: [
+                            Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 18),
+                            SizedBox(width: 12),
+                            Text('Eliminar', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                          ],
                         ),
                       ),
                     ],
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: esOscuro ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.08),
+                          width: 1.0,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.more_vert_rounded,
+                        color: colorTexto.withValues(alpha: 0.7),
+                        size: 20,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -1742,6 +1750,43 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
               onChanged: (val) {
                 setState(() {
                   _selectedAccountUseDarkText = val;
+                });
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'INCLUIR EN EL BALANCE TOTAL',
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                    color: esOscuro ? Colors.white.withValues(alpha: 0.4) : const Color(0xFF0F172A).withValues(alpha: 0.4),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'El saldo de esta cuenta sumará al total global',
+                  style: TextStyle(
+                    fontSize: 8.5,
+                    color: esOscuro ? Colors.white.withValues(alpha: 0.3) : const Color(0xFF0F172A).withValues(alpha: 0.35),
+                  ),
+                ),
+              ],
+            ),
+            Switch.adaptive(
+              value: _selectedAccountContabilizable,
+              activeThumbColor: colorPrincipal,
+              onChanged: (val) {
+                setState(() {
+                  _selectedAccountContabilizable = val;
                 });
               },
             ),

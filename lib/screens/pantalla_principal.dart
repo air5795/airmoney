@@ -8,6 +8,7 @@ import 'home/vista_inicio.dart';
 import 'movimientos/vista_movimientos.dart';
 import 'estadisticas/vista_estadisticas.dart';
 import 'ahorro/vista_ahorro.dart';
+import 'pantalla_bloqueo.dart';
 
 class PantallaPrincipal extends StatefulWidget {
   const PantallaPrincipal({super.key});
@@ -16,8 +17,12 @@ class PantallaPrincipal extends StatefulWidget {
   State<PantallaPrincipal> createState() => _PantallaPrincipalState();
 }
 
-class _PantallaPrincipalState extends State<PantallaPrincipal> {
+class _PantallaPrincipalState extends State<PantallaPrincipal> with WidgetsBindingObserver {
   final ServicioAutenticacion _servicioAuth = ServicioAutenticacion();
+  late PageController _pageController;
+
+  DateTime? _backgroundTime;
+  bool _isLockScreenShowing = false;
 
   void _showAddTransactionSheet({bool iniciarConVoz = false}) {
     showModalBottomSheet(
@@ -31,8 +36,10 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    final estadoApp = Provider.of<EstadoApp>(context, listen: false);
+    _pageController = PageController(initialPage: estadoApp.selectedDockIndex);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final estadoApp = Provider.of<EstadoApp>(context, listen: false);
       final authUser = _servicioAuth.currentUser;
       if (authUser != null) {
         estadoApp.sincronizarConNube(authUser.uid);
@@ -41,28 +48,46 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   }
 
   @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    final estadoApp = Provider.of<EstadoApp>(context, listen: false);
+    
+    if (!estadoApp.biometricEnabled && !estadoApp.pinEnabled) return;
+    
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      _backgroundTime ??= DateTime.now();
+    } else if (state == AppLifecycleState.resumed) {
+      if (_backgroundTime != null) {
+        final elapsed = DateTime.now().difference(_backgroundTime!);
+        _backgroundTime = null; // Reiniciar
+        
+        if (elapsed.inSeconds >= 30 && !_isLockScreenShowing && _servicioAuth.currentUser != null) {
+          _isLockScreenShowing = true;
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const PantallaBloqueo(popOnSuccess: true),
+            ),
+          ).then((_) {
+            _isLockScreenShowing = false;
+          });
+        }
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final estadoApp = Provider.of<EstadoApp>(context);
     final esOscuro = estadoApp.esTemaOscuro;
     final colorFondo = esOscuro ? const Color(0xFF000000) : const Color(0xFFF0F2F5);
-
-    Widget cuerpoVista;
-    switch (estadoApp.selectedDockIndex) {
-      case 0:
-        cuerpoVista = const VistaInicio();
-        break;
-      case 1:
-        cuerpoVista = const VistaMovimientos();
-        break;
-      case 2:
-        cuerpoVista = const VistaEstadisticas();
-        break;
-      case 3:
-        cuerpoVista = const VistaAhorro();
-        break;
-      default:
-        cuerpoVista = const VistaInicio();
-    }
 
     final size = MediaQuery.of(context).size;
 
@@ -94,12 +119,29 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             ),
 
             SafeArea(
-              child: cuerpoVista,
+              child: PageView(
+                controller: _pageController,
+                onPageChanged: (idx) {
+                  estadoApp.selectedDockIndex = idx;
+                },
+                physics: const BouncingScrollPhysics(),
+                children: const [
+                  VistaInicio(),
+                  VistaMovimientos(),
+                  VistaEstadisticas(),
+                  VistaAhorro(),
+                ],
+              ),
             ),
             DockLiquidGlass(
               selectedIndex: estadoApp.selectedDockIndex,
               onIndexSelected: (idx) {
                 estadoApp.selectedDockIndex = idx;
+                _pageController.animateToPage(
+                  idx,
+                  duration: const Duration(milliseconds: 450),
+                  curve: Curves.fastOutSlowIn,
+                );
               },
               onAddPressed: _showAddTransactionSheet,
               onAddLongPressed: () => _showAddTransactionSheet(iniciarConVoz: true),

@@ -32,6 +32,18 @@ class _AjustesTipoCambioState extends State<AjustesTipoCambio> {
     'INR': 'Rupia india',
   };
 
+  final Map<String, String> _banderasMonedas = {
+    'BOB': '🇧🇴',
+    'MXN': '🇲🇽',
+    'USD': '🇺🇸',
+    'EUR': '🇪🇺',
+    'GBP': '🇬🇧',
+    'JPY': '🇯🇵',
+    'CNY': '🇨🇳',
+    'KRW': '🇰🇷',
+    'INR': '🇮🇳',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -103,6 +115,7 @@ class _AjustesTipoCambioState extends State<AjustesTipoCambio> {
 
     final String monedaPrincipal = estadoApp.selectedCurrency;
     final String simboloPrincipal = EstadoApp.getSymbolOfCurrency(monedaPrincipal);
+    final String banderaPrincipal = _banderasMonedas[monedaPrincipal] ?? '';
 
     final todasMonedas = ['BOB', 'MXN', 'USD', 'EUR', 'GBP', 'JPY', 'CNY', 'KRW', 'INR'];
     final monedasSecundarias = todasMonedas.where((m) => m != monedaPrincipal).toList();
@@ -201,7 +214,7 @@ class _AjustesTipoCambioState extends State<AjustesTipoCambio> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Tu moneda principal es $monedaPrincipal ($simboloPrincipal). A continuacion, define el valor referencial de cada divisa extranjera respecto a ella.',
+                      'Tu moneda principal es $banderaPrincipal $monedaPrincipal ($simboloPrincipal). A continuacion, define el valor referencial de cada divisa extranjera respecto a ella.',
                       style: TextStyle(
                         fontSize: 11,
                         height: 1.4,
@@ -225,6 +238,7 @@ class _AjustesTipoCambioState extends State<AjustesTipoCambio> {
             final moneda = monedasSecundarias[index];
             final nombreMoneda = _nombresMonedas[moneda] ?? moneda;
             final simboloMoneda = EstadoApp.getSymbolOfCurrency(moneda);
+            final banderaMoneda = _banderasMonedas[moneda] ?? '';
             final controller = _controllers[moneda];
 
             return Padding(
@@ -262,11 +276,9 @@ class _AjustesTipoCambioState extends State<AjustesTipoCambio> {
                               ),
                               alignment: Alignment.center,
                               child: Text(
-                                simboloMoneda,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: colorPrincipal,
+                                banderaMoneda,
+                                style: const TextStyle(
+                                  fontSize: 18,
                                 ),
                               ),
                             ),
@@ -284,7 +296,7 @@ class _AjustesTipoCambioState extends State<AjustesTipoCambio> {
                                     ),
                                   ),
                                   Text(
-                                    'Codigo de divisa: $moneda',
+                                    'Código de divisa: $moneda ($simboloMoneda)',
                                     style: TextStyle(
                                       fontSize: 10,
                                       color: colorSecundario.withValues(alpha: 0.7),

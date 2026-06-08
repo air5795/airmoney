@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../services/estado_app.dart';
 import '../../widgets/interactive_scale.dart';
 import '../../widgets/hex_color_picker.dart';
+import '../../widgets/panel_transaccion.dart';
 
 class VistaAhorro extends StatefulWidget {
   const VistaAhorro({super.key});
@@ -15,6 +16,14 @@ class VistaAhorro extends StatefulWidget {
 
 class _VistaAhorroState extends State<VistaAhorro> {
   int _activeTab = 0; // 0 = Ahorros, 1 = Presupuestos
+  final Set<String> _expandedTxIds = {};
+  int _selectedPlanMonth = DateTime.now().month;
+  int _selectedPlanYear = DateTime.now().year;
+
+  static const List<String> _monthsNames = [
+    'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+    'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+  ];
 
   // Lista de iconos para elegir en objetivos de ahorro
   final List<Map<String, dynamic>> _iconosDisponibles = [
@@ -1355,7 +1364,7 @@ class _VistaAhorroState extends State<VistaAhorro> {
                   },
                 ).animate().fadeIn(duration: 400.ms, delay: 50.ms),
               ],
-            ] else ...[
+            ] else if (_activeTab == 1) ...[
               // VISTA DE PRESUPUESTOS
               _buildBudgetInfoCard(estadoApp, esOscuro, colorTexto),
               _buildBudgetSummaryCard(estadoApp, esOscuro, colorTexto),
@@ -1373,6 +1382,9 @@ class _VistaAhorroState extends State<VistaAhorro> {
               const SizedBox(height: 12),
 
               _buildBudgetList(estadoApp, esOscuro, colorTexto),
+            ] else ...[
+              // VISTA DE PLANES
+              _buildPlanesSection(estadoApp, esOscuro, colorTexto),
             ],
             const SizedBox(height: 110),
           ],
@@ -1392,6 +1404,7 @@ class _VistaAhorroState extends State<VistaAhorro> {
     final limiteFecha = now.subtract(const Duration(days: 30));
     double total = 0.0;
     for (var tx in estadoApp.transactions) {
+      if (!tx.pagada) continue;
       if (tx.type == 'gasto' && tx.date.isAfter(limiteFecha)) {
         if (categoria == 'Global' || tx.category.toLowerCase() == categoria.toLowerCase()) {
           final acc = estadoApp.accounts.firstWhere(
@@ -1478,7 +1491,9 @@ class _VistaAhorroState extends State<VistaAhorro> {
                 Text(
                   _activeTab == 0
                       ? 'Construye tu futuro paso a paso.'
-                      : 'Controla tus gastos con límites inteligentes.',
+                      : (_activeTab == 1
+                          ? 'Controla tus gastos con límites inteligentes.'
+                          : 'Organiza tus cobros y pagos futuros.'),
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -1492,7 +1507,20 @@ class _VistaAhorroState extends State<VistaAhorro> {
           ),
           const SizedBox(width: 8),
           InteractiveScale(
-            onTap: () => _activeTab == 0 ? _showAddOrEditGoalSheet() : _showAddOrEditBudgetSheet(),
+            onTap: () {
+              if (_activeTab == 0) {
+                _showAddOrEditGoalSheet();
+              } else if (_activeTab == 1) {
+                _showAddOrEditBudgetSheet();
+              } else {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => const PanelTransaccion(esPlanificacion: true),
+                );
+              }
+            },
             child: Container(
               width: 38,
               height: 38,
@@ -1531,7 +1559,7 @@ class _VistaAhorroState extends State<VistaAhorro> {
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final width = constraints.maxWidth / 2;
+          final width = constraints.maxWidth / 3;
           return Stack(
             children: [
               // Micro-deslizador animado
@@ -1578,9 +1606,9 @@ class _VistaAhorroState extends State<VistaAhorro> {
                       behavior: HitTestBehavior.opaque,
                       child: Center(
                         child: Text(
-                          'Metas de Ahorro',
+                          'Ahorros',
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 12,
                             fontWeight: _activeTab == 0 ? FontWeight.w900 : FontWeight.bold,
                             color: _activeTab == 0 
                                 ? (esOscuro ? colorPrincipal : const Color(0xFF0F172A))
@@ -1602,9 +1630,31 @@ class _VistaAhorroState extends State<VistaAhorro> {
                         child: Text(
                           'Presupuestos',
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 12,
                             fontWeight: _activeTab == 1 ? FontWeight.w900 : FontWeight.bold,
                             color: _activeTab == 1 
+                                ? (esOscuro ? colorPrincipal : const Color(0xFF0F172A))
+                                : colorTexto.withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _activeTab = 2;
+                        });
+                      },
+                      behavior: HitTestBehavior.opaque,
+                      child: Center(
+                        child: Text(
+                          'Planes',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: _activeTab == 2 ? FontWeight.w900 : FontWeight.bold,
+                            color: _activeTab == 2 
                                 ? (esOscuro ? colorPrincipal : const Color(0xFF0F172A))
                                 : colorTexto.withValues(alpha: 0.5),
                           ),
@@ -2407,7 +2457,8 @@ class _VistaAhorroState extends State<VistaAhorro> {
 
     final now = DateTime.now();
     final transaccionesCategoria = estadoApp.transactions.where((tx) {
-      return tx.type == 'gasto' &&
+      return tx.pagada &&
+          tx.type == 'gasto' &&
           tx.date.year == now.year &&
           tx.date.month == now.month &&
           (budget.categoryName == 'Global' || tx.category.toLowerCase() == budget.categoryName.toLowerCase());
@@ -2685,6 +2736,850 @@ class _VistaAhorroState extends State<VistaAhorro> {
     );
   }
 
+  void _showPlanMonthYearSelector() {
+    final estadoApp = Provider.of<EstadoApp>(context, listen: false);
+    final esOscuro = estadoApp.esTemaOscuro;
+    final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
+    final colorFondo = esOscuro ? const Color(0xFF0A0A0A) : Colors.white;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(28),
+                topRight: Radius.circular(28),
+              ),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                child: Container(
+                  color: colorFondo.withValues(alpha: esOscuro ? 0.85 : 0.90),
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                    left: 20,
+                    right: 20,
+                    top: 16,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 38,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: colorTexto.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      // Selector de Año con flechas
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.arrow_back_ios_rounded, color: colorTexto.withValues(alpha: 0.6), size: 16),
+                            onPressed: () {
+                              setSheetState(() {
+                                _selectedPlanYear--;
+                              });
+                            },
+                          ),
+                          Text(
+                            '$_selectedPlanYear',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: colorTexto,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.arrow_forward_ios_rounded, color: colorTexto.withValues(alpha: 0.6), size: 16),
+                            onPressed: () {
+                              setSheetState(() {
+                                _selectedPlanYear++;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      // Grid de Meses
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          mainAxisSpacing: 10,
+                          crossAxisSpacing: 10,
+                          childAspectRatio: 2.2,
+                        ),
+                        itemCount: 12,
+                        itemBuilder: (context, idx) {
+                          final isSelected = _selectedPlanMonth == (idx + 1);
+                          return InteractiveScale(
+                            onTap: () {
+                              setState(() {
+                                _selectedPlanMonth = idx + 1;
+                              });
+                              Navigator.pop(context);
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: isSelected 
+                                    ? estadoApp.colorPrincipal.withValues(alpha: esOscuro ? 0.20 : 0.12)
+                                    : (esOscuro ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03)),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isSelected 
+                                      ? estadoApp.colorPrincipal 
+                                      : (esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05)),
+                                  width: 1.0,
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                _monthsNames[idx],
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: isSelected ? estadoApp.colorPrincipal : colorTexto,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildPlanesDateFilterBar(bool esOscuro, Color colorTexto, Color activeColor) {
+    final String mesTexto = _monthsNames[_selectedPlanMonth - 1];
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        InteractiveScale(
+          onTap: () {
+            setState(() {
+              _selectedPlanMonth--;
+              if (_selectedPlanMonth < 1) {
+                _selectedPlanMonth = 12;
+                _selectedPlanYear--;
+              }
+            });
+          },
+          child: Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: esOscuro ? const Color(0xFF0E0E0E) : const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: esOscuro ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFE2E8F0),
+              ),
+            ),
+            child: Icon(Icons.arrow_back_ios_new_rounded, color: colorTexto.withValues(alpha: 0.6), size: 12),
+          ),
+        ),
+        InteractiveScale(
+          onTap: _showPlanMonthYearSelector,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            decoration: BoxDecoration(
+              color: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: esOscuro ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE2E8F0),
+                width: 1.0,
+              ),
+            ),
+            child: Text(
+              '$mesTexto $_selectedPlanYear',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                color: activeColor,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ),
+        InteractiveScale(
+          onTap: () {
+            setState(() {
+              _selectedPlanMonth++;
+              if (_selectedPlanMonth > 12) {
+                _selectedPlanMonth = 1;
+                _selectedPlanYear++;
+              }
+            });
+          },
+          child: Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: esOscuro ? const Color(0xFF0E0E0E) : const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: esOscuro ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFE2E8F0),
+              ),
+            ),
+            child: Icon(Icons.arrow_forward_ios_rounded, color: colorTexto.withValues(alpha: 0.6), size: 12),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPlanesSection(EstadoApp estadoApp, bool esOscuro, Color colorTexto) {
+    // 1. Filter transactions by selected month/year
+    final pendingTxs = estadoApp.transactions
+        .where((tx) => !tx.pagada && tx.esProgramada && tx.date.month == _selectedPlanMonth && tx.date.year == _selectedPlanYear)
+        .toList();
+    
+    // Sort pending transactions by date (closer dates first)
+    pendingTxs.sort((a, b) => a.date.compareTo(b.date));
+
+    // Calculate overdue transactions from previous months
+    final DateTime targetLimit = DateTime(_selectedPlanYear, _selectedPlanMonth, 1);
+    final overdueTxs = estadoApp.transactions
+        .where((tx) => !tx.pagada && tx.esProgramada && tx.date.isBefore(targetLimit))
+        .toList();
+    final int overdueCount = overdueTxs.length;
+
+    // Calculate real and fictional balances
+    final double balanceActual = estadoApp.totalBalance;
+    final double totalPendienteGasto = pendingTxs.where((tx) => tx.type == 'gasto').fold(0.0, (sum, tx) => sum + tx.amount);
+    final double totalPendienteIngreso = pendingTxs.where((tx) => tx.type == 'ingreso').fold(0.0, (sum, tx) => sum + tx.amount);
+    final double totalPendientePlan = totalPendienteGasto - totalPendienteIngreso;
+    final double restanteEstimado = balanceActual - totalPendientePlan;
+
+    final currencySymbol = EstadoApp.getSymbolOfCurrency(estadoApp.selectedCurrency);
+    final primaryColor = _getPrimaryColor(estadoApp, esOscuro);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Selector de Fecha para Planes (Mes / Año)
+        _buildPlanesDateFilterBar(esOscuro, colorTexto, primaryColor),
+        const SizedBox(height: 16),
+
+        // Bento Card de Resumen de Planes (Compacto de 3 columnas)
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: esOscuro ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE2E8F0),
+              width: 1.0,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: esOscuro ? 0.20 : 0.03),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      'BALANCE ACTUAL',
+                      style: TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.w800,
+                        color: colorTexto.withValues(alpha: 0.4),
+                        letterSpacing: 0.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$currencySymbol ${balanceActual.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                        color: colorTexto,
+                        letterSpacing: -0.3,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                height: 24,
+                width: 1,
+                color: esOscuro ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE2E8F0),
+              ),
+              Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      'PLANIFICADO',
+                      style: TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.w800,
+                        color: colorTexto.withValues(alpha: 0.4),
+                        letterSpacing: 0.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$currencySymbol ${totalPendientePlan.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                        color: const Color(0xFFF59E0B),
+                        letterSpacing: -0.3,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                height: 24,
+                width: 1,
+                color: esOscuro ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE2E8F0),
+              ),
+              Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      'RESTANTE ESTIMADO',
+                      style: TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.w800,
+                        color: colorTexto.withValues(alpha: 0.4),
+                        letterSpacing: 0.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$currencySymbol ${restanteEstimado.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                        color: restanteEstimado >= 0 ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                        letterSpacing: -0.3,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ).animate().fadeIn(duration: 350.ms),
+        
+        // Banner de Planes Atrasados
+        if (overdueCount > 0) ...[
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEF4444).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 14),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Tienes $overdueCount plan${overdueCount > 1 ? "es" : ""} vencido${overdueCount > 1 ? "s" : ""} de meses anteriores.',
+                    style: const TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFEF4444),
+                    ),
+                  ),
+                ),
+                InteractiveScale(
+                  onTap: () {
+                    // Switch to the month of the oldest pending plan
+                    final oldestPlan = overdueTxs.reduce((a, b) => a.date.isBefore(b.date) ? a : b);
+                    setState(() {
+                      _selectedPlanMonth = oldestPlan.date.month;
+                      _selectedPlanYear = oldestPlan.date.year;
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'VER',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFFEF4444),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 24),
+
+        Text(
+          'MIS PLANES Y GASTOS FUTUROS',
+          style: TextStyle(
+            fontSize: 9.5,
+            fontWeight: FontWeight.w900,
+            color: colorTexto.withValues(alpha: 0.45),
+            letterSpacing: 0.8,
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        if (pendingTxs.isEmpty) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+            decoration: BoxDecoration(
+              color: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: esOscuro ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFE2E8F0),
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: estadoApp.colorPrincipal.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.assignment_turned_in_rounded, color: primaryColor, size: 28),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No hay planes pendientes',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: colorTexto),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '¡Excelente! No tienes pagos o gastos futuros pendientes para este mes.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 11, color: colorTexto.withValues(alpha: 0.45), height: 1.4),
+                ),
+                const SizedBox(height: 18),
+                InteractiveScale(
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) => const PanelTransaccion(esPlanificacion: true),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: estadoApp.colorPrincipal,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'Agregar plan de gasto',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
+        ] else ...[
+          Container(
+            decoration: BoxDecoration(
+              color: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: esOscuro ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE2E8F0),
+                width: 1.0,
+              ),
+            ),
+            child: ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: pendingTxs.length,
+              separatorBuilder: (context, index) => Divider(
+                height: 1,
+                thickness: 1,
+                color: esOscuro ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFE2E8F0),
+              ),
+              itemBuilder: (context, index) {
+                final tx = pendingTxs[index];
+                final isIncome = tx.type == 'ingreso';
+
+                final acc = estadoApp.accounts.firstWhere(
+                  (a) => a.id == tx.accountId,
+                  orElse: () => ModeloCuenta(id: '', name: 'N/A', type: '', balance: 0.0, gradientIndex: 0),
+                );
+
+                final txSymbol = EstadoApp.getSymbolOfCurrency(acc.currency ?? estadoApp.selectedCurrency);
+                
+                // Get category icon and color
+                final accentColor = _getBudgetColor(estadoApp, tx.category);
+                final iconData = _getBudgetIcon(estadoApp, tx.category);
+
+                final diff = DateTime(tx.date.year, tx.date.month, tx.date.day)
+                    .difference(DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day))
+                    .inDays;
+                
+                String dateText = '';
+                if (diff == 0) {
+                  dateText = 'HOY';
+                } else if (diff == 1) {
+                  dateText = 'MAÑANA';
+                } else if (diff < 0) {
+                  dateText = 'VENCIDO';
+                } else {
+                  dateText = '${tx.date.day} ${_monthsNames[tx.date.month - 1]}';
+                }
+
+                final isExpanded = _expandedTxIds.contains(tx.id);
+
+                return InkWell(
+                  onTap: () {
+                    setState(() {
+                      if (isExpanded) {
+                        _expandedTxIds.remove(tx.id);
+                      } else {
+                        _expandedTxIds.add(tx.id);
+                      }
+                    });
+                  },
+                  borderRadius: BorderRadius.vertical(
+                    top: index == 0 ? const Radius.circular(20) : Radius.zero,
+                    bottom: index == pendingTxs.length - 1 ? const Radius.circular(20) : Radius.zero,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            // 1. Icono de Categoría (32x32)
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: accentColor.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  iconData,
+                                  color: accentColor,
+                                  size: 16,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            
+                            // 2. Título y Detalles
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    tx.title,
+                                    style: TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: colorTexto,
+                                      letterSpacing: -0.1,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '$dateText • ${acc.name}${tx.recurrencia != null && tx.recurrencia != 'una_vez' ? ' • ${tx.recurrencia!.toUpperCase()}' : ''}',
+                                    style: TextStyle(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w500,
+                                      color: diff < 0 ? const Color(0xFFEF4444) : colorTexto.withValues(alpha: 0.4),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+
+                            // 3 y 4. Importe y Botón de Pago apilados verticalmente a la derecha (Previene solapamientos)
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  '${isIncome ? "+" : "-"}$txSymbol ${tx.amount.toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w900,
+                                    color: isIncome ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                    letterSpacing: -0.2,
+                                    fontFeatures: const [FontFeature.tabularFigures()],
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                InteractiveScale(
+                                  onTap: () {
+                                    _showConfirmarPagoSheet(context, estadoApp, tx, esOscuro, colorTexto);
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                                        width: 1.0,
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      'PAGAR',
+                                      style: TextStyle(
+                                        color: Color(0xFF10B981),
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(width: 4),
+
+                            // 5. Menú Opciones (tres puntos)
+                            PopupMenuButton<String>(
+                              icon: Icon(Icons.more_vert_rounded, color: colorTexto.withValues(alpha: 0.35), size: 16),
+                              color: esOscuro ? const Color(0xFF0A0A0A) : Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                              onSelected: (val) {
+                                if (val == 'edit') {
+                                  showModalBottomSheet(
+                                    context: context,
+                                    isScrollControlled: true,
+                                    backgroundColor: Colors.transparent,
+                                    builder: (context) => PanelTransaccion(
+                                      transaccion: tx,
+                                      esPlanificacion: true,
+                                    ),
+                                  );
+                                } else if (val == 'delete') {
+                                  _showDeletePlannedTxConfirmation(tx);
+                                }
+                              },
+                              itemBuilder: (context) => [
+                                PopupMenuItem(
+                                  value: 'edit',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.edit_rounded, color: colorTexto.withValues(alpha: 0.6), size: 16),
+                                      const SizedBox(width: 8),
+                                      Text('Editar', style: TextStyle(color: colorTexto, fontSize: 13)),
+                                    ],
+                                  ),
+                                ),
+                                PopupMenuItem(
+                                  value: 'delete',
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 16),
+                                      const SizedBox(width: 8),
+                                      const Text('Eliminar', style: TextStyle(color: Colors.redAccent, fontSize: 13)),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        if (isExpanded)
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            curve: Curves.easeInOut,
+                            margin: const EdgeInsets.only(top: 8),
+                            padding: const EdgeInsets.all(10),
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: esOscuro ? Colors.white.withValues(alpha: 0.02) : Colors.black.withValues(alpha: 0.01),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: esOscuro ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (tx.description.isNotEmpty) ...[
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(Icons.notes_rounded, size: 14, color: colorTexto.withValues(alpha: 0.4)),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          tx.description,
+                                          style: TextStyle(
+                                            fontSize: 11.5,
+                                            color: colorTexto.withValues(alpha: 0.7),
+                                            height: 1.3,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                ],
+                                Row(
+                                  children: [
+                                    Icon(Icons.calendar_today_rounded, size: 14, color: colorTexto.withValues(alpha: 0.4)),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Programado para: ${tx.date.day}/${tx.date.month}/${tx.date.year}',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: colorTexto.withValues(alpha: 0.6),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    Icon(Icons.account_balance_wallet_rounded, size: 14, color: colorTexto.withValues(alpha: 0.4)),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Cuenta débito: ${acc.name}',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: colorTexto.withValues(alpha: 0.6),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (tx.recurrencia != null && tx.recurrencia != 'una_vez') ...[
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.autorenew_rounded, size: 14, color: colorTexto.withValues(alpha: 0.4)),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Recurrencia: ${tx.recurrencia!.toUpperCase()}',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: colorTexto.withValues(alpha: 0.6),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ).animate().fadeIn(duration: 400.ms, delay: 50.ms),
+        ],
+      ],
+    );
+  }
+
+  void _showDeletePlannedTxConfirmation(ModeloTransaccion tx) {
+    final estadoApp = Provider.of<EstadoApp>(context, listen: false);
+    final esOscuro = estadoApp.esTemaOscuro;
+    final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            dialogBackgroundColor: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
+          ),
+          child: AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Text(
+              '¿Eliminar plan?',
+              style: TextStyle(color: colorTexto, fontWeight: FontWeight.bold),
+            ),
+            content: Text(
+              '¿Estás seguro de que deseas eliminar este plan de gasto de "${tx.title}"? Esta acción no se puede deshacer.',
+              style: TextStyle(color: colorTexto.withValues(alpha: 0.7), fontSize: 13),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Cancelar', style: TextStyle(color: colorTexto.withValues(alpha: 0.5), fontWeight: FontWeight.bold)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                onPressed: () {
+                  estadoApp.deleteTransaction(tx.id);
+                  Navigator.pop(context);
+                },
+                child: const Text('Eliminar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildLinkOptionCard({
     required String title,
     required String subtitle,
@@ -2744,6 +3639,363 @@ class _VistaAhorroState extends State<VistaAhorro> {
                 color: colorPrincipal,
                 size: 18,
               ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showConfirmarPagoSheet(BuildContext context, EstadoApp estadoApp, ModeloTransaccion tx, bool esOscuro, Color colorTexto) {
+    int opcionSeleccionada = 1; // Hoy por defecto
+    DateTime fechaSeleccionada = DateTime.now();
+    DateTime fechaProgramada = tx.date;
+    DateTime fechaHoy = DateTime.now();
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (BuildContext sheetContext) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setSheetState) {
+            final colorFondo = esOscuro ? const Color(0xFF0F172A) : Colors.white;
+            final colorPrincipal = const Color(0xFF10B981);
+            
+            DateTime fechaFinal;
+            if (opcionSeleccionada == 0) {
+              fechaFinal = fechaProgramada;
+            } else if (opcionSeleccionada == 1) {
+              fechaFinal = fechaHoy;
+            } else {
+              fechaFinal = fechaSeleccionada;
+            }
+
+            final String fechaFinalTexto = "${fechaFinal.day}/${fechaFinal.month}/${fechaFinal.year}";
+
+            return Container(
+              decoration: BoxDecoration(
+                color: colorFondo,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(28),
+                  topRight: Radius.circular(28),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
+              ),
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: esOscuro ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Confirmar Pago',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: colorTexto,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(sheetContext),
+                        icon: const Icon(Icons.close_rounded, size: 20),
+                        color: colorTexto.withValues(alpha: 0.5),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: esOscuro ? Colors.white.withValues(alpha: 0.02) : Colors.black.withValues(alpha: 0.01),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: esOscuro ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+                        width: 1.0,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: colorPrincipal.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.receipt_long_rounded,
+                            color: colorPrincipal,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                tx.title,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: colorTexto,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                tx.category,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: colorTexto.withValues(alpha: 0.45),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          '${tx.type == 'gasto' ? '-' : '+'}${tx.amount.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: tx.type == 'gasto' ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'FECHA DE REGISTRO DEL MOVIMIENTO',
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w800,
+                      color: colorTexto.withValues(alpha: 0.45),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildDateOptionCard(
+                    title: 'Fecha programada del plan',
+                    subtitle: '${fechaProgramada.day}/${fechaProgramada.month}/${fechaProgramada.year}',
+                    icon: Icons.calendar_month_rounded,
+                    isSelected: opcionSeleccionada == 0,
+                    esOscuro: esOscuro,
+                    colorTexto: colorTexto,
+                    colorPrincipal: colorPrincipal,
+                    onTap: () {
+                      setSheetState(() {
+                        opcionSeleccionada = 0;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  _buildDateOptionCard(
+                    title: 'Fecha de hoy (Momento del pago)',
+                    subtitle: '${fechaHoy.day}/${fechaHoy.month}/${fechaHoy.year}',
+                    icon: Icons.today_rounded,
+                    isSelected: opcionSeleccionada == 1,
+                    esOscuro: esOscuro,
+                    colorTexto: colorTexto,
+                    colorPrincipal: colorPrincipal,
+                    onTap: () {
+                      setSheetState(() {
+                        opcionSeleccionada = 1;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  _buildDateOptionCard(
+                    title: 'Elegir otra fecha...',
+                    subtitle: opcionSeleccionada == 2 
+                        ? '${fechaSeleccionada.day}/${fechaSeleccionada.month}/${fechaSeleccionada.year}'
+                        : 'Seleccionar en calendario',
+                    icon: Icons.edit_calendar_rounded,
+                    isSelected: opcionSeleccionada == 2,
+                    esOscuro: esOscuro,
+                    colorTexto: colorTexto,
+                    colorPrincipal: colorPrincipal,
+                    onTap: () async {
+                      final DateTime? picked = await showDatePicker(
+                        context: context,
+                        initialDate: fechaSeleccionada,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(2100),
+                        builder: (context, child) {
+                          return Theme(
+                            data: esOscuro ? ThemeData.dark() : ThemeData.light(),
+                            child: child!,
+                          );
+                        },
+                      );
+                      if (picked != null) {
+                        setSheetState(() {
+                          fechaSeleccionada = picked;
+                          opcionSeleccionada = 2;
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: InteractiveScale(
+                      onTap: () async {
+                        Navigator.pop(sheetContext);
+                        await estadoApp.confirmarPagoTransaccion(tx.id, fechaPago: fechaFinal);
+                        
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Pago de "${tx.title}" registrado el $fechaFinalTexto con éxito.'),
+                              backgroundColor: colorPrincipal,
+                            ),
+                          );
+                        }
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: colorPrincipal,
+                          borderRadius: BorderRadius.circular(25),
+                          boxShadow: [
+                            BoxShadow(
+                              color: colorPrincipal.withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: const Text(
+                          'CONFIRMAR PAGO',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildDateOptionCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required bool isSelected,
+    required bool esOscuro,
+    required Color colorTexto,
+    required Color colorPrincipal,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? colorPrincipal.withValues(alpha: esOscuro ? 0.12 : 0.08)
+              : (esOscuro ? Colors.white.withValues(alpha: 0.02) : Colors.black.withValues(alpha: 0.01)),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected
+                ? colorPrincipal
+                : (esOscuro ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04)),
+            width: 1.2,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? colorPrincipal : colorTexto.withValues(alpha: 0.5),
+              size: 18,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                      color: colorTexto,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      color: isSelected ? colorPrincipal : colorTexto.withValues(alpha: 0.4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected ? colorPrincipal : colorTexto.withValues(alpha: 0.25),
+                  width: 1.5,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: isSelected
+                  ? Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: colorPrincipal,
+                        shape: BoxShape.circle,
+                      ),
+                    )
+                  : null,
+            ),
           ],
         ),
       ),

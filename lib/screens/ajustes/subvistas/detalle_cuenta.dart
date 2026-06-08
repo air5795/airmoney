@@ -96,7 +96,7 @@ class VistaDetalleCuenta extends StatelessWidget {
 
     // Obtener y filtrar movimientos de la cuenta (origen o destino)
     final accountTxs = estadoApp.transactions
-        .where((tx) => (tx.accountId == account.id || tx.toAccountId == account.id) && !tx.esRegistroApertura)
+        .where((tx) => tx.pagada && (tx.accountId == account.id || tx.toAccountId == account.id) && !tx.esRegistroApertura)
         .toList();
 
     // Buscar la cuenta fresca del estado para reflejar balances actualizados en tiempo real
@@ -311,14 +311,17 @@ class VistaDetalleCuenta extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              Text(
-                                '${EstadoApp.getSymbolOfCurrency(activeAcc.currency ?? estadoApp.selectedCurrency)} ${activeAcc.balance.toStringAsFixed(2)}',
-                                style: TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w900,
-                                  color: colorTexto,
-                                  letterSpacing: -0.3,
-                                  fontFeatures: const [FontFeature.tabularFigures()],
+                              Flexible(
+                                child: Text(
+                                  '${EstadoApp.getSymbolOfCurrency(activeAcc.currency ?? estadoApp.selectedCurrency)} ${activeAcc.balance.toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w900,
+                                    color: colorTexto,
+                                    letterSpacing: -0.3,
+                                    fontFeatures: const [FontFeature.tabularFigures()],
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],

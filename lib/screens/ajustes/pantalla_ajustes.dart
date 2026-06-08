@@ -15,31 +15,38 @@ class PantallaAjustes extends StatelessWidget {
 
     final showAppBar = estadoApp.selectedSettingsSubView == 0;
 
-    return Scaffold(
-      backgroundColor: colorFondo,
-      appBar: showAppBar
-          ? AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              scrolledUnderElevation: 0,
-              leading: IconButton(
-                icon: Icon(Icons.arrow_back_ios_new_rounded, color: colorTexto, size: 20),
-                onPressed: () => Navigator.pop(context),
-              ),
-              title: Text(
-                'Ajustes',
-                style: TextStyle(
-                  color: colorTexto,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 18,
-                  letterSpacing: -0.5,
+    return PopScope(
+      canPop: estadoApp.selectedSettingsSubView == 0,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        estadoApp.selectedSettingsSubView = 0;
+      },
+      child: Scaffold(
+        backgroundColor: colorFondo,
+        appBar: showAppBar
+            ? AppBar(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                scrolledUnderElevation: 0,
+                leading: IconButton(
+                  icon: Icon(Icons.arrow_back_ios_new_rounded, color: colorTexto, size: 20),
+                  onPressed: () => Navigator.pop(context),
                 ),
-              ),
-              centerTitle: true,
-            )
-          : null,
-      body: const SafeArea(
-        child: VistaAjustes(),
+                title: Text(
+                  'Ajustes',
+                  style: TextStyle(
+                    color: colorTexto,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 18,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                centerTitle: true,
+              )
+            : null,
+        body: const SafeArea(
+          child: VistaAjustes(),
+        ),
       ),
     );
   }

@@ -7,8 +7,7 @@
         {
             "name": "APP-GASTOS",
             "request": "launch",
-            "type": "dart",
-            "deviceId": "emulator-5554"
+            "type": "dart"
         },
         {
             "name": "APP-GASTOS (profile mode)",

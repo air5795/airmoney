@@ -28,6 +28,7 @@ class VistaInicio extends StatelessWidget {
     [const Color(0xFF76FF03), const Color(0xFF00E5FF)], // Neon Alien (Verde Lima / Turquesa)
   ];
 
+
   Color _parseHexColor(String? hexStr, Color defaultColor) {
     if (hexStr == null || hexStr.isEmpty) return defaultColor;
     try {
@@ -114,13 +115,49 @@ class VistaInicio extends StatelessWidget {
               Expanded(
                 child: Row(
                   children: [
-                    // Contenedor premium Liquid Glass para el logo adaptativo
-                    SizedBox(
-                      width: 40,
-                      height: 40,
-                      child: Image.asset(
-                        'assets/images/512-trans.png',
-                        fit: BoxFit.contain,
+                    // Imagen del usuario en contenedor premium Liquid Glass
+                    InteractiveScale(
+                      onTap: () {
+                        estadoApp.selectedSettingsSubView = 0;
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const PantallaAjustes()),
+                        );
+                      },
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: estadoApp.colorPrincipal.withValues(alpha: 0.2),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: estadoApp.colorPrincipal.withValues(alpha: esOscuro ? 0.15 : 0.05),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ClipOval(
+                          child: authUser?.photoUrl != null && authUser!.photoUrl!.isNotEmpty
+                              ? Image.network(
+                                  authUser.photoUrl!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return CircleAvatar(
+                                      backgroundColor: colorTexto.withValues(alpha: 0.06),
+                                      child: Icon(Icons.person_rounded, size: 20, color: colorTexto.withValues(alpha: 0.6)),
+                                    );
+                                  },
+                                )
+                              : CircleAvatar(
+                                  backgroundColor: colorTexto.withValues(alpha: 0.06),
+                                  child: Icon(Icons.person_rounded, size: 20, color: colorTexto.withValues(alpha: 0.6)),
+                                ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -163,20 +200,28 @@ class VistaInicio extends StatelessWidget {
                     MaterialPageRoute(builder: (_) => const PantallaAjustes()),
                   );
                 },
-                child: CircleAvatar(
-                  radius: 18,
-                  backgroundColor: colorTexto.withValues(alpha: 0.06),
-                  backgroundImage: authUser?.photoUrl != null && authUser!.photoUrl!.isNotEmpty
-                      ? NetworkImage(authUser.photoUrl!)
-                      : null,
-                  child: authUser?.photoUrl == null || authUser!.photoUrl!.isEmpty
-                      ? Icon(Icons.person_rounded, size: 18, color: colorTexto.withValues(alpha: 0.6))
-                      : null,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: colorTexto.withValues(alpha: 0.06),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: colorTexto.withValues(alpha: 0.1),
+                      width: 1,
+                    ),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.settings_rounded,
+                      size: 20,
+                      color: colorTexto.withValues(alpha: 0.8),
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 18),
           _buildBalanceCard(estadoApp),
           const SizedBox(height: 18),
           Row(
@@ -240,15 +285,32 @@ class VistaInicio extends StatelessWidget {
     );
   }
 
+  String _formatearMonto(double monto, {bool forzarDecimales = false}) {
+    final bool esEntero = (monto % 1 == 0) && !forzarDecimales;
+    final String formatBase = monto.toStringAsFixed(esEntero ? 0 : 2);
+    
+    final parts = formatBase.split('.');
+    String entero = parts[0];
+    final String decimal = parts.length > 1 ? parts[1] : '';
+    
+    final regExp = RegExp(r'\B(?=(\d{3})+(?!\d))');
+    entero = entero.replaceAllMapped(regExp, (Match m) => '.');
+    
+    if (decimal.isNotEmpty) {
+      return '$entero,$decimal';
+    }
+    return entero;
+  }
+
   Widget _buildBalanceCard(EstadoApp estadoApp) {
     final esOscuro = estadoApp.esTemaOscuro;
-    final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
 
     // Calcular ingresos y gastos del mes actual de forma reactiva
     final ahora = DateTime.now();
     double ingresosMes = 0.0;
     double gastosMes = 0.0;
     for (var tx in estadoApp.transactions) {
+      if (!tx.pagada) continue;
       if (tx.date.month == ahora.month && tx.date.year == ahora.year) {
         if (tx.type == 'ingreso' && !tx.esRegistroApertura) {
           ingresosMes += tx.amount;
@@ -258,144 +320,234 @@ class VistaInicio extends StatelessWidget {
       }
     }
 
+    const meses = [
+      'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
+      'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'
+    ];
+    final nombreMes = meses[ahora.month - 1];
+
+    // Cuentas de Ahorros y Excluidas
+    final tieneAhorros = estadoApp.accounts.any((acc) => acc.type == 'Ahorros');
+    final tieneExcluidas = estadoApp.accounts.any((acc) => acc.contabilizable == false);
+
+    double totalAhorros = 0.0;
+    double totalExcluido = 0.0;
+
+    if (tieneAhorros) {
+      for (var acc in estadoApp.accounts) {
+        if (acc.type == 'Ahorros') {
+          final accCurrency = acc.currency ?? estadoApp.selectedCurrency;
+          totalAhorros += estadoApp.convertirMoneda(acc.balance, accCurrency, estadoApp.selectedCurrency);
+        }
+      }
+    }
+
+    if (tieneExcluidas) {
+      for (var acc in estadoApp.accounts) {
+        if (acc.contabilizable == false) {
+          final accCurrency = acc.currency ?? estadoApp.selectedCurrency;
+          totalExcluido += estadoApp.convertirMoneda(acc.balance, accCurrency, estadoApp.selectedCurrency);
+        }
+      }
+    }
+
+    final List<String> parts = [];
+    if (tieneAhorros) {
+      parts.add('Ahorros: ${estadoApp.currencySymbol} ${_formatearMonto(totalAhorros)}');
+    }
+    if (tieneExcluidas) {
+      parts.add('No incluidos: ${estadoApp.currencySymbol} ${_formatearMonto(totalExcluido)}');
+    }
+    final subText = parts.join('  •  ');
+
+    final colorGreen = esOscuro ? const Color(0xFF4ADE80) : const Color(0xFF15803D);
+    final colorRed = esOscuro ? const Color(0xFFF87171) : const Color(0xFFB91C1C);
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           decoration: BoxDecoration(
             color: esOscuro
-                ? const Color(0xFF0A0A0A).withValues(alpha: 0.65)
-                : Colors.white.withValues(alpha: 0.70),
+                ? const Color(0xFF0F172A)
+                : Colors.white,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
               color: esOscuro
                   ? Colors.white.withValues(alpha: 0.08)
-                  : Colors.black.withValues(alpha: 0.06),
+                  : const Color(0xFFCBD5E1).withValues(alpha: 0.5),
               width: 1.0,
             ),
           ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'BALANCE GENERAL DE CUENTAS',
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.0,
-                      color: colorTexto.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                   Text(
-                    '${estadoApp.currencySymbol} ${estadoApp.totalBalance.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w900,
-                      color: esOscuro ? Colors.white : const Color(0xFF0F172A),
-                      letterSpacing: -1.0,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                ],
-              ),
-              _buildMiniMonthlyChart(ingresosMes, gastosMes, esOscuro),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Container(
-            height: 1,
-            color: esOscuro
-                ? Colors.white.withValues(alpha: 0.08)
-                : const Color(0xFF0A0A0A).withValues(alpha: 0.08),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: _buildBalanceMiniChip(
-                  label: 'TOTAL INGRESOS',
-                  amount: '+${estadoApp.currencySymbol} ${estadoApp.totalIncome.toStringAsFixed(2)}',
-                  color: const Color(0xFF10B981),
-                  esOscuro: esOscuro,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildBalanceMiniChip(
-                  label: 'TOTAL GASTOS',
-                  amount: '-${estadoApp.currencySymbol} ${estadoApp.totalExpenses.toStringAsFixed(2)}',
-                  color: const Color(0xFFEF4444),
-                  esOscuro: esOscuro,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    )));
-  }
-
-  Widget _buildBalanceMiniChip({
-    required String label,
-    required String amount,
-    required Color color,
-    required bool esOscuro,
-  }) {
-    final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
-
-    return Row(
-      children: [
-        Container(
-          width: 3.5,
-          height: 24,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(1.5),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
-                  color: colorTexto.withValues(alpha: 0.5),
-                  letterSpacing: 0.3,
+              // TOP SECTION (Padded, scaled down spacing and fonts)
+              Padding(
+                padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'BALANCE TOTAL',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                        color: esOscuro ? Colors.white.withValues(alpha: 0.5) : const Color(0xFF64748B),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${estadoApp.currencySymbol} ${_formatearMonto(estadoApp.totalBalance, forzarDecimales: true)}',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: esOscuro ? Colors.white : const Color(0xFF0F172A),
+                        letterSpacing: -0.5,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                    if (tieneAhorros || tieneExcluidas) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        subText,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: esOscuro ? Colors.white.withValues(alpha: 0.5) : const Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-              const SizedBox(height: 1),
-              Text(
-                amount,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: color,
-                  letterSpacing: -0.3,
-                  fontFeatures: const [FontFeature.tabularFigures()],
+              // HORIZONTAL DIVIDER
+              Container(
+                height: 1,
+                color: esOscuro
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : const Color(0xFFCBD5E1).withValues(alpha: 0.4),
+              ),
+              // BOTTOM SECTION (Touches boundaries, compact vertical pads)
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // INGRESOS
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                        decoration: BoxDecoration(
+                          color: esOscuro
+                              ? const Color(0xFF064E3B).withValues(alpha: 0.15)
+                              : const Color(0xFFF0FDF4),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.arrow_downward_rounded,
+                                  color: colorGreen,
+                                  size: 12,
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    'INGRESOS DE $nombreMes',
+                                    style: TextStyle(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: colorGreen,
+                                      letterSpacing: 0.3,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '+${estadoApp.currencySymbol} ${_formatearMonto(ingresosMes, forzarDecimales: true)}',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: colorGreen,
+                                fontFeatures: const [FontFeature.tabularFigures()],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    // VERTICAL DIVIDER
+                    Container(
+                      width: 1,
+                      color: esOscuro
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : const Color(0xFFCBD5E1).withValues(alpha: 0.4),
+                    ),
+                    // GASTOS
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                        decoration: BoxDecoration(
+                          color: esOscuro
+                              ? const Color(0xFF7F1D1D).withValues(alpha: 0.15)
+                              : const Color(0xFFFEF2F2),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.arrow_upward_rounded,
+                                  color: colorRed,
+                                  size: 12,
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    'GASTOS DE $nombreMes',
+                                    style: TextStyle(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: colorRed,
+                                      letterSpacing: 0.3,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '-${estadoApp.currencySymbol} ${_formatearMonto(gastosMes, forzarDecimales: true)}',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: colorRed,
+                                fontFeatures: const [FontFeature.tabularFigures()],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
         ),
-      ],
+      ),
     );
   }
 
@@ -588,6 +740,8 @@ class VistaInicio extends StatelessWidget {
                           letterSpacing: -0.3,
                           fontFeatures: const [FontFeature.tabularFigures()],
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -601,7 +755,7 @@ class VistaInicio extends StatelessWidget {
   }
 
   Widget _buildTransactionList(EstadoApp estadoApp) {
-    final txs = estadoApp.transactions.where((tx) => !tx.esRegistroApertura).toList();
+    final txs = estadoApp.transactions.where((tx) => !tx.esRegistroApertura && tx.pagada).toList();
     final esOscuro = estadoApp.esTemaOscuro;
     final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
 
@@ -783,106 +937,6 @@ class VistaInicio extends StatelessWidget {
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildMiniMonthlyChart(double ingresos, double gastos, bool esOscuro) {
-    final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
-    final maxMonto = ingresos > gastos ? ingresos : gastos;
-    
-    // Altura maxima de las barras es 44px, minima 4px
-    final double alturaIngresos = maxMonto > 0 ? (ingresos / maxMonto) * 44.0 : 4.0;
-    final double alturaGastos = maxMonto > 0 ? (gastos / maxMonto) * 44.0 : 4.0;
-    
-    // Asegurar que la barra tenga al menos 4px si tiene monto mayor a 0
-    final double hIng = ingresos > 0 && alturaIngresos < 4.0 ? 4.0 : alturaIngresos;
-    final double hGas = gastos > 0 && alturaGastos < 4.0 ? 4.0 : alturaGastos;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: esOscuro
-            ? Colors.white.withValues(alpha: 0.03)
-            : Colors.black.withValues(alpha: 0.02),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: esOscuro
-              ? Colors.white.withValues(alpha: 0.08)
-              : Colors.black.withValues(alpha: 0.05),
-          width: 1.0,
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              // Barra de ingresos (Verde)
-              Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Container(
-                    width: 10,
-                    height: hIng,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF34D399), Color(0xFF10B981)],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
-                      borderRadius: BorderRadius.circular(5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF10B981).withValues(alpha: 0.25),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 12),
-              // Barra de gastos (Rojo)
-              Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Container(
-                    width: 10,
-                    height: hGas,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFF87171), Color(0xFFEF4444)],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
-                      borderRadius: BorderRadius.circular(5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFEF4444).withValues(alpha: 0.25),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'ESTE MES',
-            style: TextStyle(
-              fontSize: 7.5,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0.5,
-              color: colorTexto.withValues(alpha: 0.4),
-            ),
-          ),
-        ],
       ),
     );
   }

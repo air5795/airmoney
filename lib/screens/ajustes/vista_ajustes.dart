@@ -9,6 +9,7 @@ import 'subvistas/ajustes_apariencia.dart';
 import 'subvistas/ajustes_cuentas.dart';
 import 'subvistas/ajustes_categorias.dart';
 import 'subvistas/ajustes_tipo_cambio.dart';
+import 'subvistas/ajustes_seguridad.dart';
 import '../../widgets/interactive_scale.dart';
 
 class VistaAjustes extends StatefulWidget {
@@ -168,6 +169,12 @@ class _VistaAjustesState extends State<VistaAjustes> {
       );
     } else if (estadoApp.selectedSettingsSubView == 4) {
       cuerpoSettings = AjustesTipoCambio(
+        onBack: () {
+          estadoApp.selectedSettingsSubView = 0;
+        },
+      );
+    } else if (estadoApp.selectedSettingsSubView == 5) {
+      cuerpoSettings = AjustesSeguridad(
         onBack: () {
           estadoApp.selectedSettingsSubView = 0;
         },
@@ -602,6 +609,23 @@ class _VistaAjustesState extends State<VistaAjustes> {
                     esOscuro: esOscuro,
                     onTap: () {
                       estadoApp.selectedSettingsSubView = 4;
+                    },
+                  ),
+                  Container(
+                    height: 1,
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    color: esOscuro
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : const Color(0xFF0A0A0A).withValues(alpha: 0.05),
+                  ),
+                  _buildSettingsMenuItem(
+                    icon: Icons.security_rounded,
+                    title: 'Seguridad',
+                    subtitle: 'Huella digital y código PIN de acceso',
+                    color: colorPrincipal,
+                    esOscuro: esOscuro,
+                    onTap: () {
+                      estadoApp.selectedSettingsSubView = 5;
                     },
                   ),
                   Container(

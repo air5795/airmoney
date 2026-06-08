@@ -12,11 +12,13 @@ import 'hex_color_picker.dart';
 class PanelTransaccion extends StatefulWidget {
   final ModeloTransaccion? transaccion;
   final bool iniciarConVoz;
+  final bool esPlanificacion;
 
   const PanelTransaccion({
     super.key,
     this.transaccion,
     this.iniciarConVoz = false,
+    this.esPlanificacion = false,
   });
 
   @override
@@ -37,6 +39,11 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
   DateTime _selectedDate = DateTime.now();
   String? _simulatedPhotoPath;
 
+  // Variables de Planificación
+  bool _esProgramada = false;
+  bool _pagada = true;
+  String _selectedRecurrencia = 'una_vez';
+
   // Variables del Asistente de Voz
   final SpeechToText _speechToText = SpeechToText();
   bool _speechEnabled = false;
@@ -44,36 +51,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
   String _lastWords = '';
 
   // Galería de iconos que coincide con la de Ajustes para pintar el dropdown
-  static final Map<String, IconData> _galleryIcons = {
-    'restaurant': Icons.restaurant_rounded,
-    'shopping_cart': Icons.shopping_cart_rounded,
-    'directions_car': Icons.directions_car_rounded,
-    'work': Icons.work_rounded,
-    'electrical_services': Icons.electrical_services_rounded,
-    'sports_esports': Icons.sports_esports_rounded,
-    'category': Icons.category_rounded,
-    'movie': Icons.movie_rounded,
-    'local_hospital': Icons.local_hospital_rounded,
-    'card_giftcard': Icons.card_giftcard_rounded,
-    'home': Icons.home_rounded,
-    'flight': Icons.flight_rounded,
-    'pets': Icons.pets_rounded,
-    'school': Icons.school_rounded,
-    'fitness_center': Icons.fitness_center_rounded,
-    'local_cafe': Icons.local_cafe_rounded,
-    'savings': Icons.savings_rounded,
-    'phone_android': Icons.phone_android_rounded,
-    'celebration': Icons.celebration_rounded,
-    'water_drop': Icons.water_drop_rounded,
-    'router': Icons.router_rounded,
-    'tv': Icons.tv_rounded,
-    'local_gas_station': Icons.local_gas_station_rounded,
-    'build': Icons.build_rounded,
-    'payments': Icons.payments_rounded,
-    'laptop': Icons.laptop_chromebook_rounded,
-    'trending_up': Icons.trending_up_rounded,
-    'directions_bus': Icons.directions_bus_rounded,
-  };
+  static final Map<String, IconData> _galleryIcons = EstadoApp.galleryIcons;
 
   @override
   void initState() {
@@ -108,6 +86,9 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
           _selectedCategory = tx.category;
           _selectedDate = tx.date;
           _simulatedPhotoPath = tx.photoPath;
+          _esProgramada = tx.esProgramada;
+          _pagada = tx.pagada;
+          _selectedRecurrencia = tx.recurrencia ?? 'una_vez';
         });
       } else {
         if (estadoApp.accounts.isNotEmpty) {
@@ -120,6 +101,10 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
             }
             if (estadoApp.categories.isNotEmpty) {
               _selectedCategory = estadoApp.categories.first.name;
+            }
+            if (widget.esPlanificacion) {
+              _esProgramada = true;
+              _pagada = false;
             }
           });
         }
@@ -235,31 +220,327 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
     }
   }
 
+  List<ModeloTransaccion> _getPredictiveSuggestions(String currentType, String query) {
+    final transactions = Provider.of<EstadoApp>(context, listen: false).transactions;
+    final filtered = transactions.where((tx) => tx.type == currentType).toList();
+    
+    // Count frequency of each title
+    final Map<String, int> frequencies = {};
+    final Map<String, ModeloTransaccion> lastTxForTitle = {};
+    for (var tx in filtered) {
+      if (tx.title.trim().isEmpty) continue;
+      final titleLower = tx.title.trim().toLowerCase();
+      frequencies[titleLower] = (frequencies[titleLower] ?? 0) + 1;
+      
+      if (!lastTxForTitle.containsKey(titleLower) || tx.date.isAfter(lastTxForTitle[titleLower]!.date)) {
+        lastTxForTitle[titleLower] = tx;
+      }
+    }
+
+    var titles = lastTxForTitle.keys.toList();
+    if (query.trim().isNotEmpty) {
+      final q = query.trim().toLowerCase();
+      titles = titles.where((t) => t.contains(q)).toList();
+    }
+
+    // Sort by frequency descending
+    titles.sort((a, b) => (frequencies[b] ?? 0).compareTo(frequencies[a] ?? 0));
+
+    return titles.take(5).map((t) => lastTxForTitle[t]!).toList();
+  }
+
+  void _selectSuggestion(ModeloTransaccion tx) {
+    setState(() {
+      _titleController.text = tx.title;
+      if (tx.type != 'transferencia') {
+        _selectedCategory = tx.category;
+      }
+      if (tx.amount > 0) {
+        _amountController.text = tx.amount.toStringAsFixed(2);
+      }
+      final accounts = Provider.of<EstadoApp>(context, listen: false).accounts;
+      if (accounts.any((acc) => acc.id == tx.accountId)) {
+        _selectedAccountId = tx.accountId;
+      }
+      if (tx.type == 'transferencia' && tx.toAccountId != null && accounts.any((acc) => acc.id == tx.toAccountId)) {
+        _selectedToAccountId = tx.toAccountId;
+      }
+    });
+  }
+
   Future<void> _selectDate(BuildContext context) async {
+    final estadoApp = Provider.of<EstadoApp>(context, listen: false);
+    final esOscuro = estadoApp.esTemaOscuro;
+    final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
     final Color colorTipo = _getTipoColor();
-    final DateTime? picked = await showDatePicker(
+    final lang = estadoApp.selectedLanguage;
+
+    showModalBottomSheet(
       context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2025),
-      lastDate: DateTime(2030),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: colorTipo,
-              onPrimary: Colors.white,
-              onSurface: const Color(0xFF0F172A),
-            ),
-          ),
-          child: child!,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final colorFondo = esOscuro ? const Color(0xFF0A0A0A) : Colors.white;
+        DateTime tempDate = _selectedDate;
+        int viewYear = tempDate.year;
+        int viewMonth = tempDate.month;
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final isEs = lang.toLowerCase() == 'es';
+            final monthNames = isEs
+                ? ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+                : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            
+            final weekdays = isEs
+                ? ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+                : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+            final firstDayOfMonth = DateTime(viewYear, viewMonth, 1);
+            final daysInMonth = DateTime(viewYear, viewMonth + 1, 0).day;
+            final firstWeekday = firstDayOfMonth.weekday; // 1 = Mon, 7 = Sun
+            
+            final prevMonthDaysCount = firstWeekday - 1;
+            final prevMonthYear = viewMonth == 1 ? viewYear - 1 : viewYear;
+            final prevMonthVal = viewMonth == 1 ? 12 : viewMonth - 1;
+            final daysInPrevMonth = DateTime(prevMonthYear, prevMonthVal + 1, 0).day;
+            
+            final List<DateTime> gridDays = [];
+            for (int i = prevMonthDaysCount - 1; i >= 0; i--) {
+              gridDays.add(DateTime(prevMonthYear, prevMonthVal, daysInPrevMonth - i));
+            }
+            for (int i = 1; i <= daysInMonth; i++) {
+              gridDays.add(DateTime(viewYear, viewMonth, i));
+            }
+            int nextDay = 1;
+            final nextMonthYear = viewMonth == 12 ? viewYear + 1 : viewYear;
+            final nextMonthVal = viewMonth == 12 ? 1 : viewMonth + 1;
+            while (gridDays.length < 42) {
+              gridDays.add(DateTime(nextMonthYear, nextMonthVal, nextDay++));
+            }
+
+            return ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(32),
+                topRight: Radius.circular(32),
+              ),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: colorFondo.withValues(alpha: esOscuro ? 0.85 : 0.90),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(32),
+                      topRight: Radius.circular(32),
+                    ),
+                    border: Border(
+                      top: BorderSide(
+                        color: esOscuro ? Colors.white.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.65),
+                        width: 1.0,
+                      ),
+                    ),
+                  ),
+                  padding: const EdgeInsets.only(left: 20, right: 20, top: 16, bottom: 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: colorTexto.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(2.5),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            isEs ? 'Seleccionar Fecha' : 'Select Date',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: colorTexto,
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              setModalState(() {
+                                tempDate = DateTime.now();
+                                viewYear = tempDate.year;
+                                viewMonth = tempDate.month;
+                              });
+                            },
+                            child: Text(
+                              isEs ? 'Hoy' : 'Today',
+                              style: TextStyle(
+                                color: colorTipo,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      // Fila de control de mes
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.chevron_left_rounded, color: colorTexto),
+                            onPressed: () {
+                              setModalState(() {
+                                if (viewMonth == 1) {
+                                  viewMonth = 12;
+                                  viewYear--;
+                                } else {
+                                  viewMonth--;
+                                }
+                              });
+                            },
+                          ),
+                          Text(
+                            '${monthNames[viewMonth - 1]} $viewYear',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: colorTexto,
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.chevron_right_rounded, color: colorTexto),
+                            onPressed: () {
+                              setModalState(() {
+                                if (viewMonth == 12) {
+                                  viewMonth = 1;
+                                  viewYear++;
+                                } else {
+                                  viewMonth++;
+                                }
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      // Cabeceras de días de la semana
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: weekdays.map((day) {
+                          return SizedBox(
+                            width: 32,
+                            child: Text(
+                              day,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: colorTexto.withValues(alpha: 0.4),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 8),
+                      // Grid de días
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 7,
+                          mainAxisSpacing: 6,
+                          crossAxisSpacing: 6,
+                          childAspectRatio: 1.1,
+                        ),
+                        itemCount: 42,
+                        itemBuilder: (context, index) {
+                          final date = gridDays[index];
+                          final isCurrentMonth = date.month == viewMonth;
+                          final isSelected = date.year == tempDate.year &&
+                              date.month == tempDate.month &&
+                              date.day == tempDate.day;
+                          final isToday = date.year == DateTime.now().year &&
+                              date.month == DateTime.now().month &&
+                              date.day == DateTime.now().day;
+
+                          return GestureDetector(
+                            onTap: () {
+                              setModalState(() {
+                                tempDate = date;
+                                viewYear = tempDate.year;
+                                viewMonth = tempDate.month;
+                              });
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? colorTipo
+                                    : (isToday ? colorTipo.withValues(alpha: 0.08) : Colors.transparent),
+                                shape: BoxShape.circle,
+                                border: isToday && !isSelected
+                                    ? Border.all(color: colorTipo, width: 1.2)
+                                    : null,
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '${date.day}',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: isSelected || isToday ? FontWeight.bold : FontWeight.w500,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : (isCurrentMonth
+                                          ? colorTexto
+                                          : colorTexto.withValues(alpha: 0.25)),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text(
+                              isEs ? 'Cancelar' : 'Cancel',
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          TextButton(
+                            onPressed: () {
+                              setState(() {
+                                _selectedDate = tempDate;
+                              });
+                              Navigator.pop(context);
+                            },
+                            child: Text(
+                              isEs ? 'Aceptar' : 'OK',
+                              style: TextStyle(
+                                color: colorTipo,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
         );
       },
     );
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
-    }
   }
 
   void _submitTransaction() {
@@ -289,6 +570,10 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
     }
 
     final String successMessage;
+    final bool esProgramada = _esProgramada;
+    final bool pagada = _esProgramada ? _pagada : true;
+    final String? recurrencia = _esProgramada ? _selectedRecurrencia : null;
+
     if (widget.transaccion != null) {
       estadoApp.updateTransaction(
         id: widget.transaccion!.id,
@@ -301,6 +586,9 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
         toAccountId: type == 'transferencia' ? _selectedToAccountId : null,
         photoPath: _simulatedPhotoPath,
         date: _selectedDate,
+        esProgramada: esProgramada,
+        pagada: pagada,
+        recurrencia: recurrencia,
       );
       successMessage = 'Movimiento actualizado con éxito';
     } else {
@@ -313,6 +601,10 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
         accountId: _selectedAccountId!,
         toAccountId: type == 'transferencia' ? _selectedToAccountId : null,
         photoPath: _simulatedPhotoPath,
+        date: _selectedDate,
+        esProgramada: esProgramada,
+        pagada: pagada,
+        recurrencia: recurrencia,
       );
       successMessage = 'Movimiento registrado con éxito';
     }
@@ -322,6 +614,42 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
     ToastHelper.showSuccess(context, successMessage);
   }
 
+  Widget _buildRecurrenciaChip(String code, String label, bool esOscuro, Color colorTipo) {
+    final isSelected = _selectedRecurrencia == code;
+    final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
+    
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedRecurrencia = code;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? colorTipo.withValues(alpha: esOscuro ? 0.20 : 0.12)
+              : (esOscuro ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03)),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected
+                ? colorTipo
+                : (esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05)),
+            width: 1.0,
+          ),
+        ),
+        child: Text(
+          label.toUpperCase(),
+          style: TextStyle(
+            fontSize: 9.5,
+            fontWeight: FontWeight.w800,
+            color: isSelected ? colorTipo : colorTexto.withValues(alpha: 0.6),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final estadoApp = Provider.of<EstadoApp>(context);
@@ -329,6 +657,18 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
     final esOscuro = estadoApp.esTemaOscuro;
     final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
     final colorTipo = _getTipoColor();
+
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final baseHeight = widget.transaccion != null
+        ? (size.height * 0.82).clamp(620.0, 780.0)
+        : (size.height * 0.78).clamp(580.0, 700.0);
+
+    String type = 'gasto';
+    if (_tabController.index == 1) {
+      type = 'ingreso';
+    } else if (_tabController.index == 2) {
+      type = 'transferencia';
+    }
 
     final activeAcc = estadoApp.accounts.firstWhere(
       (a) => a.id == _selectedAccountId,
@@ -342,9 +682,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
-          height: widget.transaccion != null
-              ? (size.height * 0.72).clamp(550.0, 720.0)
-              : (size.height * 0.62).clamp(480.0, 620.0),
+          height: baseHeight + keyboardHeight,
           decoration: BoxDecoration(
             color: esOscuro
                 ? const Color(0xFF0A0A0A).withValues(alpha: 0.65)
@@ -357,7 +695,12 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
               width: 1.0,
             ),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 8,
+            bottom: 8 + keyboardHeight,
+          ),
           child: Form(
             key: _formKey,
             child: Stack(
@@ -411,135 +754,181 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                 ),
                 const SizedBox(height: 16),
                 
-                // Pestanas dinamicas en capsula Liquid Glass
-                Container(
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
-                      width: 1.0,
-                    ),
-                  ),
-                  child: TabBar(
-                    controller: _tabController,
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    dividerColor: Colors.transparent,
-                    indicator: BoxDecoration(
-                      color: colorTipo,
+                if (!widget.esPlanificacion) ...[
+                  // Pestanas dinamicas en capsula Liquid Glass
+                  Container(
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
                       borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: colorTipo.withValues(alpha: 0.25),
-                          blurRadius: 10,
-                          offset: const Offset(0, 2),
-                        ),
+                      border: Border.all(
+                        color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                        width: 1.0,
+                      ),
+                    ),
+                    child: TabBar(
+                      controller: _tabController,
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      dividerColor: Colors.transparent,
+                      indicator: BoxDecoration(
+                        color: colorTipo,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: colorTipo.withValues(alpha: 0.25),
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      labelColor: Colors.white,
+                      unselectedLabelColor: colorTexto.withValues(alpha: 0.5),
+                      labelStyle: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      tabs: const [
+                        Tab(child: FittedBox(fit: BoxFit.scaleDown, child: Text('Gasto'))),
+                        Tab(child: FittedBox(fit: BoxFit.scaleDown, child: Text('Ingreso'))),
+                        Tab(child: FittedBox(fit: BoxFit.scaleDown, child: Text('Transferencia'))),
                       ],
                     ),
-                    labelColor: Colors.white,
-                    unselectedLabelColor: colorTexto.withValues(alpha: 0.5),
-                    labelStyle: const TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    tabs: const [
-                      Tab(text: 'Gasto'),
-                      Tab(text: 'Ingreso'),
-                      Tab(text: 'Transferencia'),
-                    ],
                   ),
-                ),
-                const SizedBox(height: 20),
+                  const SizedBox(height: 20),
+                ],
                 Expanded(
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Fila 1: Título e Importe
-                        Row(
+                        // Fila 1: Título
+                        Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              flex: 6,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildLabel('TÍTULO', esOscuro),
-                                  const SizedBox(height: 4),
-                                  TextFormField(
-                                    controller: _titleController,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: colorTexto,
-                                    ),
-                                    decoration: _buildInputDecoration('Ej. Almuerzo familiar', esOscuro, colorTipo).copyWith(
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                    ),
-                                    validator: (value) {
-                                      if (value == null || value.trim().isEmpty) {
-                                        return 'Ingresa un título';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                ],
+                            _buildLabel('TÍTULO', esOscuro),
+                            const SizedBox(height: 4),
+                            TextFormField(
+                              controller: _titleController,
+                              style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: colorTexto,
                               ),
+                              decoration: _buildInputDecoration('Ej. Almuerzo familiar', esOscuro, colorTipo).copyWith(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Ingresa un título';
+                                }
+                                return null;
+                              },
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              flex: 4,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildLabel('IMPORTE ($activeSymbol)', esOscuro),
-                                  const SizedBox(height: 4),
-                                  GestureDetector(
-                                    onTap: () => _showCalculatorBottomSheet(esOscuro, colorTexto, colorTipo),
-                                    child: AbsBottomKeyboard(
-                                      child: TextFormField(
-                                        controller: _amountController,
-                                        enabled: false,
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.bold,
-                                          color: colorTexto,
-                                        ),
-                                        decoration: InputDecoration(
-                                          hintText: '0.00',
-                                          hintStyle: TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.bold,
-                                            color: colorTexto.withValues(alpha: 0.25),
-                                          ),
-                                          suffixIcon: Icon(
-                                            Icons.calculate_rounded,
-                                            color: colorTipo,
-                                            size: 18,
-                                          ),
-                                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                          filled: true,
-                                          fillColor: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
-                                          disabledBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(16),
-                                            borderSide: BorderSide(
-                                              color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
-                                              width: 1.0,
+                            ValueListenableBuilder<TextEditingValue>(
+                              valueListenable: _titleController,
+                              builder: (context, value, child) {
+                                final suggestions = _getPredictiveSuggestions(type, value.text);
+                                if (suggestions.isEmpty) return const SizedBox.shrink();
+                                
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    physics: const BouncingScrollPhysics(),
+                                    child: Row(
+                                      children: suggestions.map((tx) {
+                                        return GestureDetector(
+                                          onTap: () => _selectSuggestion(tx),
+                                          child: Container(
+                                            margin: const EdgeInsets.only(right: 8),
+                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: colorTipo.withValues(alpha: 0.08),
+                                              borderRadius: BorderRadius.circular(12),
+                                              border: Border.all(
+                                                color: colorTipo.withValues(alpha: 0.2),
+                                                width: 0.8,
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.history_rounded,
+                                                  size: 12,
+                                                  color: colorTipo.withValues(alpha: 0.6),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  tx.title,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: colorTexto.withValues(alpha: 0.85),
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
-                                        ),
-                                        validator: (value) {
-                                          if (value == null || value.trim().isEmpty || double.tryParse(value) == 0.0) {
-                                            return 'Requerido';
-                                          }
-                                          return null;
-                                        },
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        
+                        // Fila 2: Importe
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildLabel('IMPORTE ($activeSymbol)', esOscuro),
+                            const SizedBox(height: 4),
+                            GestureDetector(
+                              onTap: () => _showCalculatorBottomSheet(esOscuro, colorTexto, colorTipo),
+                              child: AbsBottomKeyboard(
+                                child: TextFormField(
+                                  controller: _amountController,
+                                  enabled: false,
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: colorTexto,
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText: '0.00',
+                                    hintStyle: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: colorTexto.withValues(alpha: 0.25),
+                                    ),
+                                    suffixIcon: Icon(
+                                      Icons.calculate_rounded,
+                                      color: colorTipo,
+                                      size: 18,
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                    filled: true,
+                                    fillColor: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
+                                    disabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide(
+                                        color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                                        width: 1.0,
                                       ),
                                     ),
                                   ),
-                                ],
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty || double.tryParse(value) == 0.0) {
+                                      return 'Requerido';
+                                    }
+                                    return null;
+                                  },
+                                ),
                               ),
                             ),
                           ],
@@ -547,7 +936,28 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                         const SizedBox(height: 12),
                         
                         // Fila 2: Cuenta y Categoría / Cuentas Origen-Destino
-                        if (_tabController.index == 2) ...[
+                        if (widget.esPlanificacion) ...[
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildLabel('CATEGORÍA', esOscuro),
+                              const SizedBox(height: 4),
+                              _buildCategorySelectorCard(
+                                selectedCategoryName: _selectedCategory,
+                                categories: estadoApp.categories,
+                                onSelected: (val) {
+                                  setState(() {
+                                    _selectedCategory = val;
+                                  });
+                                },
+                                esOscuro: esOscuro,
+                                colorTexto: colorTexto,
+                                colorTipo: colorTipo,
+                                compacto: false,
+                              ),
+                            ],
+                          ),
+                        ] else if (_tabController.index == 2) ...[
                           Row(
                             children: [
                               Expanded(
@@ -651,137 +1061,295 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                         const SizedBox(height: 12),
                         
                         // Fila 3: Fecha y Foto
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildLabel('FECHA', esOscuro),
-                                  const SizedBox(height: 4),
-                                  GestureDetector(
-                                    onTap: () => _selectDate(context),
-                                    child: Container(
-                                      height: 46,
-                                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                                      decoration: BoxDecoration(
-                                        color: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
-                                        borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(
-                                          color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
-                                          width: 1.0,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text(
-                                            '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                                            style: TextStyle(
-                                              fontSize: 13.5,
-                                              fontWeight: FontWeight.bold,
-                                              color: colorTexto,
-                                            ),
-                                          ),
-                                          Icon(
-                                            Icons.calendar_month_rounded,
-                                            color: colorTipo,
-                                            size: 16,
-                                          ),
-                                        ],
-                                      ),
+                        if (widget.esPlanificacion) ...[
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildLabel('FECHA', esOscuro),
+                              const SizedBox(height: 4),
+                              GestureDetector(
+                                onTap: () => _selectDate(context),
+                                child: Container(
+                                  height: 46,
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  decoration: BoxDecoration(
+                                    color: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                                      width: 1.0,
                                     ),
                                   ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildLabel('FOTO ADJUNTA', esOscuro),
-                                  const SizedBox(height: 4),
-                                  GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        _simulatedPhotoPath = 'photo_simulated_path.jpg';
-                                      });
-                                      ToastHelper.showInfo(context, 'Foto simulada adjuntada correctamente');
-                                    },
-                                    child: Container(
-                                      height: 46,
-                                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                                      decoration: BoxDecoration(
-                                        color: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
-                                        borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(
-                                          color: _simulatedPhotoPath != null
-                                              ? const Color(0xFF10B981)
-                                              : (esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05)),
-                                          width: 1.0,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                                        style: TextStyle(
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.bold,
+                                          color: colorTexto,
                                         ),
                                       ),
-                                      child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            _simulatedPhotoPath != null
-                                                ? Icons.check_circle_rounded
-                                                : Icons.camera_alt_rounded,
+                                      Icon(
+                                        Icons.calendar_month_rounded,
+                                        color: colorTipo,
+                                        size: 16,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                        ] else ...[
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildLabel('FECHA', esOscuro),
+                                    const SizedBox(height: 4),
+                                    GestureDetector(
+                                      onTap: () => _selectDate(context),
+                                      child: Container(
+                                        height: 46,
+                                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                                        decoration: BoxDecoration(
+                                          color: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
+                                          borderRadius: BorderRadius.circular(16),
+                                          border: Border.all(
+                                            color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                                            width: 1.0,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                                              style: TextStyle(
+                                                fontSize: 13.5,
+                                                fontWeight: FontWeight.bold,
+                                                color: colorTexto,
+                                              ),
+                                            ),
+                                            Icon(
+                                              Icons.calendar_month_rounded,
+                                              color: colorTipo,
+                                              size: 16,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildLabel('FOTO ADJUNTA', esOscuro),
+                                    const SizedBox(height: 4),
+                                    GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _simulatedPhotoPath = 'photo_simulated_path.jpg';
+                                        });
+                                        ToastHelper.showInfo(context, 'Foto simulada adjuntada correctamente');
+                                      },
+                                      child: Container(
+                                        height: 46,
+                                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                                        decoration: BoxDecoration(
+                                          color: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
+                                          borderRadius: BorderRadius.circular(16),
+                                          border: Border.all(
                                             color: _simulatedPhotoPath != null
                                                 ? const Color(0xFF10B981)
-                                                : colorTexto.withValues(alpha: 0.4),
-                                            size: 16,
+                                                : (esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05)),
+                                            width: 1.0,
                                           ),
-                                          const SizedBox(width: 6),
-                                          Flexible(
-                                            child: Text(
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
                                               _simulatedPhotoPath != null
-                                                  ? 'Foto cargada'
-                                                  : 'Agregar foto',
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.bold,
-                                                color: _simulatedPhotoPath != null
-                                                    ? const Color(0xFF10B981)
-                                                    : colorTexto.withValues(alpha: 0.5),
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
+                                                  ? Icons.check_circle_rounded
+                                                  : Icons.camera_alt_rounded,
+                                              color: _simulatedPhotoPath != null
+                                                  ? const Color(0xFF10B981)
+                                                  : colorTexto.withValues(alpha: 0.4),
+                                              size: 16,
                                             ),
-                                          ),
-                                        ],
+                                            const SizedBox(width: 6),
+                                            Flexible(
+                                              child: Text(
+                                                _simulatedPhotoPath != null
+                                                    ? 'Foto cargada'
+                                                    : 'Agregar foto',
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: _simulatedPhotoPath != null
+                                                      ? const Color(0xFF10B981)
+                                                      : colorTexto.withValues(alpha: 0.5),
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          
+                          // Fila 4: Comentario
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildLabel('COMENTARIO', esOscuro),
+                              const SizedBox(height: 4),
+                              TextFormField(
+                                controller: _commentController,
+                                maxLines: 1,
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: colorTexto,
+                                ),
+                                decoration: _buildInputDecoration('Ej. Pago de la cena...', esOscuro, colorTipo).copyWith(
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                        ],
                         
-                        // Fila 4: Comentario
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildLabel('COMENTARIO', esOscuro),
-                            const SizedBox(height: 4),
-                            TextFormField(
-                              controller: _commentController,
-                              maxLines: 1,
-                              style: TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w500,
-                                color: colorTexto,
-                              ),
-                              decoration: _buildInputDecoration('Ej. Pago de la cena...', esOscuro, colorTipo).copyWith(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        // Planificación mensual y transacciones programadas
+                        if (widget.esPlanificacion || (widget.transaccion != null && widget.transaccion!.esProgramada)) ...[
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: esOscuro ? Colors.white.withValues(alpha: 0.02) : Colors.black.withValues(alpha: 0.01),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: esOscuro ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+                                width: 1.0,
                               ),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.calendar_today_rounded,
+                                          color: colorTipo,
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'PLANIFICACIÓN',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: colorTexto.withValues(alpha: 0.7),
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: colorTipo.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        'PROGRAMADA',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w900,
+                                          color: colorTipo,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Divider(
+                                  color: esOscuro ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+                                  height: 1,
+                                ),
+                                const SizedBox(height: 10),
+                                if (!widget.esPlanificacion) ...[
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Marcar como pagado hoy',
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.bold,
+                                          color: colorTexto,
+                                        ),
+                                      ),
+                                      Switch(
+                                        value: _pagada,
+                                        activeTrackColor: const Color(0xFF10B981).withValues(alpha: 0.5),
+                                        activeThumbColor: const Color(0xFF10B981),
+                                        onChanged: (val) {
+                                          setState(() {
+                                            _pagada = val;
+                                          });
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                ],
+                                Text(
+                                  'RECURRENCIA',
+                                  style: TextStyle(
+                                    fontSize: 8.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: colorTexto.withValues(alpha: 0.45),
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Wrap(
+                                  spacing: 8.0,
+                                  runSpacing: 8.0,
+                                  children: [
+                                    _buildRecurrenciaChip('una_vez', 'Una vez', esOscuro, colorTipo),
+                                    _buildRecurrenciaChip('diario', 'Cada día', esOscuro, colorTipo),
+                                    _buildRecurrenciaChip('semanal', 'Cada semana', esOscuro, colorTipo),
+                                    _buildRecurrenciaChip('mensual', 'Cada mes', esOscuro, colorTipo),
+                                    _buildRecurrenciaChip('anual', 'Cada año', esOscuro, colorTipo),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
                       ],
                     ),
                   ),
@@ -1207,6 +1775,14 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
     );
     final catColor = Color(int.parse(activeCat.hexColor.replaceFirst('#', '0xFF')));
 
+    String catNameDisplay = activeCat.name;
+    if (activeCat.parentId != null) {
+      try {
+        final parentCat = categories.firstWhere((cat) => cat.id == activeCat.parentId);
+        catNameDisplay = '${parentCat.name} > ${activeCat.name}';
+      } catch (_) {}
+    }
+
     return InteractiveScale(
       onTap: () => _showCategorySelectorBottomSheet(categories, selectedCategoryName, onSelected, esOscuro, colorTexto, colorTipo),
       child: Container(
@@ -1251,7 +1827,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    activeCat.name,
+                    catNameDisplay,
                     style: TextStyle(
                       fontSize: compacto ? 13 : 14.5,
                       fontWeight: FontWeight.bold,
@@ -1299,13 +1875,14 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
       }
     }
 
+    final Set<String> expandedParentIds = {}; // Cerrados por defecto
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
         final colorFondo = esOscuro ? const Color(0xFF0A0A0A) : Colors.white;
-        final Set<String> expandedParentIds = {}; // Cerrados por defecto
 
         return StatefulBuilder(
           builder: (context, setModalState) {
@@ -1944,30 +2521,30 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                         crossAxisSpacing: 10,
                         childAspectRatio: 1.3,
                         children: [
-                          _buildCalcButton('C', Colors.redAccent, calcPress, esOscuro),
-                          _buildCalcButton('DEL', Colors.orangeAccent, calcPress, esOscuro),
-                          _buildCalcButton('%', colorTipo, calcPress, esOscuro),
-                          _buildCalcButton('/', colorTipo, calcPress, esOscuro),
+                          _buildCalcButton('C', colorTexto, calcPress, esOscuro, isAction: true),
+                          _buildCalcButton('DEL', colorTexto, calcPress, esOscuro, isAction: true),
+                          _buildCalcButton('%', colorTexto, calcPress, esOscuro, isOperator: true),
+                          _buildCalcButton('/', colorTexto, calcPress, esOscuro, isOperator: true),
                           
                           _buildCalcButton('7', colorTexto, calcPress, esOscuro, isNum: true),
                           _buildCalcButton('8', colorTexto, calcPress, esOscuro, isNum: true),
                           _buildCalcButton('9', colorTexto, calcPress, esOscuro, isNum: true),
-                          _buildCalcButton('*', colorTipo, calcPress, esOscuro),
+                          _buildCalcButton('*', colorTexto, calcPress, esOscuro, isOperator: true),
                           
                           _buildCalcButton('4', colorTexto, calcPress, esOscuro, isNum: true),
                           _buildCalcButton('5', colorTexto, calcPress, esOscuro, isNum: true),
                           _buildCalcButton('6', colorTexto, calcPress, esOscuro, isNum: true),
-                          _buildCalcButton('-', colorTipo, calcPress, esOscuro),
+                          _buildCalcButton('-', colorTexto, calcPress, esOscuro, isOperator: true),
                           
                           _buildCalcButton('1', colorTexto, calcPress, esOscuro, isNum: true),
                           _buildCalcButton('2', colorTexto, calcPress, esOscuro, isNum: true),
                           _buildCalcButton('3', colorTexto, calcPress, esOscuro, isNum: true),
-                          _buildCalcButton('+', colorTipo, calcPress, esOscuro),
+                          _buildCalcButton('+', colorTexto, calcPress, esOscuro, isOperator: true),
                           
                           _buildCalcButton('0', colorTexto, calcPress, esOscuro, isNum: true),
                           _buildCalcButton('.', colorTexto, calcPress, esOscuro, isNum: true),
-                          _buildCalcButton('=', Colors.blueAccent, calcPress, esOscuro),
-                          _buildCalcButton('LISTO', const Color(0xFF10B981), calcPress, esOscuro, isBig: true),
+                          _buildCalcButton('=', colorTipo, calcPress, esOscuro, isSubmit: true),
+                          _buildCalcButton('LISTO', colorTipo, calcPress, esOscuro, isBig: true, isSubmit: true),
                         ],
                       ),
                     ],
@@ -1980,7 +2557,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
       },
     );
   }
- 
+
   Widget _buildCalcButton(
     String label,
     Color color,
@@ -1988,11 +2565,29 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
     bool esOscuro, {
     bool isNum = false,
     bool isBig = false,
+    bool isOperator = false,
+    bool isAction = false,
+    bool isSubmit = false,
   }) {
-    final Color buttonColor = isNum
-        ? (esOscuro ? Colors.white.withValues(alpha: 0.04) : const Color(0xFFF1F5F9))
-        : color.withValues(alpha: 0.08);
-    final Color fontColor = color;
+    Color buttonColor;
+    Color fontColor;
+
+    if (isSubmit) {
+      buttonColor = color;
+      fontColor = Colors.white;
+    } else if (isNum) {
+      buttonColor = esOscuro ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF1F5F9);
+      fontColor = esOscuro ? Colors.white : const Color(0xFF0F172A);
+    } else if (isOperator) {
+      buttonColor = esOscuro ? Colors.white.withValues(alpha: 0.12) : const Color(0xFFE2E8F0);
+      fontColor = esOscuro ? Colors.white.withValues(alpha: 0.9) : const Color(0xFF334155);
+    } else if (isAction) {
+      buttonColor = esOscuro ? const Color(0xFF334155) : const Color(0xFFCBD5E1);
+      fontColor = esOscuro ? Colors.white : const Color(0xFF0F172A);
+    } else {
+      buttonColor = esOscuro ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF1F5F9);
+      fontColor = esOscuro ? Colors.white : const Color(0xFF0F172A);
+    }
 
     return InteractiveScale(
       onTap: () => onPress(label),
@@ -2001,7 +2596,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
           color: buttonColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+            color: esOscuro ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
             width: 1.0,
           ),
         ),
@@ -2009,7 +2604,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
         child: Text(
           label,
           style: TextStyle(
-            fontSize: label == 'LISTO' ? 12 : 18,
+            fontSize: label == 'LISTO' ? 14 : 18,
             fontWeight: FontWeight.bold,
             color: fontColor,
           ),

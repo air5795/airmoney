@@ -27,36 +27,7 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
   String _selectedCategoryColorHex = '#FFE0B2';
   final Set<String> _expandedParentIds = {};
 
-  static final Map<String, IconData> _galleryIcons = {
-    'restaurant': Icons.restaurant_rounded,
-    'shopping_cart': Icons.shopping_cart_rounded,
-    'directions_car': Icons.directions_car_rounded,
-    'work': Icons.work_rounded,
-    'electrical_services': Icons.electrical_services_rounded,
-    'sports_esports': Icons.sports_esports_rounded,
-    'category': Icons.category_rounded,
-    'movie': Icons.movie_rounded,
-    'local_hospital': Icons.local_hospital_rounded,
-    'card_giftcard': Icons.card_giftcard_rounded,
-    'home': Icons.home_rounded,
-    'flight': Icons.flight_rounded,
-    'pets': Icons.pets_rounded,
-    'school': Icons.school_rounded,
-    'fitness_center': Icons.fitness_center_rounded,
-    'local_cafe': Icons.local_cafe_rounded,
-    'savings': Icons.savings_rounded,
-    'phone_android': Icons.phone_android_rounded,
-    'celebration': Icons.celebration_rounded,
-    'water_drop': Icons.water_drop_rounded,
-    'router': Icons.router_rounded,
-    'tv': Icons.tv_rounded,
-    'local_gas_station': Icons.local_gas_station_rounded,
-    'build': Icons.build_rounded,
-    'payments': Icons.payments_rounded,
-    'laptop': Icons.laptop_chromebook_rounded,
-    'trending_up': Icons.trending_up_rounded,
-    'directions_bus': Icons.directions_bus_rounded,
-  };
+  static final Map<String, IconData> _galleryIcons = EstadoApp.galleryIcons;
 
   @override
   void dispose() {
@@ -223,46 +194,7 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
                 ),
               ),
               const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Color(int.parse(_selectedCategoryColorHex.replaceFirst('#', '0xFF'))).withValues(alpha: esOscuro ? 0.25 : 0.45),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(
-                    color: Color(int.parse(_selectedCategoryColorHex.replaceFirst('#', '0xFF'))).withValues(alpha: esOscuro ? 0.35 : 0.8),
-                    width: 1.2,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: Color(int.parse(_selectedCategoryColorHex.replaceFirst('#', '0xFF'))).withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Center(
-                        child: Icon(
-                          _galleryIcons[_selectedCategoryIconCode] ?? Icons.bubble_chart_rounded,
-                          color: Color(int.parse(_selectedCategoryColorHex.replaceFirst('#', '0xFF'))),
-                          size: 18,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      _categoryNameController.text.isEmpty ? 'Nombre' : _categoryNameController.text,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: colorTexto,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              _buildDynamicPreview(estadoApp, esOscuro, colorTexto),
             ],
           ),
         ).animate().fadeIn(duration: 400.ms),
@@ -391,7 +323,7 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
         ),
         const SizedBox(height: 12),
         Container(
-          height: 140,
+          height: 180,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: esOscuro
@@ -473,6 +405,221 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
 
       ],
     );
+  }
+
+  Widget _buildDynamicPreview(EstadoApp estadoApp, bool esOscuro, Color colorTexto) {
+    final hexColorStr = _selectedCategoryColorHex.isEmpty ? '#E2E8F0' : _selectedCategoryColorHex;
+    final catColor = Color(int.parse(hexColorStr.replaceFirst('#', '0xFF')));
+    final isSubcategory = _selectedCategoryParentId != null;
+
+    if (!isSubcategory) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: esOscuro 
+              ? const Color(0xFF0E0E0E).withValues(alpha: 0.55) 
+              : Colors.white.withValues(alpha: 0.85),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: esOscuro 
+                ? Colors.white.withValues(alpha: 0.08) 
+                : Colors.black.withValues(alpha: 0.08),
+            width: 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: esOscuro ? 0.15 : 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: catColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: catColor.withValues(alpha: 0.25),
+                  width: 1.0,
+                ),
+              ),
+              child: Center(
+                child: Icon(
+                  _galleryIcons[_selectedCategoryIconCode] ?? Icons.bubble_chart_rounded,
+                  color: catColor,
+                  size: 18,
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _categoryNameController.text.isEmpty ? 'Nombre' : _categoryNameController.text,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: colorTexto,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '0 subcategorías',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: colorTexto.withValues(alpha: 0.4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      final parentCat = estadoApp.categories.firstWhere(
+        (cat) => cat.id == _selectedCategoryParentId,
+        orElse: () => ModeloCategoria(id: '', name: 'Categoría Padre', iconCode: 'category', hexColor: '#64748B'),
+      );
+      final parentColor = Color(int.parse(parentCat.hexColor.replaceFirst('#', '0xFF')));
+
+      return Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: esOscuro 
+              ? const Color(0xFF0E0E0E).withValues(alpha: 0.55) 
+              : Colors.white.withValues(alpha: 0.85),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: esOscuro 
+                ? Colors.white.withValues(alpha: 0.08) 
+                : Colors.black.withValues(alpha: 0.08),
+            width: 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: esOscuro ? 0.15 : 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: parentColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: parentColor.withValues(alpha: 0.25),
+                        width: 1.0,
+                      ),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        _galleryIcons[parentCat.iconCode] ?? Icons.bubble_chart_rounded,
+                        color: parentColor,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          parentCat.name,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: colorTexto,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '1 subcategoría',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: colorTexto.withValues(alpha: 0.4),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.keyboard_arrow_up_rounded,
+                    size: 20,
+                    color: colorTexto.withValues(alpha: 0.4),
+                  ),
+                ],
+              ),
+            ),
+            Divider(
+              color: esOscuro ? const Color(0xFF1E1E1E) : const Color(0xFFE2E8F0),
+              height: 1,
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                color: esOscuro ? Colors.white.withValues(alpha: 0.01) : const Color(0xFFF8FAFC).withValues(alpha: 0.3),
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      margin: const EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        color: colorTexto.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    Icon(
+                      _galleryIcons[_selectedCategoryIconCode] ?? Icons.bubble_chart_rounded,
+                      color: catColor,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _categoryNameController.text.isEmpty ? 'Nombre' : _categoryNameController.text,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: colorTexto,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   Widget _buildCategoriesList(EstadoApp estadoApp, bool esOscuro, Color colorPrincipal, Color colorTexto) {

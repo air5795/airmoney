@@ -22,13 +22,14 @@ class DockLiquidGlass extends StatefulWidget {
   State<DockLiquidGlass> createState() => _DockLiquidGlassState();
 }
 
-class _DockLiquidGlassState extends State<DockLiquidGlass> with SingleTickerProviderStateMixin {
+class _DockLiquidGlassState extends State<DockLiquidGlass>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _slideAnimation;
 
   int _oldIndex = 0;
   int _currentIndex = 0;
-  
+
   static bool _hasDismissedVoiceHint = false;
 
   @override
@@ -79,13 +80,9 @@ class _DockLiquidGlassState extends State<DockLiquidGlass> with SingleTickerProv
     super.dispose();
   }
 
-  // Mapear los índices de pestañas (0, 1, 2, 3) a las 5 columnas físicas del Row
+  // Con el botón + a la derecha, las pestañas ocupan los slots 0, 1, 2 y 3 correlativamente
   int _getSlotFromIndex(int index) {
-    if (index == 0) return 0;
-    if (index == 1) return 1;
-    if (index == 2) return 3; // El slot 2 (medio) está reservado para el botón Agregar
-    if (index == 3) return 4;
-    return 0;
+    return index;
   }
 
   @override
@@ -97,8 +94,8 @@ class _DockLiquidGlassState extends State<DockLiquidGlass> with SingleTickerProv
     // Colores de fondo de alta gama con opacidad calibrada para solidez
     final colorFondoDock = esOscuro
         ? const Color(0xFF0A0A0A).withValues(alpha: 0.55)
-        : Colors.white.withValues(alpha: 0.75);
-        
+        : const Color.fromARGB(255, 228, 228, 228).withValues(alpha: 0.75);
+
     // Bordes micro-delgados sumamente sutiles
     final colorBordeDock = esOscuro
         ? Colors.white.withValues(alpha: 0.08)
@@ -111,7 +108,12 @@ class _DockLiquidGlassState extends State<DockLiquidGlass> with SingleTickerProv
       child: LayoutBuilder(
         builder: (context, constraints) {
           final totalWidth = constraints.maxWidth;
-          final slotWidth = totalWidth / 5.0; // 5 columnas exactas
+          // Se resta el ancho de los bordes laterales (2.0 de cada lado = 4.0 en total)
+          final innerWidth = totalWidth - 4.0;
+
+          // El divisor toma 17.2 píxeles de espacio interno. Los 5 elementos Expanded comparten el resto equitativamente.
+          const double dividerWidth = 17.2;
+          final slotWidth = (innerWidth - dividerWidth) / 5.0;
 
           final double oldSlot = _getSlotFromIndex(_oldIndex).toDouble();
           final double newSlot = _getSlotFromIndex(_currentIndex).toDouble();
@@ -119,157 +121,228 @@ class _DockLiquidGlassState extends State<DockLiquidGlass> with SingleTickerProv
           return Stack(
             clipBehavior: Clip.none,
             children: [
-              // Floating Voice Hint Card pointing to the + button
+              // Floating Voice Hint Card pointing to the + button (positioned at the far right)
               if (!_hasDismissedVoiceHint)
                 Positioned(
-                  bottom: 78, // Float above the 66px tall dock
-                  left: (totalWidth - 220) / 2, // Centered (card width is 220)
+                  bottom: 80, // Float above the 68px tall dock
+                  right: 2, // Aligned to the right side of the dock
                   width: 220,
                   child: _buildVoiceHintCard(estadoApp, esOscuro),
                 ),
               Container(
-                height: 66,
+                height: 68,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(33),
+                  borderRadius: BorderRadius.circular(34),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: esOscuro ? 0.20 : 0.03),
+                      color: Colors.black.withValues(
+                        alpha: esOscuro ? 0.20 : 0.03,
+                      ),
                       blurRadius: 16,
                       offset: const Offset(0, 8),
                     ),
                   ],
                 ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(33),
+                  borderRadius: BorderRadius.circular(34),
                   child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                    filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
                     child: Container(
                       decoration: BoxDecoration(
                         color: colorFondoDock,
-                        borderRadius: BorderRadius.circular(33),
-                        border: Border.all(
-                          color: colorBordeDock,
-                          width: 1.0,
-                        ),
+                        borderRadius: BorderRadius.circular(34),
+                        border: Border.all(color: colorBordeDock, width: 2.0),
                       ),
                       child: Stack(
                         children: [
-                      // 💧 GOTA DE LIQUIDO VISCOSO EN SEGUNDO PLANO (MORPHING FLUID SELECTION INDICATOR)
-                      AnimatedBuilder(
-                        animation: _controller,
-                        builder: (context, child) {
-                          final double t = _slideAnimation.value;
-                          final double currentSlot = lerpDouble(oldSlot, newSlot, t)!;
-                          final double centerX = (currentSlot + 0.5) * slotWidth;
+                          // 💧 GOTA DE LIQUIDO VISCOSO EN SEGUNDO PLANO (MORPHING FLUID SELECTION INDICATOR)
+                          AnimatedBuilder(
+                            animation: _controller,
+                            builder: (context, child) {
+                              final double t = _slideAnimation.value;
+                              final double currentSlot = lerpDouble(
+                                oldSlot,
+                                newSlot,
+                                t,
+                              )!;
+                              // El indicador fluido solo se mueve entre las 4 pestañas de la izquierda
+                              final double centerX = (currentSlot + 0.5) * slotWidth;
 
-                          // Dynamic base width depending on selected tab label length
-                          double getBaseWidth(int index) {
-                            if (index == 0) return 56.0; // "Inicio"
-                            if (index == 1) return 78.0; // "Movimientos"
-                            if (index == 2) return 80.0; // "Estadísticas"
-                            if (index == 3) return 58.0; // "Planes"
-                            return 56.0;
-                          }
+                              // Dynamic base width depending on selected tab label length (slightly wider for larger icons)
+                              double getBaseWidth(int index) {
+                                if (index == 0) return 58.0; // "Inicio"
+                                if (index == 1) return 80.0; // "Movimientos"
+                                if (index == 2) return 82.0; // "Estadísticas"
+                                if (index == 3) return 60.0; // "Planes"
+                                return 58.0;
+                              }
 
-                          final double oldBaseWidth = getBaseWidth(_oldIndex);
-                          final double newBaseWidth = getBaseWidth(_currentIndex);
-                          final double baseWidth = lerpDouble(oldBaseWidth, newBaseWidth, t)!;
+                              final double oldBaseWidth = getBaseWidth(
+                                _oldIndex,
+                              );
+                              final double newBaseWidth = getBaseWidth(
+                                _currentIndex,
+                              );
+                              final double baseWidth = lerpDouble(
+                                oldBaseWidth,
+                                newBaseWidth,
+                                t,
+                              )!;
 
-                          final double diff = (newSlot - oldSlot).abs();
-                          // Elastic dynamic stretching based on traveling speed
-                          final double stretch = 20.0 * sin(t * pi) * diff;
-                          final double width = baseWidth + stretch;
-                          // Volume conservation
-                          final double height = 52.0 - (stretch * 0.10);
+                              final double diff = (newSlot - oldSlot).abs();
+                              // Elastic dynamic stretching based on traveling speed
+                              final double stretch = 20.0 * sin(t * pi) * diff;
+                              final double width = baseWidth + stretch;
+                              // Volume conservation
+                              final double height = 54.0 - (stretch * 0.10);
 
-                          final double left = centerX - width / 2.0;
-                          // Centrar exactamente en la posición media del dock (y = 33.0) para englobar icono + texto
-                          final double top = 33.0 - height / 2.0;
+                              final double left = centerX - width / 2.0;
+                              // Centrar exactamente en la posición media del espacio interno del dock (y = 32.0)
+                              final double top = 32.0 - height / 2.0;
 
-                          return Positioned(
-                            left: left,
-                            top: top,
-                            width: width,
-                            height: height,
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(height / 2.0),
-                              child: BackdropFilter(
-                                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                                child: CustomPaint(
-                                  size: Size(width, height),
-                                  painter: ViscousDropletPainter(
-                                    left: 0,
-                                    right: width,
-                                    top: 0,
-                                    bottom: height,
-                                    activeColor: colorPrincipal,
-                                    esOscuro: esOscuro,
-                                    animValue: _controller.value,
+                              return Positioned(
+                                left: left,
+                                top: top,
+                                width: width,
+                                height: height,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(
+                                    height / 2.0,
+                                  ),
+                                  child: BackdropFilter(
+                                    filter: ImageFilter.blur(
+                                      sigmaX: 5,
+                                      sigmaY: 5,
+                                    ),
+                                    child: CustomPaint(
+                                      size: Size(width, height),
+                                      painter: ViscousDropletPainter(
+                                        left: 0,
+                                        right: width,
+                                        top: 0,
+                                        bottom: height,
+                                        activeColor: colorPrincipal,
+                                        esOscuro: esOscuro,
+                                        animValue: _controller.value,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+
+                          // CAPA DE ICONOS SOBREPUESTA EN ROW REDISEÑADA (Pestañas a la izquierda, Separador, + a la derecha)
+                          Row(
+                            children: [
+                              _buildDockItem(
+                                0,
+                                Icons.home_rounded,
+                                'Inicio',
+                                estadoApp,
+                              ),
+                              _buildDockItem(
+                                1,
+                                Icons.receipt_long_rounded,
+                                'Movimientos',
+                                estadoApp,
+                              ),
+                              _buildDockItem(
+                                2,
+                                Icons.bar_chart_rounded,
+                                'Estadísticas',
+                                estadoApp,
+                              ),
+                              _buildDockItem(
+                                3,
+                                Icons.savings_rounded,
+                                'Planes',
+                                estadoApp,
+                              ),
+
+                              // Separador divisor
+                              const SizedBox(width: 8),
+                              Container(
+                                width: 1.2,
+                                height: 26,
+                                color: colorBordeDock,
+                              ),
+                              const SizedBox(width: 8),
+
+                              // El botón Agregar al extremo derecho, separado
+                              Expanded(
+                                child: Center(
+                                  child: _buildAddDockButton(
+                                    colorPrincipal,
+                                    esOscuro,
                                   ),
                                 ),
                               ),
-                            ),
-                          );
-                        },
-                      ),
-
-                      // CAPA DE ICONOS SOBREPUESTA EN ROW EQUITATIVO
-                      Row(
-                        children: [
-                          _buildDockItem(0, Icons.home_rounded, 'Inicio', estadoApp),
-                          _buildDockItem(1, Icons.receipt_long_rounded, 'Movimientos', estadoApp),
-                          // El botón central Agregar ocupa exactamente 1 sección Expanded para balancear la cuadrícula
-                          Expanded(
-                            child: Center(
-                              child: _buildAddDockButton(colorPrincipal, esOscuro),
-                            ),
+                            ],
                           ),
-                          _buildDockItem(2, Icons.bar_chart_rounded, 'Estadísticas', estadoApp),
-                          _buildDockItem(3, Icons.savings_rounded, 'Planes', estadoApp),
                         ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
-        ],
-      );
+            ],
+          );
         },
       ),
     );
   }
 
   Widget _buildAddDockButton(Color colorPrincipal, bool esOscuro) {
-    final isColorPrincipalBlanco = colorPrincipal.toARGB32() == Colors.white.toARGB32();
-    final iconColor = isColorPrincipalBlanco ? const Color(0xFF020617) : Colors.white;
+    final isColorPrincipalBlanco =
+        colorPrincipal.toARGB32() == Colors.white.toARGB32();
+    
+    // Si estamos en modo oscuro y el color de acento es blanco, usamos un fondo oscuro
+    // para que el signo de "+" pueda ser blanco como requiere el usuario y verse estético.
+    final bool useDarkButtonBg = esOscuro && isColorPrincipalBlanco;
+    
+    final Color colorFondoBotonStart = useDarkButtonBg
+        ? const Color(0xFF1E293B) // Slate oscuro elegante
+        : colorPrincipal;
+        
+    final Color colorFondoBotonEnd = useDarkButtonBg
+        ? const Color(0xFF0F172A)
+        : Color.lerp(colorPrincipal, Colors.white, 0.15)!;
+
+    final iconColor = (useDarkButtonBg || !isColorPrincipalBlanco)
+        ? Colors.white
+        : const Color(0xFF020617);
+        
+    final Color colorSombraBoton = useDarkButtonBg
+        ? Colors.black.withValues(alpha: 0.40)
+        : colorPrincipal.withValues(alpha: esOscuro ? 0.35 : 0.22);
+
     return GestureDetector(
       onTap: widget.onAddPressed,
       onLongPress: widget.onAddLongPressed,
       child: Container(
-        width: 48,
-        height: 48,
+        width: 50,
+        height: 50,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              colorPrincipal,
-              Color.lerp(colorPrincipal, Colors.white, 0.15)!,
+              colorFondoBotonStart,
+              colorFondoBotonEnd,
             ],
           ),
           boxShadow: [
             // Soft base shadow
             BoxShadow(
-              color: colorPrincipal.withValues(alpha: esOscuro ? 0.35 : 0.22),
+              color: colorSombraBoton,
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
             // Inner glow effect / top sheen shadow
             BoxShadow(
-              color: Colors.white.withValues(alpha: 0.25),
+              color: Colors.white.withValues(alpha: useDarkButtonBg ? 0.08 : 0.25),
               blurRadius: 2,
               offset: const Offset(0, -1),
             ),
@@ -280,11 +353,7 @@ class _DockLiquidGlassState extends State<DockLiquidGlass> with SingleTickerProv
           ),
         ),
         child: Center(
-          child: Icon(
-            Icons.add_rounded,
-            color: iconColor,
-            size: 26,
-          ),
+          child: Icon(Icons.add_rounded, color: iconColor, size: 28),
         ),
       ),
     );
@@ -299,8 +368,13 @@ class _DockLiquidGlassState extends State<DockLiquidGlass> with SingleTickerProv
     final isSelected = widget.selectedIndex == index;
     final esOscuro = estadoApp.esTemaOscuro;
     final activeColor = estadoApp.colorPrincipal;
-    final isColorPrincipalBlanco = activeColor.toARGB32() == Colors.white.toARGB32();
-    final activeContentColor = isColorPrincipalBlanco ? const Color(0xFF020617) : Colors.white;
+    // El contenido activo (icono y texto) toma el color principal directamente para destacar
+    // con un control de contraste por si el color de acento coincide con el del tema actual.
+    final activeContentColor = (esOscuro && activeColor.toARGB32() == Colors.black.toARGB32())
+        ? Colors.white
+        : (!esOscuro && activeColor.toARGB32() == Colors.white.toARGB32())
+            ? const Color(0xFF020617)
+            : activeColor;
 
     final inactiveColor = esOscuro
         ? Colors.white.withValues(alpha: 0.35)
@@ -311,25 +385,20 @@ class _DockLiquidGlassState extends State<DockLiquidGlass> with SingleTickerProv
         onTap: () => widget.onIndexSelected(index),
         behavior: HitTestBehavior.opaque,
         child: SizedBox(
-          height: 66,
+          height: 64,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (isSelected)
-                Icon(
-                  icon,
-                  color: activeContentColor,
-                  size: 21,
-                )
+                Icon(icon, color: activeContentColor, size: 24)
               else
-                Icon(
-                  icon,
-                  color: inactiveColor,
-                  size: 21,
-                ),
+                Icon(icon, color: inactiveColor, size: 24),
               const SizedBox(height: 3),
               Text(
                 label,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.visible,
                 style: TextStyle(
                   fontSize: 8.5,
                   fontWeight: isSelected ? FontWeight.w900 : FontWeight.w500,
@@ -348,7 +417,7 @@ class _DockLiquidGlassState extends State<DockLiquidGlass> with SingleTickerProv
     final colorFondo = esOscuro
         ? const Color(0xFF0F172A).withValues(alpha: 0.90)
         : Colors.white.withValues(alpha: 0.95);
-        
+
     final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
     final colorBorde = esOscuro
         ? Colors.white.withValues(alpha: 0.12)
@@ -429,11 +498,11 @@ class _DockLiquidGlassState extends State<DockLiquidGlass> with SingleTickerProv
               ),
             ],
           ),
-          
-          // Little pointer pointing down towards the + button
+
+          // Little pointer pointing down towards the + button (now aligned to the right-most slot)
           Positioned(
             bottom: -14,
-            left: 100, // Center of the 220px card (110 - 10 for width offset)
+            right: 20.5, // Aligned with the center of the + button on the right
             child: CustomPaint(
               painter: TrianglePointerPainter(colorFondo, colorBorde),
               size: const Size(20, 8),
@@ -468,11 +537,14 @@ class ViscousDropletPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Rect.fromLTRB(left, top, right, bottom);
-    final rrect = RRect.fromRectAndRadius(rect, Radius.circular(rect.height / 2.0));
+    final rrect = RRect.fromRectAndRadius(
+      rect,
+      Radius.circular(rect.height / 2.0),
+    );
 
-    // 1. Viscous solid fluid fill with 80% opacity
+    // Relleno de la burbuja activa con una opacidad suave para contrastar con el botón +
     final fillPaint = Paint()
-      ..color = activeColor.withValues(alpha: 0.80)
+      ..color = activeColor.withValues(alpha: esOscuro ? 0.15 : 0.12)
       ..style = PaintingStyle.fill;
     canvas.drawRRect(rrect, fillPaint);
   }
@@ -505,7 +577,7 @@ class TrianglePointerPainter extends CustomPainter {
       ..close();
 
     canvas.drawPath(path, paintFondo);
-    
+
     final pathBorde = Path()
       ..moveTo(0, 0)
       ..lineTo(size.width / 2, size.height)
