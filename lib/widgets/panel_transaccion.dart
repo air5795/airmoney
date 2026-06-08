@@ -467,7 +467,14 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                           return GestureDetector(
                             onTap: () {
                               setModalState(() {
-                                tempDate = date;
+                                tempDate = DateTime(
+                                  date.year,
+                                  date.month,
+                                  date.day,
+                                  tempDate.hour,
+                                  tempDate.minute,
+                                  tempDate.second,
+                                );
                                 viewYear = tempDate.year;
                                 viewMonth = tempDate.month;
                               });
@@ -500,7 +507,72 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                           );
                         },
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.access_time_rounded, color: colorTexto.withValues(alpha: 0.6), size: 18),
+                              const SizedBox(width: 8),
+                              Text(
+                                isEs ? 'Hora:' : 'Time:',
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: colorTexto.withValues(alpha: 0.6),
+                                ),
+                              ),
+                            ],
+                          ),
+                          TextButton.icon(
+                            onPressed: () async {
+                              final TimeOfDay? picked = await showTimePicker(
+                                context: context,
+                                initialTime: TimeOfDay.fromDateTime(tempDate),
+                                builder: (BuildContext context, Widget? child) {
+                                  return Theme(
+                                    data: ThemeData(
+                                      colorScheme: ColorScheme.fromSeed(
+                                        seedColor: colorTipo,
+                                        brightness: esOscuro ? Brightness.dark : Brightness.light,
+                                      ),
+                                    ),
+                                    child: child!,
+                                  );
+                                },
+                              );
+                              if (picked != null) {
+                                setModalState(() {
+                                  tempDate = DateTime(
+                                    tempDate.year,
+                                    tempDate.month,
+                                    tempDate.day,
+                                    picked.hour,
+                                    picked.minute,
+                                    tempDate.second,
+                                  );
+                                });
+                              }
+                            },
+                            icon: Icon(Icons.edit_rounded, color: colorTipo, size: 14),
+                            label: Text(
+                              '${tempDate.hour.toString().padLeft(2, '0')}:${tempDate.minute.toString().padLeft(2, '0')}',
+                              style: TextStyle(
+                                color: colorTipo,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        height: 1,
+                        color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                      ),
+                      const SizedBox(height: 16),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
@@ -541,6 +613,39 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
         );
       },
     );
+  }
+
+  Future<void> _selectTime(BuildContext context) async {
+    final estadoApp = Provider.of<EstadoApp>(context, listen: false);
+    final esOscuro = estadoApp.esTemaOscuro;
+    
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_selectedDate),
+      builder: (BuildContext context, Widget? child) {
+        return Theme(
+          data: ThemeData(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: _getTipoColor(),
+              brightness: esOscuro ? Brightness.dark : Brightness.light,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedDate = DateTime(
+          _selectedDate.year,
+          _selectedDate.month,
+          _selectedDate.day,
+          picked.hour,
+          picked.minute,
+          _selectedDate.second,
+        );
+      });
+    }
   }
 
   void _submitTransaction() {
@@ -958,102 +1063,90 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                             ],
                           ),
                         ] else if (_tabController.index == 2) ...[
-                          Row(
+                          // ORIGEN
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildLabel('ORIGEN', esOscuro),
-                                    const SizedBox(height: 4),
-                                    _buildAccountSelectorCard(
-                                      accountId: _selectedAccountId,
-                                      accounts: estadoApp.accounts,
-                                      onSelected: (val) {
-                                        setState(() {
-                                          _selectedAccountId = val;
-                                        });
-                                      },
-                                      esOscuro: esOscuro,
-                                      colorTexto: colorTexto,
-                                      colorTipo: colorTipo,
-                                      compacto: true,
-                                    ),
-                                  ],
-                                ),
+                              _buildLabel('ORIGEN', esOscuro),
+                              const SizedBox(height: 4),
+                              _buildAccountSelectorCard(
+                                accountId: _selectedAccountId,
+                                accounts: estadoApp.accounts,
+                                onSelected: (val) {
+                                  setState(() {
+                                    _selectedAccountId = val;
+                                  });
+                                },
+                                esOscuro: esOscuro,
+                                colorTexto: colorTexto,
+                                colorTipo: colorTipo,
+                                compacto: false,
                               ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildLabel('DESTINO', esOscuro),
-                                    const SizedBox(height: 4),
-                                    _buildAccountSelectorCard(
-                                      accountId: _selectedToAccountId,
-                                      accounts: estadoApp.accounts,
-                                      onSelected: (val) {
-                                        setState(() {
-                                          _selectedToAccountId = val;
-                                        });
-                                      },
-                                      esOscuro: esOscuro,
-                                      colorTexto: colorTexto,
-                                      colorTipo: colorTipo,
-                                      compacto: true,
-                                    ),
-                                  ],
-                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          // DESTINO
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildLabel('DESTINO', esOscuro),
+                              const SizedBox(height: 4),
+                              _buildAccountSelectorCard(
+                                accountId: _selectedToAccountId,
+                                accounts: estadoApp.accounts,
+                                onSelected: (val) {
+                                  setState(() {
+                                    _selectedToAccountId = val;
+                                  });
+                                },
+                                esOscuro: esOscuro,
+                                colorTexto: colorTexto,
+                                colorTipo: colorTipo,
+                                compacto: false,
                               ),
                             ],
                           ),
                         ] else ...[
-                          Row(
+                          // CUENTA
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildLabel(_tabController.index == 0 ? 'CUENTA ORIGEN' : 'CUENTA DESTINO', esOscuro),
-                                    const SizedBox(height: 4),
-                                    _buildAccountSelectorCard(
-                                      accountId: _selectedAccountId,
-                                      accounts: estadoApp.accounts,
-                                      onSelected: (val) {
-                                        setState(() {
-                                          _selectedAccountId = val;
-                                        });
-                                      },
-                                      esOscuro: esOscuro,
-                                      colorTexto: colorTexto,
-                                      colorTipo: colorTipo,
-                                      compacto: true,
-                                    ),
-                                  ],
-                                ),
+                              _buildLabel(_tabController.index == 0 ? 'CUENTA ORIGEN' : 'CUENTA DESTINO', esOscuro),
+                              const SizedBox(height: 4),
+                              _buildAccountSelectorCard(
+                                accountId: _selectedAccountId,
+                                accounts: estadoApp.accounts,
+                                onSelected: (val) {
+                                  setState(() {
+                                    _selectedAccountId = val;
+                                  });
+                                },
+                                esOscuro: esOscuro,
+                                colorTexto: colorTexto,
+                                colorTipo: colorTipo,
+                                compacto: false,
                               ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildLabel('CATEGORÍA', esOscuro),
-                                    const SizedBox(height: 4),
-                                    _buildCategorySelectorCard(
-                                      selectedCategoryName: _selectedCategory,
-                                      categories: estadoApp.categories,
-                                      onSelected: (val) {
-                                        setState(() {
-                                          _selectedCategory = val;
-                                        });
-                                      },
-                                      esOscuro: esOscuro,
-                                      colorTexto: colorTexto,
-                                      colorTipo: colorTipo,
-                                      compacto: true,
-                                    ),
-                                  ],
-                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          // CATEGORÍA
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildLabel('CATEGORÍA', esOscuro),
+                              const SizedBox(height: 4),
+                              _buildCategorySelectorCard(
+                                selectedCategoryName: _selectedCategory,
+                                categories: estadoApp.categories,
+                                onSelected: (val) {
+                                  setState(() {
+                                    _selectedCategory = val;
+                                  });
+                                },
+                                esOscuro: esOscuro,
+                                colorTexto: colorTexto,
+                                colorTipo: colorTipo,
+                                compacto: false,
                               ),
                             ],
                           ),
@@ -1083,14 +1176,19 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text(
-                                        '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                                        style: TextStyle(
-                                          fontSize: 13.5,
-                                          fontWeight: FontWeight.bold,
-                                          color: colorTexto,
+                                      Expanded(
+                                        child: Text(
+                                          '${_selectedDate.day.toString().padLeft(2, '0')}/${_selectedDate.month.toString().padLeft(2, '0')}/${_selectedDate.year} • ${_selectedDate.hour.toString().padLeft(2, '0')}:${_selectedDate.minute.toString().padLeft(2, '0')}',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: colorTexto,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
+                                      const SizedBox(width: 6),
                                       Icon(
                                         Icons.calendar_month_rounded,
                                         color: colorTipo,
@@ -1104,110 +1202,109 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                           ),
                           const SizedBox(height: 14),
                         ] else ...[
-                          Row(
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildLabel('FECHA', esOscuro),
-                                    const SizedBox(height: 4),
-                                    GestureDetector(
-                                      onTap: () => _selectDate(context),
-                                      child: Container(
-                                        height: 46,
-                                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                                        decoration: BoxDecoration(
-                                          color: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
-                                          borderRadius: BorderRadius.circular(16),
-                                          border: Border.all(
-                                            color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
-                                            width: 1.0,
+                              _buildLabel('FECHA', esOscuro),
+                              const SizedBox(height: 4),
+                              GestureDetector(
+                                onTap: () => _selectDate(context),
+                                child: Container(
+                                  height: 46,
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  decoration: BoxDecoration(
+                                    color: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          '${_selectedDate.day.toString().padLeft(2, '0')}/${_selectedDate.month.toString().padLeft(2, '0')}/${_selectedDate.year} • ${_selectedDate.hour.toString().padLeft(2, '0')}:${_selectedDate.minute.toString().padLeft(2, '0')}',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: colorTexto,
                                           ),
-                                        ),
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Text(
-                                              '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                                              style: TextStyle(
-                                                fontSize: 13.5,
-                                                fontWeight: FontWeight.bold,
-                                                color: colorTexto,
-                                              ),
-                                            ),
-                                            Icon(
-                                              Icons.calendar_month_rounded,
-                                              color: colorTipo,
-                                              size: 16,
-                                            ),
-                                          ],
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 6),
+                                      Icon(
+                                        Icons.calendar_month_rounded,
+                                        color: colorTipo,
+                                        size: 16,
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildLabel('FOTO ADJUNTA', esOscuro),
-                                    const SizedBox(height: 4),
-                                    GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          _simulatedPhotoPath = 'photo_simulated_path.jpg';
-                                        });
-                                        ToastHelper.showInfo(context, 'Foto simulada adjuntada correctamente');
-                                      },
-                                      child: Container(
-                                        height: 46,
-                                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                                        decoration: BoxDecoration(
-                                          color: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
-                                          borderRadius: BorderRadius.circular(16),
-                                          border: Border.all(
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          // FOTO ADJUNTA
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildLabel('FOTO ADJUNTA', esOscuro),
+                              const SizedBox(height: 4),
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _simulatedPhotoPath = 'photo_simulated_path.jpg';
+                                  });
+                                  ToastHelper.showInfo(context, 'Foto simulada adjuntada correctamente');
+                                },
+                                child: Container(
+                                  height: 46,
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  decoration: BoxDecoration(
+                                    color: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: _simulatedPhotoPath != null
+                                          ? const Color(0xFF10B981)
+                                          : (esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05)),
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        _simulatedPhotoPath != null
+                                            ? Icons.check_circle_rounded
+                                            : Icons.camera_alt_rounded,
+                                        color: _simulatedPhotoPath != null
+                                            ? const Color(0xFF10B981)
+                                            : colorTexto.withValues(alpha: 0.4),
+                                        size: 16,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Flexible(
+                                        child: Text(
+                                          _simulatedPhotoPath != null
+                                              ? 'Foto cargada'
+                                              : 'Agregar foto',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
                                             color: _simulatedPhotoPath != null
                                                 ? const Color(0xFF10B981)
-                                                : (esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05)),
-                                            width: 1.0,
+                                                : colorTexto.withValues(alpha: 0.5),
                                           ),
-                                        ),
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Icon(
-                                              _simulatedPhotoPath != null
-                                                  ? Icons.check_circle_rounded
-                                                  : Icons.camera_alt_rounded,
-                                              color: _simulatedPhotoPath != null
-                                                  ? const Color(0xFF10B981)
-                                                  : colorTexto.withValues(alpha: 0.4),
-                                              size: 16,
-                                            ),
-                                            const SizedBox(width: 6),
-                                            Flexible(
-                                              child: Text(
-                                                _simulatedPhotoPath != null
-                                                    ? 'Foto cargada'
-                                                    : 'Agregar foto',
-                                                style: TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: _simulatedPhotoPath != null
-                                                      ? const Color(0xFF10B981)
-                                                      : colorTexto.withValues(alpha: 0.5),
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                          ],
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],

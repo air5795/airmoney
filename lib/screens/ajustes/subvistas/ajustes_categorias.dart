@@ -225,14 +225,14 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
-                color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                color: esOscuro ? const Color(0xFF1E1E1E) : Colors.black.withValues(alpha: 0.05),
                 width: 1.0,
               ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
-                color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                color: esOscuro ? const Color(0xFF1E1E1E) : Colors.black.withValues(alpha: 0.05),
                 width: 1.0,
               ),
             ),
@@ -290,14 +290,14 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
-                color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                color: esOscuro ? const Color(0xFF1E1E1E) : Colors.black.withValues(alpha: 0.05),
                 width: 1.0,
               ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
-                color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                color: esOscuro ? const Color(0xFF1E1E1E) : Colors.black.withValues(alpha: 0.05),
                 width: 1.0,
               ),
             ),
@@ -423,7 +423,7 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: esOscuro 
-                ? Colors.white.withValues(alpha: 0.08) 
+                ? const Color(0xFF1E1E1E) 
                 : Colors.black.withValues(alpha: 0.08),
             width: 1.0,
           ),
@@ -501,7 +501,7 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: esOscuro 
-                ? Colors.white.withValues(alpha: 0.08) 
+                ? const Color(0xFF1E1E1E) 
                 : Colors.black.withValues(alpha: 0.08),
             width: 1.0,
           ),
@@ -704,7 +704,7 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                     color: esOscuro 
-                        ? Colors.white.withValues(alpha: 0.08) 
+                        ? const Color(0xFF1E1E1E) 
                         : Colors.black.withValues(alpha: 0.08),
                     width: 1.0,
                   ),

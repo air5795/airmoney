@@ -31,10 +31,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
   int _selectedAccountGradientIdx = 0;
   String _selectedAccountColorHex = '#B3E5FC';
   String _selectedAccountSecondaryColorHex = '#E2E8F0';
-  String _selectedAccountThirdColorHex = '#FFFFFF';
-  double _selectedAccountStop1 = 0.0;
-  double _selectedAccountStop2 = 0.5;
-  double _selectedAccountStop3 = 1.0;
+
   bool _useCustomColorForAccount = false;
   bool _selectedAccountUseDarkText = false;
   bool _selectedAccountContabilizable = true;
@@ -52,65 +49,6 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
     return defaultColor;
   }
 
-  LinearGradient _buildAccountGradient(ModeloCuenta acc, {double alpha = 0.95}) {
-    if (acc.customColorHex != null && acc.customColorHex!.isNotEmpty) {
-      final c1 = _parseHexColor(acc.customColorHex, const Color(0xFFB3E5FC));
-      final c2 = _parseHexColor(acc.customColorSecondaryHex ?? acc.customColorHex!, const Color(0xFFE2E8F0));
-      
-      if (acc.customColorThirdHex != null && acc.customColorThirdHex!.isNotEmpty) {
-        final c3 = _parseHexColor(acc.customColorThirdHex, Colors.white);
-        final s1 = acc.stop1 ?? 0.0;
-        final s2 = acc.stop2 ?? 0.5;
-        final s3 = acc.stop3 ?? 1.0;
-        return LinearGradient(
-          colors: [
-            c1.withValues(alpha: alpha),
-            c3.withValues(alpha: alpha),
-            c2.withValues(alpha: alpha),
-          ],
-          stops: [s1, s2, s3],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-      } else {
-        return LinearGradient(
-          colors: [
-            c1.withValues(alpha: alpha),
-            c2.withValues(alpha: alpha),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-      }
-    } else {
-      final grad = _cardGradients[acc.gradientIndex % _cardGradients.length];
-      return LinearGradient(
-        colors: [
-          grad.first.withValues(alpha: alpha),
-          grad.last.withValues(alpha: alpha),
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
-    }
-  }
-
-  static final List<List<Color>> _cardGradients = [
-    [const Color(0xFF00E676), const Color(0xFF00B0FF)], // Verde Esmeralda
-    [const Color(0xFF2979FF), const Color(0xFF00E5FF)], // Azul Vibrante
-    [const Color(0xFFFF1744), const Color(0xFFD500F9)], // Rosa/Rojo Neon
-    [const Color(0xFFF57C00), const Color(0xFFFFD54F)], // Naranja/Amarillo
-    [const Color(0xFF651FFF), const Color(0xFF00E5FF)], // Purpura Profundo / Azul Electrico
-    [const Color(0xFF00BFA5), const Color(0xFF64FFDA)], // Menta Fresca / Turquesa Liquido
-    [const Color(0xFFFF4081), const Color(0xFFFFD54F)], // Atardecer de Ibiza (Coral / Oro)
-    [const Color(0xFFD500F9), const Color(0xFFFF4081)], // Violeta Ciberpunk / Magenta
-    [const Color(0xFF1A237E), const Color(0xFF536DFE)], // Cielo Nocturno (Azul Marino / Indigo)
-    [const Color(0xFF00E5FF), const Color(0xFFAEEA00)], // Bosque Mistico (Cian / Verde Lima)
-    [const Color(0xFFFF3D00), const Color(0xFFFFC400)], // Fuego Fenix (Rojo Feroz / Naranja)
-    [const Color(0xFFEC407A), const Color(0xFFAB47BC)], // Rosa Orquidea / Lavanda
-    [const Color(0xFF80DEEA), const Color(0xFFB0BEC5)], // Azul Glaciar / Plata
-    [const Color(0xFF76FF03), const Color(0xFF00E5FF)], // Neon Alien (Verde Lima / Turquesa)
-  ];
 
   static final List<String> _strongColorsStart = [
     '#E53935', // Rojo Intenso
@@ -135,32 +73,52 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
     '#1DE9B6', // Turquesa Mistico
   ];
 
-  static final List<String> _strongColorsEnd = [
-    '#311B92', // Purpura Oscuro
-    '#0D47A1', // Azul Profundo
-    '#006064', // Cian Oscuro
-    '#1B5E20', // Verde Oscuro
-    '#E65100', // Naranja Oscuro
-    '#B71C1C', // Rojo Oscuro
-    '#880E4F', // Magenta Oscuro
-    '#CFD8DC', // Plata Metalico
-    '#00E5FF', // Cian Electrico
-    '#A7FFEB', // Turquesa Claro
-    '#FFE082', // Oro Claro
-    '#F8BBD0', // Rosa Suave
-    '#C8E6C9', // Verde Menta Suave
-    '#B3E5FC', // Azul Glaciar
-    '#D1C4E9', // Purpura Pastel
-    '#FFCCBC', // Naranja Coral Suave
-    '#0097A7', // Cian Profundo
-    '#00796B', // Verde Azulado
-    '#3E2723', // Marron Chocolate
-    '#263238', // Gris Carbon
-  ];
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final estadoApp = Provider.of<EstadoApp>(context, listen: false);
+      if (estadoApp.accountToEditDirectly != null) {
+        final acc = estadoApp.accountToEditDirectly!;
+        estadoApp.accountToEditDirectly = null; // reset
+        _iniciarEdicion(acc);
+      }
+    });
+  }
+
+  void _iniciarEdicion(ModeloCuenta acc) {
+    final estadoApp = Provider.of<EstadoApp>(context, listen: false);
+    _accountNameController.text = acc.name;
+    _accountBalanceController.text = acc.balance.toStringAsFixed(2);
+
+    setState(() {
+      _selectedAccountToEdit = acc;
+      _isCreatingOrEditingAccount = true;
+      
+      final typeUpper = acc.type.toUpperCase();
+      if (typeUpper.contains('AHORRO')) {
+        _selectedAccountType = 'Ahorros';
+      } else if (typeUpper.contains('DEBITO') || typeUpper.contains('DÉBITO')) {
+        _selectedAccountType = 'Débito';
+      } else if (typeUpper.contains('CREDITO') || typeUpper.contains('CRÉDITO')) {
+        _selectedAccountType = 'Crédito';
+      } else if (typeUpper.contains('EFECTIVO')) {
+        _selectedAccountType = 'Efectivo';
+      } else if (typeUpper.contains('INVERSION') || typeUpper.contains('INVERSIÓN')) {
+        _selectedAccountType = 'Inversión';
+      } else {
+        _selectedAccountType = 'Ahorros';
+      }
+      
+      _selectedAccountCurrency = acc.currency ?? estadoApp.selectedCurrency;
+      _selectedAccountGradientIdx = acc.gradientIndex;
+      _selectedAccountColorHex = acc.customColorHex ?? '#B3E5FC';
+      _selectedAccountSecondaryColorHex = acc.customColorSecondaryHex ?? '#E2E8F0';
+      _useCustomColorForAccount = acc.customColorHex != null;
+      _selectedAccountUseDarkText = acc.useDarkText ?? false;
+      _selectedAccountContabilizable = acc.contabilizable ?? true;
+    });
   }
 
   @override
@@ -193,10 +151,10 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
         _selectedAccountGradientIdx,
         customColorHex: _useCustomColorForAccount ? _selectedAccountColorHex : null,
         customColorSecondaryHex: _useCustomColorForAccount ? _selectedAccountSecondaryColorHex : null,
-        customColorThirdHex: _useCustomColorForAccount ? _selectedAccountThirdColorHex : null,
-        stop1: _useCustomColorForAccount ? _selectedAccountStop1 : null,
-        stop2: _useCustomColorForAccount ? _selectedAccountStop2 : null,
-        stop3: _useCustomColorForAccount ? _selectedAccountStop3 : null,
+        customColorThirdHex: null,
+        stop1: null,
+        stop2: null,
+        stop3: null,
         useDarkText: _selectedAccountUseDarkText,
         currency: _selectedAccountCurrency,
         contabilizable: _selectedAccountContabilizable,
@@ -215,10 +173,10 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
         _selectedAccountGradientIdx,
         customColorHex: _useCustomColorForAccount ? _selectedAccountColorHex : null,
         customColorSecondaryHex: _useCustomColorForAccount ? _selectedAccountSecondaryColorHex : null,
-        customColorThirdHex: _useCustomColorForAccount ? _selectedAccountThirdColorHex : null,
-        stop1: _useCustomColorForAccount ? _selectedAccountStop1 : null,
-        stop2: _useCustomColorForAccount ? _selectedAccountStop2 : null,
-        stop3: _useCustomColorForAccount ? _selectedAccountStop3 : null,
+        customColorThirdHex: null,
+        stop1: null,
+        stop2: null,
+        stop3: null,
         useDarkText: _selectedAccountUseDarkText,
         currency: _selectedAccountCurrency,
         contabilizable: _selectedAccountContabilizable,
@@ -348,10 +306,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
               _selectedAccountGradientIdx = 0;
               _selectedAccountColorHex = '#B3E5FC';
               _selectedAccountSecondaryColorHex = '#E2E8F0';
-              _selectedAccountThirdColorHex = '#FFFFFF';
-              _selectedAccountStop1 = 0.0;
-              _selectedAccountStop2 = 0.5;
-              _selectedAccountStop3 = 1.0;
+
               _useCustomColorForAccount = false;
               _selectedAccountUseDarkText = false;
               _selectedAccountContabilizable = true;
@@ -371,7 +326,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                     color: esOscuro
-                        ? Colors.white.withValues(alpha: 0.08)
+                        ? const Color(0xFF1E1E1E)
                         : Colors.black.withValues(alpha: 0.06),
                     width: 1.0,
                   ),
@@ -407,7 +362,9 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
           separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
             final acc = accounts[index];
-            final cardContentColor = (acc.useDarkText ?? false) ? const Color(0xFF0F172A) : Colors.white;
+            final colors = _getAccountColors(acc, esOscuro);
+            final miniBgColor = colors.background;
+            final miniTextColor = colors.text;
 
             return Container(
               padding: const EdgeInsets.all(16),
@@ -418,7 +375,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: esOscuro 
-                      ? Colors.white.withValues(alpha: 0.08) 
+                      ? const Color(0xFF1E1E1E) 
                       : Colors.black.withValues(alpha: 0.08),
                   width: 1.0,
                 ),
@@ -438,96 +395,121 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
                       width: 52,
                       height: 36,
                       decoration: BoxDecoration(
-                        gradient: _buildAccountGradient(acc, alpha: 1.0),
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: cardContentColor.withValues(alpha: 0.25),
+                          color: esOscuro
+                              ? const Color(0xFF1E1E1E)
+                              : const Color(0xFFCBD5E1).withValues(alpha: 0.4),
                           width: 0.8,
                         ),
                       ),
-                      child: Stack(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Positioned(
-                            top: 4,
-                            left: 5,
+                          Expanded(
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 0.8),
                               decoration: BoxDecoration(
-                                color: cardContentColor.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(2),
-                                border: Border.all(
-                                  color: cardContentColor.withValues(alpha: 0.30),
-                                  width: 0.4,
+                                color: miniBgColor,
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(7),
+                                  topRight: Radius.circular(7),
                                 ),
                               ),
-                              child: Text(
-                                acc.type.toUpperCase(),
-                                style: TextStyle(
-                                  fontSize: 3.5,
-                                  fontWeight: FontWeight.w900,
-                                  color: cardContentColor,
-                                  letterSpacing: 0.1,
-                                ),
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        acc.type.toUpperCase(),
+                                        style: TextStyle(
+                                          fontSize: 3.5,
+                                          fontWeight: FontWeight.w900,
+                                          color: miniTextColor.withValues(alpha: 0.75),
+                                          letterSpacing: 0.1,
+                                        ),
+                                      ),
+                                      // Switch decorativo miniatura
+                                      Container(
+                                        width: 10,
+                                        height: 5,
+                                        padding: const EdgeInsets.all(0.5),
+                                        decoration: BoxDecoration(
+                                          color: miniTextColor.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(2.5),
+                                        ),
+                                        child: Align(
+                                          alignment: (acc.contabilizable ?? true)
+                                              ? Alignment.centerRight
+                                              : Alignment.centerLeft,
+                                          child: Container(
+                                            width: 4,
+                                            height: 4,
+                                            decoration: BoxDecoration(
+                                              color: miniTextColor,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Row(
+                                    children: [
+                                      // Chip miniatura
+                                      Container(
+                                        width: 7,
+                                        height: 5,
+                                        decoration: BoxDecoration(
+                                          color: miniTextColor,
+                                          borderRadius: BorderRadius.circular(1),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Expanded(
+                                        child: Text(
+                                          acc.name.toUpperCase(),
+                                          style: TextStyle(
+                                            fontSize: 4.5,
+                                            fontWeight: FontWeight.w900,
+                                            color: miniTextColor,
+                                            letterSpacing: -0.1,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-                          Positioned(
-                            top: 4,
-                            right: 5,
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 5.5,
-                                  height: 5.5,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: cardContentColor.withValues(alpha: 0.35),
-                                  ),
-                                ),
-                                Transform.translate(
-                                  offset: const Offset(-2, 0),
-                                  child: Container(
-                                    width: 5.5,
-                                    height: 5.5,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: cardContentColor.withValues(alpha: 0.2),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                          Container(
+                            height: 11,
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: _getBottomBgColor(miniBgColor),
+                              borderRadius: const BorderRadius.only(
+                                bottomLeft: Radius.circular(7),
+                                bottomRight: Radius.circular(7),
+                              ),
                             ),
-                          ),
-                          Positioned(
-                            bottom: 3,
-                            left: 5,
-                            right: 5,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  acc.name.toUpperCase(),
-                                  style: TextStyle(
-                                    fontSize: 4.5,
-                                    fontWeight: FontWeight.w900,
-                                    color: cardContentColor,
-                                    letterSpacing: -0.15,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 0.5),
-                                Text(
-                                  '${EstadoApp.getSymbolOfCurrency(acc.currency ?? estadoApp.selectedCurrency)} ${acc.balance.toStringAsFixed(0)}',
-                                  style: TextStyle(
-                                    fontSize: 5,
-                                    fontWeight: FontWeight.w900,
-                                    color: cardContentColor,
-                                    letterSpacing: -0.2,
-                                  ),
-                                ),
-                              ],
+                            child: Text(
+                              '${EstadoApp.getSymbolOfCurrency(acc.currency ?? estadoApp.selectedCurrency)} ${acc.balance.toStringAsFixed(0)}',
+                              style: TextStyle(
+                                fontSize: 5,
+                                fontWeight: FontWeight.w900,
+                                color: miniTextColor,
+                                letterSpacing: -0.2,
+                                fontFeatures: const [FontFeature.tabularFigures()],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -616,48 +598,17 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
                     elevation: 6,
                     onSelected: (value) async {
                       if (value == 'ver') {
-                        Navigator.push(
+                        final result = await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => VistaDetalleCuenta(account: acc),
                           ),
                         );
+                        if (result == 'editar' && context.mounted) {
+                          _iniciarEdicion(acc);
+                        }
                       } else if (value == 'editar') {
-                        // Asignar texto a los controladores fuera de setState para prevenir conflictos de listeners recurrentes
-                        _accountNameController.text = acc.name;
-                        _accountBalanceController.text = acc.balance.toStringAsFixed(2);
-
-                        setState(() {
-                          _selectedAccountToEdit = acc;
-                          _isCreatingOrEditingAccount = true;
-                          
-                          final typeUpper = acc.type.toUpperCase();
-                          if (typeUpper.contains('AHORRO')) {
-                            _selectedAccountType = 'Ahorros';
-                          } else if (typeUpper.contains('DEBITO') || typeUpper.contains('DÉBITO')) {
-                            _selectedAccountType = 'Débito';
-                          } else if (typeUpper.contains('CREDITO') || typeUpper.contains('CRÉDITO')) {
-                            _selectedAccountType = 'Crédito';
-                          } else if (typeUpper.contains('EFECTIVO')) {
-                            _selectedAccountType = 'Efectivo';
-                          } else if (typeUpper.contains('INVERSION') || typeUpper.contains('INVERSIÓN')) {
-                            _selectedAccountType = 'Inversión';
-                          } else {
-                            _selectedAccountType = 'Ahorros';
-                          }
-                          
-                          _selectedAccountCurrency = acc.currency ?? estadoApp.selectedCurrency;
-                          _selectedAccountGradientIdx = acc.gradientIndex;
-                          _selectedAccountColorHex = acc.customColorHex ?? '#B3E5FC';
-                          _selectedAccountSecondaryColorHex = acc.customColorSecondaryHex ?? '#E2E8F0';
-                          _selectedAccountThirdColorHex = acc.customColorThirdHex ?? '#FFFFFF';
-                          _selectedAccountStop1 = acc.stop1 ?? 0.0;
-                          _selectedAccountStop2 = acc.stop2 ?? 0.5;
-                          _selectedAccountStop3 = acc.stop3 ?? 1.0;
-                          _useCustomColorForAccount = acc.customColorHex != null;
-                          _selectedAccountUseDarkText = acc.useDarkText ?? false;
-                          _selectedAccountContabilizable = acc.contabilizable ?? true;
-                        });
+                        _iniciarEdicion(acc);
                       } else if (value == 'eliminar') {
                         final messenger = ScaffoldMessenger.of(context);
                         final confirm = await showDialog<bool>(
@@ -777,7 +728,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
                         color: esOscuro ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.08),
+                          color: esOscuro ? const Color(0xFF1E1E1E) : Colors.black.withValues(alpha: 0.08),
                           width: 1.0,
                         ),
                       ),
@@ -797,10 +748,9 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
   );
 }
 
-  void _mostrarDisenadorDegradado(BuildContext context, EstadoApp estadoApp, {int inicialTab = 0}) {
+  void _mostrarSelectorColorManual(BuildContext context, EstadoApp estadoApp, {required String titulo, required String colorHexActual, required ValueChanged<String> onColorChanged}) {
     final esOscuro = estadoApp.esTemaOscuro;
     final colorPrincipal = estadoApp.colorPrincipal;
-    int currentTab = inicialTab;
     
     showModalBottomSheet(
       context: context,
@@ -813,33 +763,10 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
             final double screenHeight = MediaQuery.of(context).size.height;
             final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
             
-            final String liveName = _accountNameController.text.isEmpty ? 'Nombre de Cuenta' : _accountNameController.text;
-            final double liveBalance = double.tryParse(_accountBalanceController.text) ?? 0.0;
-            
-            final colorInicio = _parseHexColor(_selectedAccountColorHex, const Color(0xFFB3E5FC));
-            final colorFin = _parseHexColor(_selectedAccountSecondaryColorHex, const Color(0xFFE2E8F0));
-            final colorMedio = _parseHexColor(_selectedAccountThirdColorHex, Colors.white);
-
-            final liveGradient = LinearGradient(
-              colors: [
-                colorInicio.withValues(alpha: 0.95),
-                colorMedio.withValues(alpha: 0.95),
-                colorFin.withValues(alpha: 0.95),
-              ],
-              stops: [
-                _selectedAccountStop1,
-                _selectedAccountStop2,
-                _selectedAccountStop3,
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            );
-            final cardContentColor = _selectedAccountUseDarkText ? const Color(0xFF0F172A) : Colors.white;
-
             return BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
               child: Container(
-                height: screenHeight * 0.88,
+                height: screenHeight * 0.70,
                 decoration: BoxDecoration(
                   color: esOscuro 
                       ? const Color(0xFF0A0A0A).withValues(alpha: 0.88)
@@ -850,7 +777,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
                   ),
                   border: Border.all(
                     color: esOscuro 
-                        ? Colors.white.withValues(alpha: 0.10)
+                        ? const Color(0xFF1E1E1E)
                         : Colors.white.withValues(alpha: 0.80),
                     width: 1.0,
                   ),
@@ -874,419 +801,40 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Diseñador de Degradados',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w900,
-                                color: colorTexto,
-                                letterSpacing: -0.5,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'PERSONALIZA LA APARIENCIA DE TU TARJETA',
-                              style: TextStyle(
-                                fontSize: 8.5,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 0.8,
-                                color: colorTexto.withValues(alpha: 0.4),
-                              ),
-                            ),
-                          ],
+                        Text(
+                          titulo,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            color: colorTexto,
+                            letterSpacing: -0.5,
+                          ),
                         ),
                         IconButton(
+                          icon: Icon(Icons.close_rounded, color: colorTexto.withValues(alpha: 0.6)),
                           onPressed: () => Navigator.pop(context),
-                          icon: Icon(
-                            Icons.close_rounded,
-                            color: colorTexto.withValues(alpha: 0.6),
-                            size: 24,
-                          ),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 20),
-                    Center(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: Container(
-                          width: 260,
-                          height: 150,
-                          padding: const EdgeInsets.all(18),
-                          decoration: BoxDecoration(
-                            gradient: liveGradient,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: esOscuro
-                                  ? Colors.white.withValues(alpha: 0.15)
-                                  : Colors.white.withValues(alpha: 0.40),
-                              width: 1.0,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: colorInicio.withValues(alpha: esOscuro ? 0.25 : 0.15),
-                                blurRadius: 16,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: cardContentColor.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(
-                                        color: cardContentColor.withValues(alpha: 0.30),
-                                        width: 0.5,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      _selectedAccountType.toUpperCase(),
-                                      style: TextStyle(
-                                        fontSize: 8,
-                                        fontWeight: FontWeight.w900,
-                                        color: cardContentColor,
-                                        letterSpacing: 0.3,
-                                      ),
-                                    ),
-                                  ),
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 16,
-                                        height: 16,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: cardContentColor.withValues(alpha: 0.35),
-                                        ),
-                                      ),
-                                      Transform.translate(
-                                        offset: const Offset(-6, 0),
-                                        child: Container(
-                                          width: 16,
-                                          height: 16,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: cardContentColor.withValues(alpha: 0.2),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    liveName.toUpperCase(),
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w900,
-                                      color: cardContentColor,
-                                      letterSpacing: -0.2,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Bs ${liveBalance.toStringAsFixed(2)}',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w900,
-                                      color: cardContentColor,
-                                      letterSpacing: -0.3,
-                                      fontFeatures: const [FontFeature.tabularFigures()],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Container(
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: esOscuro 
-                            ? Colors.white.withValues(alpha: 0.04)
-                            : Colors.black.withValues(alpha: 0.03),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: esOscuro ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
-                          width: 1.0,
-                        ),
-                      ),
-                      padding: const EdgeInsets.all(4),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: InteractiveScale(
-                              onTap: () {
-                                setDialogState(() {
-                                  currentTab = 0;
-                                });
-                              },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 250),
-                                curve: Curves.easeOutCubic,
-                                decoration: BoxDecoration(
-                                  color: currentTab == 0
-                                      ? colorPrincipal
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: currentTab == 0
-                                      ? [
-                                          BoxShadow(
-                                            color: colorPrincipal.withValues(alpha: 0.25),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 2),
-                                          )
-                                        ]
-                                      : null,
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  'Color Inicio',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: currentTab == 0
-                                        ? Colors.white
-                                        : colorTexto.withValues(alpha: 0.6),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: InteractiveScale(
-                              onTap: () {
-                                setDialogState(() {
-                                  currentTab = 1;
-                                });
-                              },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 250),
-                                curve: Curves.easeOutCubic,
-                                decoration: BoxDecoration(
-                                  color: currentTab == 1
-                                      ? colorPrincipal
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: currentTab == 1
-                                      ? [
-                                          BoxShadow(
-                                            color: colorPrincipal.withValues(alpha: 0.25),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 2),
-                                          )
-                                        ]
-                                      : null,
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  'Color Medio',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: currentTab == 1
-                                        ? Colors.white
-                                        : colorTexto.withValues(alpha: 0.6),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: InteractiveScale(
-                              onTap: () {
-                                setDialogState(() {
-                                  currentTab = 2;
-                                });
-                              },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 250),
-                                curve: Curves.easeOutCubic,
-                                decoration: BoxDecoration(
-                                  color: currentTab == 2
-                                      ? colorPrincipal
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: currentTab == 2
-                                      ? [
-                                          BoxShadow(
-                                            color: colorPrincipal.withValues(alpha: 0.25),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 2),
-                                          )
-                                        ]
-                                      : null,
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  'Color Fin',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: currentTab == 2
-                                        ? Colors.white
-                                        : colorTexto.withValues(alpha: 0.6),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
                     ),
                     const SizedBox(height: 20),
                     Expanded(
                       child: SingleChildScrollView(
                         physics: const BouncingScrollPhysics(),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 200),
-                              child: KeyedSubtree(
-                                key: ValueKey<int>(currentTab),
-                                child: HexColorPicker(
-                                  currentColorHex: currentTab == 0 
-                                      ? _selectedAccountColorHex 
-                                      : (currentTab == 1 
-                                          ? _selectedAccountThirdColorHex 
-                                          : _selectedAccountSecondaryColorHex),
-                                  onColorChanged: (hex) {
-                                    setDialogState(() {
-                                      if (currentTab == 0) {
-                                        _selectedAccountColorHex = hex;
-                                      } else if (currentTab == 1) {
-                                        _selectedAccountThirdColorHex = hex;
-                                      } else {
-                                        _selectedAccountSecondaryColorHex = hex;
-                                      }
-                                    });
-                                    setState(() {
-                                      if (currentTab == 0) {
-                                        _selectedAccountColorHex = hex;
-                                      } else if (currentTab == 1) {
-                                        _selectedAccountThirdColorHex = hex;
-                                      } else {
-                                        _selectedAccountSecondaryColorHex = hex;
-                                      }
-                                    });
-                                  },
-                                  esOscuro: esOscuro,
-                                  colorPrincipal: colorPrincipal,
-                                  customColors: currentTab == 0 
-                                      ? _strongColorsStart 
-                                      : (currentTab == 1 ? _strongColorsStart : _strongColorsEnd),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            Text(
-                              'AJUSTAR POSICIÓN DE LOS COLORES',
-                              style: TextStyle(
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 0.8,
-                                color: colorTexto.withValues(alpha: 0.45),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            _buildPositionSlider(
-                              label: 'Posición Color Inicio',
-                              value: _selectedAccountStop1,
-                              color: _parseHexColor(_selectedAccountColorHex, colorPrincipal),
-                              onChanged: (val) {
-                                setDialogState(() {
-                                  _selectedAccountStop1 = val;
-                                });
-                                setState(() {
-                                  _selectedAccountStop1 = val;
-                                });
-                              },
-                              esOscuro: esOscuro,
-                            ),
-                            const SizedBox(height: 12),
-                            _buildPositionSlider(
-                              label: 'Posición Color Medio',
-                              value: _selectedAccountStop2,
-                              color: _parseHexColor(_selectedAccountThirdColorHex, Colors.white),
-                              onChanged: (val) {
-                                setDialogState(() {
-                                  _selectedAccountStop2 = val;
-                                });
-                                setState(() {
-                                  _selectedAccountStop2 = val;
-                                });
-                              },
-                              esOscuro: esOscuro,
-                            ),
-                            const SizedBox(height: 12),
-                            _buildPositionSlider(
-                              label: 'Posición Color Fin',
-                              value: _selectedAccountStop3,
-                              color: _parseHexColor(_selectedAccountSecondaryColorHex, colorPrincipal),
-                              onChanged: (val) {
-                                setDialogState(() {
-                                  _selectedAccountStop3 = val;
-                                });
-                                setState(() {
-                                  _selectedAccountStop3 = val;
-                                });
-                              },
-                              esOscuro: esOscuro,
-                            ),
-                            const SizedBox(height: 24),
-                          ],
+                        child: HexColorPicker(
+                          currentColorHex: colorHexActual,
+                          onColorChanged: (hex) {
+                            onColorChanged(hex);
+                            setDialogState(() {
+                              colorHexActual = hex;
+                            });
+                          },
+                          esOscuro: esOscuro,
+                          colorPrincipal: colorPrincipal,
+                          customColors: _strongColorsStart,
                         ),
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 24, top: 12),
-                      child: InteractiveScale(
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          height: 52,
-                          decoration: BoxDecoration(
-                            color: colorPrincipal,
-                            borderRadius: BorderRadius.circular(26),
-                            boxShadow: [
-                              BoxShadow(
-                                color: colorPrincipal.withValues(alpha: 0.3),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          alignment: Alignment.center,
-                          child: const Text(
-                            'Guardar Degradado',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
@@ -1297,6 +845,111 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
     );
   }
 
+  static final List<SolidCardColors> _predefinedSchemes = [
+    const SolidCardColors(Color(0xFFC8E6C9), Color(0xFF0F5132)), // Verde Esmeralda
+    const SolidCardColors(Color(0xFFE1F5FE), Color(0xFF01579B)), // Azul Vibrante
+    const SolidCardColors(Color(0xFFFFCDD2), Color(0xFF842029)), // Rosa/Rojo Neon
+    const SolidCardColors(Color(0xFFFFE0B2), Color(0xFFE65100)), // Naranja/Amarillo
+    const SolidCardColors(Color(0xFFE1BEE7), Color(0xFF4A148C)), // Purpura Profundo
+    const SolidCardColors(Color(0xFFE0F2F1), Color(0xFF004D40)), // Menta Fresca
+    const SolidCardColors(Color(0xFFFFCCBC), Color(0xFFBF360C)), // Atardecer de Ibiza
+    const SolidCardColors(Color(0xFFF8BBD0), Color(0xFF880E4F)), // Violeta Ciberpunk
+    const SolidCardColors(Color(0xFFE8EAF6), Color(0xFF1A237E)), // Cielo Nocturno
+    const SolidCardColors(Color(0xFFE0F7FA), Color(0xFF006064)), // Bosque Mistico
+    const SolidCardColors(Color(0xFFFFE0B2), Color(0xFFDD2C00)), // Fuego Fenix
+    const SolidCardColors(Color(0xFFF3E5F5), Color(0xFF6A1B9A)), // Rosa Orquidea
+    const SolidCardColors(Color(0xFFECEFF1), Color(0xFF37474F)), // Azul Glaciar
+    const SolidCardColors(Color(0xFFF1F8E9), Color(0xFF33691E)), // Neon Alien
+  ];
+
+  static final List<Color> _basePaletteColors = [
+    // Verdes y Menta (6)
+    const Color(0xFF10B981), // Verde Esmeralda
+    const Color(0xFF059669), // Verde Oscuro
+    const Color(0xFF22C55E), // Verde/Esmeralda Brillante
+    const Color(0xFF16A34A), // Verde Bosque
+    const Color(0xFF14B8A6), // Menta/Teal
+    const Color(0xFF0D9488), // Menta Oscura
+    
+    // Azules y Celestes (6)
+    const Color(0xFF0284C7), // Azul Cielo
+    const Color(0xFF0369A1), // Azul Océano
+    const Color(0xFF3B82F6), // Azul Estándar
+    const Color(0xFF2563EB), // Azul Real
+    const Color(0xFF06B6D4), // Cian/Turquesa
+    const Color(0xFF0891B2), // Turquesa Oscuro
+    
+    // Púrpuras, Violetas e Índigos (6)
+    const Color(0xFF8B5CF6), // Violeta/Púrpura
+    const Color(0xFF7C3AED), // Violeta Oscuro
+    const Color(0xFF6366F1), // Índigo
+    const Color(0xFF4F46E5), // Índigo Profundo
+    const Color(0xFFA855F7), // Amatista
+    const Color(0xFF86198F), // Púrpura Imperial
+    
+    // Rosas y Rojos (6)
+    const Color(0xFFEC4899), // Rosa Vibrante
+    const Color(0xFFD946EF), // Fucsia
+    const Color(0xFFEF4444), // Rojo
+    const Color(0xFFDC2626), // Rojo Crimson
+    const Color(0xFFF43F5E), // Rosa Fuerte
+    const Color(0xFFE11D48), // Rubí
+    
+    // Amarillos, Naranjas y Cafés (6)
+    const Color(0xFFF59E0B), // Amarillo Oro
+    const Color(0xFFD97706), // Ámbar
+    const Color(0xFFEAB308), // Amarillo Limón
+    const Color(0xFFF97316), // Naranja/Coral
+    const Color(0xFFEA580C), // Naranja Quemado
+    const Color(0xFF854D0E), // Café Bronce
+  ];
+
+  Color _getSuggestedLightShade(Color color) {
+    final hsl = HSLColor.fromColor(color);
+    return hsl.withLightness(0.90).withSaturation(hsl.saturation.clamp(0.4, 0.75)).toColor();
+  }
+
+  Color _getSuggestedDarkShade(Color color) {
+    final hsl = HSLColor.fromColor(color);
+    return hsl.withLightness(0.18).withSaturation(hsl.saturation.clamp(0.6, 0.9)).toColor();
+  }
+
+  String _colorToHex(Color color) {
+    return '#${color.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
+  }
+
+  SolidCardColors _getAccountColors(ModeloCuenta acc, bool esOscuro) {
+    Color bg;
+    Color text;
+    if (acc.customColorHex != null && acc.customColorHex!.isNotEmpty) {
+      bg = _parseHexColor(acc.customColorHex, const Color(0xFFC8E6C9));
+      text = _parseHexColor(acc.customColorSecondaryHex, _getDarkShade(bg));
+    } else {
+      final index = acc.gradientIndex % _predefinedSchemes.length;
+      bg = _predefinedSchemes[index].background;
+      text = _predefinedSchemes[index].text;
+    }
+
+    if (esOscuro) {
+      final hsl = HSLColor.fromColor(bg);
+      bg = hsl.withLightness((hsl.lightness - 0.12).clamp(0.0, 1.0)).toColor();
+    }
+    return SolidCardColors(bg, text);
+  }
+
+  Color _getBottomBgColor(Color baseColor) {
+    final hsl = HSLColor.fromColor(baseColor);
+    return hsl.withLightness((hsl.lightness - 0.08).clamp(0.0, 1.0)).toColor();
+  }
+
+  Color _getDarkShade(Color color) {
+    final hsl = HSLColor.fromColor(color);
+    return hsl
+        .withLightness((hsl.lightness - 0.5).clamp(0.12, 0.35))
+        .withSaturation((hsl.saturation + 0.2).clamp(0.6, 0.95))
+        .toColor();
+  }
+
   Widget _buildAccountFormView(EstadoApp estadoApp) {
     final esOscuro = estadoApp.esTemaOscuro;
     final colorPrincipal = estadoApp.colorPrincipal;
@@ -1304,39 +957,22 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
     final String liveName = _accountNameController.text.isEmpty ? 'Nombre de Cuenta' : _accountNameController.text;
     final double liveBalance = double.tryParse(_accountBalanceController.text) ?? 0.0;
     
-    LinearGradient liveGradient;
-    Color colorInicio;
+    Color liveBgColor;
+    Color liveTextColor;
+
     if (_useCustomColorForAccount) {
-      colorInicio = _parseHexColor(_selectedAccountColorHex, const Color(0xFFB3E5FC));
-      final colorFin = _parseHexColor(_selectedAccountSecondaryColorHex, const Color(0xFFE2E8F0));
-      final colorMedio = _parseHexColor(_selectedAccountThirdColorHex, Colors.white);
-      liveGradient = LinearGradient(
-        colors: [
-          colorInicio.withValues(alpha: 0.95),
-          colorMedio.withValues(alpha: 0.95),
-          colorFin.withValues(alpha: 0.95),
-        ],
-        stops: [
-          _selectedAccountStop1,
-          _selectedAccountStop2,
-          _selectedAccountStop3,
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
+      liveBgColor = _parseHexColor(_selectedAccountColorHex, const Color(0xFFC8E6C9));
+      liveTextColor = _parseHexColor(_selectedAccountSecondaryColorHex, const Color(0xFF0F5132));
     } else {
-      final grad = _cardGradients[_selectedAccountGradientIdx % _cardGradients.length];
-      colorInicio = grad[0];
-      liveGradient = LinearGradient(
-        colors: [
-          grad[0].withValues(alpha: 0.95),
-          grad[1].withValues(alpha: 0.95),
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
+      final scheme = _predefinedSchemes[_selectedAccountGradientIdx % _predefinedSchemes.length];
+      liveBgColor = scheme.background;
+      liveTextColor = scheme.text;
     }
-    final cardContentColor = _selectedAccountUseDarkText ? const Color(0xFF0F172A) : Colors.white;
+
+    if (esOscuro) {
+      final hsl = HSLColor.fromColor(liveBgColor);
+      liveBgColor = hsl.withLightness((hsl.lightness - 0.12).clamp(0.0, 1.0)).toColor();
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1355,114 +991,172 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
               ),
               const SizedBox(height: 10),
               ClipRRect(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
                 child: Container(
-                  width: 260,
-                  height: 150,
-                  padding: const EdgeInsets.all(18),
+                  width: 165,
+                  height: 76,
                   decoration: BoxDecoration(
-                    gradient: liveGradient,
-                    borderRadius: BorderRadius.circular(20),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: esOscuro
-                          ? Colors.white.withValues(alpha: 0.15)
-                          : Colors.white.withValues(alpha: 0.40),
+                          ? const Color(0xFF1E1E1E)
+                          : const Color(0xFFCBD5E1).withValues(alpha: 0.4),
                       width: 1.0,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: colorInicio.withValues(alpha: esOscuro ? 0.25 : 0.15),
+                        color: Colors.black.withValues(alpha: esOscuro ? 0.25 : 0.05),
                         blurRadius: 16,
                         offset: const Offset(0, 8),
                       ),
                     ],
                   ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: cardContentColor.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: cardContentColor.withValues(alpha: 0.30),
-                                  width: 0.5,
-                                ),
-                              ),
-                              child: Text(
-                                _selectedAccountType.toUpperCase(),
-                                style: TextStyle(
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.w900,
-                                  color: cardContentColor,
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Sección Superior
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: liveBgColor,
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(15),
+                              topRight: Radius.circular(15),
                             ),
-                            Row(
-                              children: [
-                                Container(
-                                  width: 16,
-                                  height: 16,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: cardContentColor.withValues(alpha: 0.35),
-                                  ),
-                                ),
-                                Transform.translate(
-                                  offset: const Offset(-6, 0),
-                                  child: Container(
-                                    width: 16,
-                                    height: 16,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: cardContentColor.withValues(alpha: 0.2),
+                          ),
+                          padding: const EdgeInsets.only(left: 12, right: 12, top: 5, bottom: 3),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    _selectedAccountType.toUpperCase(),
+                                    style: TextStyle(
+                                      fontSize: 7.5,
+                                      fontWeight: FontWeight.w900,
+                                      color: liveTextColor.withValues(alpha: 0.75),
+                                      letterSpacing: 0.3,
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              liveName.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w900,
-                                color: cardContentColor,
-                                letterSpacing: -0.2,
+                                  // Switch decorativo
+                                  Container(
+                                    width: 24,
+                                    height: 12,
+                                    padding: const EdgeInsets.all(1.5),
+                                    decoration: BoxDecoration(
+                                      color: liveTextColor.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Align(
+                                      alignment: _selectedAccountContabilizable
+                                          ? Alignment.centerRight
+                                          : Alignment.centerLeft,
+                                      child: Container(
+                                        width: 9,
+                                        height: 9,
+                                        decoration: BoxDecoration(
+                                          color: liveTextColor,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${EstadoApp.getSymbolOfCurrency(_selectedAccountCurrency)} ${liveBalance.toStringAsFixed(2)}',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w900,
-                                color: cardContentColor,
-                                letterSpacing: -0.3,
-                                fontFeatures: const [FontFeature.tabularFigures()],
+                              Row(
+                                children: [
+                                  // Chip de tarjeta de crédito
+                                  Container(
+                                    width: 16,
+                                    height: 12,
+                                    decoration: BoxDecoration(
+                                      color: liveTextColor,
+                                      borderRadius: BorderRadius.circular(3),
+                                    ),
+                                    child: Stack(
+                                      children: [
+                                        Positioned(
+                                          top: 3,
+                                          left: 0,
+                                          right: 0,
+                                          child: Container(
+                                            height: 0.5,
+                                            color: liveBgColor.withValues(alpha: 0.8),
+                                          ),
+                                        ),
+                                        Positioned(
+                                          bottom: 3,
+                                          left: 0,
+                                          right: 0,
+                                          child: Container(
+                                            height: 0.5,
+                                            color: liveBgColor.withValues(alpha: 0.8),
+                                          ),
+                                        ),
+                                        Positioned(
+                                          top: 0,
+                                          bottom: 0,
+                                          left: 8,
+                                          child: Container(
+                                            width: 0.5,
+                                            color: liveBgColor.withValues(alpha: 0.8),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      liveName.toUpperCase(),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w900,
+                                        color: liveTextColor,
+                                        letterSpacing: -0.1,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ],
-                    ),
+                      ),
+                      // Sección Inferior (Ligeramente más oscuro)
+                      Container(
+                        padding: const EdgeInsets.only(left: 12, right: 12, top: 4, bottom: 4),
+                        decoration: BoxDecoration(
+                          color: _getBottomBgColor(liveBgColor),
+                          borderRadius: const BorderRadius.only(
+                            bottomLeft: Radius.circular(15),
+                            bottomRight: Radius.circular(15),
+                          ),
+                        ),
+                        child: Text(
+                          '${EstadoApp.getSymbolOfCurrency(_selectedAccountCurrency)} ${liveBalance.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                            color: liveTextColor,
+                            letterSpacing: -0.3,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-        ],
-      ),
-    ),
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 32),
         Text(
           'NOMBRE DE LA CUENTA',
@@ -1712,7 +1406,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'DISEÑAR DEGRADADO PERSONALIZADO',
+              'PERSONALIZAR COLORES DE LA TARJETA',
               style: TextStyle(
                 fontSize: 9.5,
                 fontWeight: FontWeight.w900,
@@ -1726,30 +1420,14 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
               onChanged: (val) {
                 setState(() {
                   _useCustomColorForAccount = val;
-                });
-              },
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'USAR TEXTO OSCURO (ALTO CONTRASTE)',
-              style: TextStyle(
-                fontSize: 9.5,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0.8,
-                color: esOscuro ? Colors.white.withValues(alpha: 0.4) : const Color(0xFF0F172A).withValues(alpha: 0.4),
-              ),
-            ),
-            Switch.adaptive(
-              value: _selectedAccountUseDarkText,
-              activeThumbColor: colorPrincipal,
-              onChanged: (val) {
-                setState(() {
-                  _selectedAccountUseDarkText = val;
+                  if (val) {
+                    // Inicializar con sugerencia a partir del color principal de la app
+                    final suggestedBg = _getSuggestedLightShade(colorPrincipal);
+                    final suggestedText = _getSuggestedDarkShade(colorPrincipal);
+                    _selectedAccountColorHex = _colorToHex(suggestedBg);
+                    _selectedAccountSecondaryColorHex = _colorToHex(suggestedText);
+                    _selectedAccountUseDarkText = true;
+                  }
                 });
               },
             ),
@@ -1792,10 +1470,10 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 24),
         if (_useCustomColorForAccount) ...[
           Text(
-            'DISEÑO DEL DEGRADADO',
+            'PALETA DE COLORES (SELECCIONAR COLOR PRINCIPAL)',
             style: TextStyle(
               fontSize: 9.5,
               fontWeight: FontWeight.w900,
@@ -1804,185 +1482,206 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
             ),
           ),
           const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: esOscuro
-                    ? Colors.white.withValues(alpha: 0.03)
-                    : Colors.black.withValues(alpha: 0.02),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: esOscuro
-                      ? Colors.white.withValues(alpha: 0.08)
-                      : Colors.black.withValues(alpha: 0.05),
-                  width: 1.0,
-                ),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      InteractiveScale(
-                        onTap: () => _mostrarDisenadorDegradado(context, estadoApp, inicialTab: 0),
-                        child: Column(
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: _parseHexColor(_selectedAccountColorHex, const Color(0xFFB3E5FC)),
-                                border: Border.all(
-                                  color: esOscuro ? Colors.white.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.15),
-                                  width: 2.0,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _parseHexColor(_selectedAccountColorHex, const Color(0xFFB3E5FC)).withValues(alpha: 0.3),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.colorize_rounded,
-                                color: Colors.white,
-                                size: 18,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              _selectedAccountColorHex.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.bold,
-                                color: esOscuro ? Colors.white.withValues(alpha: 0.6) : const Color(0xFF0F172A).withValues(alpha: 0.6),
-                              ),
-                            ),
-                          ],
-                        ),
+          SizedBox(
+            height: 44,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemCount: _basePaletteColors.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final baseColor = _basePaletteColors[index];
+                return InteractiveScale(
+                  onTap: () {
+                    final sugBg = _getSuggestedLightShade(baseColor);
+                    final sugText = _getSuggestedDarkShade(baseColor);
+                    setState(() {
+                      _selectedAccountColorHex = _colorToHex(sugBg);
+                      _selectedAccountSecondaryColorHex = _colorToHex(sugText);
+                      _selectedAccountUseDarkText = true;
+                    });
+                  },
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: baseColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white,
+                        width: 1.5,
                       ),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: baseColor.withValues(alpha: 0.25),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'PERSONALIZACIÓN MANUAL DE COLORES',
+            style: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.8,
+              color: esOscuro ? Colors.white.withValues(alpha: 0.4) : const Color(0xFF0F172A).withValues(alpha: 0.4),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: InteractiveScale(
+                  onTap: () {
+                    _mostrarSelectorColorManual(
+                      context,
+                      estadoApp,
+                      titulo: 'Color de Fondo Superior',
+                      colorHexActual: _selectedAccountColorHex,
+                      onColorChanged: (hex) {
+                        setState(() {
+                          _selectedAccountColorHex = hex;
+                        });
+                      },
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: esOscuro ? const Color(0xFF1E1E1E) : Colors.black.withValues(alpha: 0.05),
+                        width: 1.0,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: _parseHexColor(_selectedAccountColorHex, Colors.white),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: esOscuro ? Colors.white.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.1),
+                              width: 1.0,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
                           child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                height: 12,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(6),
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      _parseHexColor(_selectedAccountColorHex, const Color(0xFFB3E5FC)),
-                                      _parseHexColor(_selectedAccountSecondaryColorHex, const Color(0xFFE2E8F0)),
-                                    ],
-                                  ),
-                                  border: Border.all(
-                                    color: esOscuro ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.05),
-                                    width: 1.0,
-                                  ),
+                              Text(
+                                'Fondo Superior',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: esOscuro ? Colors.white70 : const Color(0xFF0F172A),
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 2),
                               Text(
-                                'Degradado Activo',
+                                _selectedAccountColorHex.toUpperCase(),
                                 style: TextStyle(
-                                  fontSize: 8.5,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.5,
-                                  color: esOscuro ? Colors.white.withValues(alpha: 0.3) : const Color(0xFF0F172A).withValues(alpha: 0.3),
+                                  fontSize: 10,
+                                  color: esOscuro ? Colors.white.withValues(alpha: 0.4) : const Color(0xFF0F172A).withValues(alpha: 0.4),
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ),
-                      InteractiveScale(
-                        onTap: () => _mostrarDisenadorDegradado(context, estadoApp, inicialTab: 1),
-                        child: Column(
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: _parseHexColor(_selectedAccountSecondaryColorHex, const Color(0xFFE2E8F0)),
-                                border: Border.all(
-                                  color: esOscuro ? Colors.white.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.15),
-                                  width: 2.0,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _parseHexColor(_selectedAccountSecondaryColorHex, const Color(0xFFE2E8F0)).withValues(alpha: 0.3),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.colorize_rounded,
-                                color: Colors.white,
-                                size: 18,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              _selectedAccountSecondaryColorHex.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.bold,
-                                color: esOscuro ? Colors.white.withValues(alpha: 0.6) : const Color(0xFF0F172A).withValues(alpha: 0.6),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  InteractiveScale(
-                    onTap: () => _mostrarDisenadorDegradado(context, estadoApp, inicialTab: 0),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: colorPrincipal.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: colorPrincipal.withValues(alpha: 0.15),
-                          width: 1.0,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.palette_rounded,
-                            color: colorPrincipal,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Personalizar Colores',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: colorPrincipal,
-                            ),
-                          ),
-                        ],
-                      ),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: InteractiveScale(
+                  onTap: () {
+                    _mostrarSelectorColorManual(
+                      context,
+                      estadoApp,
+                      titulo: 'Color del Texto / Detalles',
+                      colorHexActual: _selectedAccountSecondaryColorHex,
+                      onColorChanged: (hex) {
+                        setState(() {
+                          _selectedAccountSecondaryColorHex = hex;
+                        });
+                      },
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: esOscuro ? const Color(0xFF1E1E1E) : Colors.black.withValues(alpha: 0.05),
+                        width: 1.0,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: _parseHexColor(_selectedAccountSecondaryColorHex, Colors.black),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: esOscuro ? Colors.white.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.1),
+                              width: 1.0,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Texto / Detalles',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: esOscuro ? Colors.white70 : const Color(0xFF0F172A),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _selectedAccountSecondaryColorHex.toUpperCase(),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: esOscuro ? Colors.white.withValues(alpha: 0.4) : const Color(0xFF0F172A).withValues(alpha: 0.4),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 20),
         ] else ...[
           Text(
-            'GRADIENTE PREDEFINIDO DE LA TARJETA',
+            'COLOR PREDEFINIDO DE LA TARJETA',
             style: TextStyle(
               fontSize: 9.5,
               fontWeight: FontWeight.w900,
@@ -1996,10 +1695,10 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
-              itemCount: _cardGradients.length,
+              itemCount: _predefinedSchemes.length,
               separatorBuilder: (_, __) => const SizedBox(width: 14),
               itemBuilder: (context, index) {
-                final grad = _cardGradients[index];
+                final scheme = _predefinedSchemes[index];
                 final isSelected = _selectedAccountGradientIdx == index;
 
                 return InteractiveScale(
@@ -2013,24 +1712,20 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: grad,
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                      color: scheme.background,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                         color: isSelected
                             ? (esOscuro ? Colors.white : const Color(0xFF0F172A))
-                             : (esOscuro ? const Color(0xFF1E1E1E) : const Color(0xFFCBD5E1)),
+                            : (esOscuro ? const Color(0xFF1E1E1E) : const Color(0xFFCBD5E1)),
                         width: isSelected ? 2.5 : 1.0,
                       ),
                     ),
                     child: isSelected
-                        ? const Center(
+                        ? Center(
                             child: Icon(
                               Icons.check_rounded,
-                              color: Colors.white,
+                              color: scheme.text,
                               size: 24,
                             ),
                           )
@@ -2040,91 +1735,16 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
               },
             ),
           ),
+          const SizedBox(height: 20),
         ],
-
       ],
     );
   }
-
-  Widget _buildPositionSlider({
-    required String label,
-    required double value,
-    required Color color,
-    required ValueChanged<double> onChanged,
-    required bool esOscuro,
-  }) {
-    final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: esOscuro ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
-          width: 1.0,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: colorTexto.withValues(alpha: 0.8),
-                ),
-              ),
-              Row(
-                children: [
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white,
-                        width: 1.0,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    '${(value * 100).toStringAsFixed(0)}%',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                      color: colorTexto,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          SliderTheme(
-            data: SliderThemeData(
-              trackHeight: 4,
-              activeTrackColor: color.withValues(alpha: 0.8),
-              inactiveTrackColor: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.08),
-              thumbColor: color,
-              overlayColor: color.withValues(alpha: 0.15),
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
-              overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-            ),
-            child: Slider(
-              value: value,
-              min: 0.0,
-              max: 1.0,
-              onChanged: onChanged,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
+
+class SolidCardColors {
+  final Color background;
+  final Color text;
+  const SolidCardColors(this.background, this.text);
+}
+

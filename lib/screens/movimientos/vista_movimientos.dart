@@ -1235,6 +1235,7 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
                 final isIncome = tx.type == 'ingreso';
                 final isTransfer = tx.type == 'transferencia';
 
+                final timeStr = '${tx.date.hour.toString().padLeft(2, '0')}:${tx.date.minute.toString().padLeft(2, '0')}';
                 String labelDetalle = '';
                 if (isTransfer) {
                   final accOrigen = estadoApp.accounts.firstWhere((a) => a.id == tx.accountId, orElse: () => ModeloCuenta(id: '', name: 'Desconocido', balance: 0, gradientIndex: 0, type: 'Efectivo'));
@@ -1358,6 +1359,7 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
                           flex: 3,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
                                 _formatCurrency(isIncome ? tx.amount : (isTransfer ? tx.amount : -tx.amount), currency, showSign: isIncome),
@@ -1370,6 +1372,15 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
                                       : (isTransfer ? const Color(0xFF3B82F6) : const Color(0xFFEF4444)),
                                   letterSpacing: -0.2,
                                   fontFeatures: const [FontFeature.tabularFigures()],
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                timeStr,
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: colorTexto.withValues(alpha: 0.45),
                                 ),
                               ),
                             ],

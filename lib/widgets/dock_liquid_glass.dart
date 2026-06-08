@@ -98,7 +98,7 @@ class _DockLiquidGlassState extends State<DockLiquidGlass>
 
     // Bordes micro-delgados sumamente sutiles
     final colorBordeDock = esOscuro
-        ? Colors.white.withValues(alpha: 0.08)
+        ? const Color(0xFF1E1E1E)
         : Colors.black.withValues(alpha: 0.05);
 
     return Positioned(

@@ -287,6 +287,7 @@ class EstadoApp extends ChangeNotifier {
   int _selectedDockIndex = 0;
   int _selectedSettingsSubView = 0;
   int _lastLocalUpdateMillis = 0;
+  ModeloCuenta? _accountToEditDirectly;
   StreamSubscription<DocumentSnapshot>? _nubeSubscription;
   bool _isSyncing = false;
   Timer? _debounceSubida;
@@ -334,6 +335,12 @@ class EstadoApp extends ChangeNotifier {
   int get selectedSettingsSubView => _selectedSettingsSubView;
   set selectedSettingsSubView(int val) {
     _selectedSettingsSubView = val;
+    notifyListeners();
+  }
+
+  ModeloCuenta? get accountToEditDirectly => _accountToEditDirectly;
+  set accountToEditDirectly(ModeloCuenta? val) {
+    _accountToEditDirectly = val;
     notifyListeners();
   }
 

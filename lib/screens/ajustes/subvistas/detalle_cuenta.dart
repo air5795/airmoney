@@ -1,9 +1,11 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../services/estado_app.dart';
 import '../../../widgets/interactive_scale.dart';
 import '../../../widgets/panel_transaccion.dart';
+import '../../../helpers/formato_fecha.dart';
 
 class VistaDetalleCuenta extends StatelessWidget {
   final ModeloCuenta account;
@@ -26,65 +28,55 @@ class VistaDetalleCuenta extends StatelessWidget {
     return defaultColor;
   }
 
-  LinearGradient _buildAccountGradient(ModeloCuenta acc, List<List<Color>> cardGradients, {double alpha = 0.95}) {
+
+  static final List<SolidCardColors> _predefinedSchemes = [
+    const SolidCardColors(Color(0xFFC8E6C9), Color(0xFF0F5132)), // Verde Esmeralda
+    const SolidCardColors(Color(0xFFE1F5FE), Color(0xFF01579B)), // Azul Vibrante
+    const SolidCardColors(Color(0xFFFFCDD2), Color(0xFF842029)), // Rosa/Rojo Neon
+    const SolidCardColors(Color(0xFFFFE0B2), Color(0xFFE65100)), // Naranja/Amarillo
+    const SolidCardColors(Color(0xFFE1BEE7), Color(0xFF4A148C)), // Purpura Profundo
+    const SolidCardColors(Color(0xFFE0F2F1), Color(0xFF004D40)), // Menta Fresca
+    const SolidCardColors(Color(0xFFFFCCBC), Color(0xFFBF360C)), // Atardecer de Ibiza
+    const SolidCardColors(Color(0xFFF8BBD0), Color(0xFF880E4F)), // Violeta Ciberpunk
+    const SolidCardColors(Color(0xFFE8EAF6), Color(0xFF1A237E)), // Cielo Nocturno
+    const SolidCardColors(Color(0xFFE0F7FA), Color(0xFF006064)), // Bosque Mistico
+    const SolidCardColors(Color(0xFFFFE0B2), Color(0xFFDD2C00)), // Fuego Fenix
+    const SolidCardColors(Color(0xFFF3E5F5), Color(0xFF6A1B9A)), // Rosa Orquidea
+    const SolidCardColors(Color(0xFFECEFF1), Color(0xFF37474F)), // Azul Glaciar
+    const SolidCardColors(Color(0xFFF1F8E9), Color(0xFF33691E)), // Neon Alien
+  ];
+
+  SolidCardColors _getAccountColors(ModeloCuenta acc, bool esOscuro) {
+    Color bg;
+    Color text;
     if (acc.customColorHex != null && acc.customColorHex!.isNotEmpty) {
-      final c1 = _parseHexColor(acc.customColorHex, const Color(0xFFB3E5FC));
-      final c2 = _parseHexColor(acc.customColorSecondaryHex ?? acc.customColorHex!, const Color(0xFFE2E8F0));
-      
-      if (acc.customColorThirdHex != null && acc.customColorThirdHex!.isNotEmpty) {
-        final c3 = _parseHexColor(acc.customColorThirdHex, Colors.white);
-        final s1 = acc.stop1 ?? 0.0;
-        final s2 = acc.stop2 ?? 0.5;
-        final s3 = acc.stop3 ?? 1.0;
-        return LinearGradient(
-          colors: [
-            c1.withValues(alpha: alpha),
-            c3.withValues(alpha: alpha),
-            c2.withValues(alpha: alpha),
-          ],
-          stops: [s1, s2, s3],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-      } else {
-        return LinearGradient(
-          colors: [
-            c1.withValues(alpha: alpha),
-            c2.withValues(alpha: alpha),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-      }
+      bg = _parseHexColor(acc.customColorHex, const Color(0xFFC8E6C9));
+      text = _parseHexColor(acc.customColorSecondaryHex, _getDarkShade(bg));
     } else {
-      final grad = cardGradients[acc.gradientIndex % cardGradients.length];
-      return LinearGradient(
-        colors: [
-          grad.first.withValues(alpha: alpha),
-          grad.last.withValues(alpha: alpha),
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
+      final index = acc.gradientIndex % _predefinedSchemes.length;
+      bg = _predefinedSchemes[index].background;
+      text = _predefinedSchemes[index].text;
     }
+
+    if (esOscuro) {
+      final hsl = HSLColor.fromColor(bg);
+      bg = hsl.withLightness((hsl.lightness - 0.12).clamp(0.0, 1.0)).toColor();
+    }
+    return SolidCardColors(bg, text);
   }
 
-  static final List<List<Color>> _cardGradients = [
-    [const Color(0xFF00E676), const Color(0xFF00B0FF)], // Verde Esmeralda
-    [const Color(0xFF2979FF), const Color(0xFF00E5FF)], // Azul Vibrante
-    [const Color(0xFFFF1744), const Color(0xFFD500F9)], // Rosa/Rojo Neon
-    [const Color(0xFFF57C00), const Color(0xFFFFD54F)], // Naranja/Amarillo
-    [const Color(0xFF651FFF), const Color(0xFF00E5FF)], // Purpura Profundo / Azul Electrico
-    [const Color(0xFF00BFA5), const Color(0xFF64FFDA)], // Menta Fresca / Turquesa Liquido
-    [const Color(0xFFFF4081), const Color(0xFFFFD54F)], // Atardecer de Ibiza (Coral / Oro)
-    [const Color(0xFFD500F9), const Color(0xFFFF4081)], // Violeta Ciberpunk / Magenta
-    [const Color(0xFF1A237E), const Color(0xFF536DFE)], // Cielo Nocturno (Azul Marino / Indigo)
-    [const Color(0xFF00E5FF), const Color(0xFFAEEA00)], // Bosque Mistico (Cian / Verde Lima)
-    [const Color(0xFFFF3D00), const Color(0xFFFFC400)], // Fuego Fenix (Rojo Feroz / Naranja)
-    [const Color(0xFFEC407A), const Color(0xFFAB47BC)], // Rosa Orquidea / Lavanda
-    [const Color(0xFF80DEEA), const Color(0xFFB0BEC5)], // Azul Glaciar / Plata
-    [const Color(0xFF76FF03), const Color(0xFF00E5FF)], // Neon Alien (Verde Lima / Turquesa)
-  ];
+  Color _getBottomBgColor(Color baseColor) {
+    final hsl = HSLColor.fromColor(baseColor);
+    return hsl.withLightness((hsl.lightness - 0.08).clamp(0.0, 1.0)).toColor();
+  }
+
+  Color _getDarkShade(Color color) {
+    final hsl = HSLColor.fromColor(color);
+    return hsl
+        .withLightness((hsl.lightness - 0.5).clamp(0.12, 0.35))
+        .withSaturation((hsl.saturation + 0.2).clamp(0.6, 0.95))
+        .toColor();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -104,7 +96,6 @@ class VistaDetalleCuenta extends StatelessWidget {
       (acc) => acc.id == account.id,
       orElse: () => account,
     );
-    final cardContentColor = (activeAcc.useDarkText ?? false) ? const Color(0xFF0F172A) : Colors.white;
 
     return Scaffold(
       backgroundColor: colorFondo,
@@ -126,6 +117,14 @@ class VistaDetalleCuenta extends StatelessWidget {
           ),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.edit_rounded, color: colorTexto, size: 20),
+            onPressed: () => Navigator.pop(context, 'editar'),
+            tooltip: 'Editar Cuenta',
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -144,7 +143,7 @@ class VistaDetalleCuenta extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                     color: esOscuro 
-                        ? Colors.white.withValues(alpha: 0.08) 
+                        ? const Color(0xFF1E1E1E) 
                         : Colors.black.withValues(alpha: 0.08),
                     width: 1.0,
                   ),
@@ -164,96 +163,121 @@ class VistaDetalleCuenta extends StatelessWidget {
                         width: 52,
                         height: 36,
                         decoration: BoxDecoration(
-                          gradient: _buildAccountGradient(activeAcc, _cardGradients, alpha: 1.0),
+                          color: Colors.white,
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: cardContentColor.withValues(alpha: 0.25),
+                            color: esOscuro
+                                ? const Color(0xFF1E1E1E)
+                                : const Color(0xFFCBD5E1).withValues(alpha: 0.4),
                             width: 0.8,
                           ),
                         ),
-                        child: Stack(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Positioned(
-                              top: 4,
-                              left: 5,
+                            Expanded(
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 0.8),
                                 decoration: BoxDecoration(
-                                  color: cardContentColor.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(2),
-                                  border: Border.all(
-                                    color: cardContentColor.withValues(alpha: 0.30),
-                                    width: 0.4,
+                                  color: _getAccountColors(activeAcc, esOscuro).background,
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(7),
+                                    topRight: Radius.circular(7),
                                   ),
                                 ),
-                                child: Text(
-                                  activeAcc.type.toUpperCase(),
-                                  style: TextStyle(
-                                    fontSize: 3.5,
-                                    fontWeight: FontWeight.w900,
-                                    color: cardContentColor,
-                                    letterSpacing: 0.1,
-                                  ),
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          activeAcc.type.toUpperCase(),
+                                          style: TextStyle(
+                                            fontSize: 3.5,
+                                            fontWeight: FontWeight.w900,
+                                            color: _getAccountColors(activeAcc, esOscuro).text.withValues(alpha: 0.75),
+                                            letterSpacing: 0.1,
+                                          ),
+                                        ),
+                                        // Switch decorativo miniatura
+                                        Container(
+                                          width: 10,
+                                          height: 5,
+                                          padding: const EdgeInsets.all(0.5),
+                                          decoration: BoxDecoration(
+                                            color: _getAccountColors(activeAcc, esOscuro).text.withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(2.5),
+                                          ),
+                                          child: Align(
+                                            alignment: (activeAcc.contabilizable ?? true)
+                                                ? Alignment.centerRight
+                                                : Alignment.centerLeft,
+                                            child: Container(
+                                              width: 4,
+                                              height: 4,
+                                              decoration: BoxDecoration(
+                                                color: _getAccountColors(activeAcc, esOscuro).text,
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Row(
+                                      children: [
+                                        // Chip miniatura
+                                        Container(
+                                          width: 7,
+                                          height: 5,
+                                          decoration: BoxDecoration(
+                                            color: _getAccountColors(activeAcc, esOscuro).text,
+                                            borderRadius: BorderRadius.circular(1),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 2),
+                                        Expanded(
+                                          child: Text(
+                                            activeAcc.name.toUpperCase(),
+                                            style: TextStyle(
+                                              fontSize: 4.5,
+                                              fontWeight: FontWeight.w900,
+                                              color: _getAccountColors(activeAcc, esOscuro).text,
+                                              letterSpacing: -0.1,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
-                            Positioned(
-                              top: 4,
-                              right: 5,
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 5.5,
-                                    height: 5.5,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: cardContentColor.withValues(alpha: 0.35),
-                                    ),
-                                  ),
-                                  Transform.translate(
-                                    offset: const Offset(-2, 0),
-                                    child: Container(
-                                      width: 5.5,
-                                      height: 5.5,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: cardContentColor.withValues(alpha: 0.2),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                            Container(
+                              height: 11,
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
+                              decoration: BoxDecoration(
+                                color: _getBottomBgColor(_getAccountColors(activeAcc, esOscuro).background),
+                                borderRadius: const BorderRadius.only(
+                                  bottomLeft: Radius.circular(7),
+                                  bottomRight: Radius.circular(7),
+                                ),
                               ),
-                            ),
-                            Positioned(
-                              bottom: 3,
-                              left: 5,
-                              right: 5,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    activeAcc.name.toUpperCase(),
-                                    style: TextStyle(
-                                      fontSize: 4.5,
-                                      fontWeight: FontWeight.w900,
-                                      color: cardContentColor,
-                                      letterSpacing: -0.15,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 0.5),
-                                  Text(
-                                    '${EstadoApp.getSymbolOfCurrency(activeAcc.currency ?? estadoApp.selectedCurrency)} ${activeAcc.balance.toStringAsFixed(0)}',
-                                    style: TextStyle(
-                                      fontSize: 5,
-                                      fontWeight: FontWeight.w900,
-                                      color: cardContentColor,
-                                      letterSpacing: -0.2,
-                                    ),
-                                  ),
-                                ],
+                              child: Text(
+                                '${EstadoApp.getSymbolOfCurrency(activeAcc.currency ?? estadoApp.selectedCurrency)} ${activeAcc.balance.toStringAsFixed(0)}',
+                                style: TextStyle(
+                                  fontSize: 5,
+                                  fontWeight: FontWeight.w900,
+                                  color: _getAccountColors(activeAcc, esOscuro).text,
+                                  letterSpacing: -0.2,
+                                  fontFeatures: const [FontFeature.tabularFigures()],
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
@@ -381,7 +405,7 @@ class VistaDetalleCuenta extends StatelessWidget {
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(
                       color: esOscuro
-                          ? Colors.white.withValues(alpha: 0.08)
+                          ? const Color(0xFF1E1E1E)
                           : const Color(0xFFE2E8F0),
                       width: 1.0,
                     ),
@@ -466,16 +490,12 @@ class VistaDetalleCuenta extends StatelessWidget {
                                         color: colorTexto,
                                         letterSpacing: -0.2,
                                       ),
-                                      maxLines: 1,
+                              maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      isIncomingTransfer
-                                          ? 'TRANSFERENCIA ENTRANTE'
-                                          : isOutgoingTransfer
-                                              ? 'TRANSFERENCIA SALIENTE'
-                                              : tx.type.toUpperCase(),
+                                      '${isIncomingTransfer ? 'TRANSFERENCIA ENTRANTE' : isOutgoingTransfer ? 'TRANSFERENCIA SALIENTE' : tx.type.toUpperCase()} • ${formatearFechaHora(tx.date, estadoApp.selectedLanguage)}',
                                       style: TextStyle(
                                         fontSize: 9,
                                         fontWeight: FontWeight.w600,
@@ -545,3 +565,10 @@ class VistaDetalleCuenta extends StatelessWidget {
     );
   }
 }
+
+class SolidCardColors {
+  final Color background;
+  final Color text;
+  const SolidCardColors(this.background, this.text);
+}
+
