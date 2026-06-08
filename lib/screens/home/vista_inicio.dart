@@ -16,18 +16,44 @@ class VistaInicio extends StatelessWidget {
     [const Color(0xFF2979FF), const Color(0xFF00E5FF)], // Azul Vibrante
     [const Color(0xFFFF1744), const Color(0xFFD500F9)], // Rosa/Rojo Neon
     [const Color(0xFFF57C00), const Color(0xFFFFD54F)], // Naranja/Amarillo
-    [const Color(0xFF651FFF), const Color(0xFF00E5FF)], // Purpura Profundo / Azul Electrico
-    [const Color(0xFF00BFA5), const Color(0xFF64FFDA)], // Menta Fresca / Turquesa Liquido
-    [const Color(0xFFFF4081), const Color(0xFFFFD54F)], // Atardecer de Ibiza (Coral / Oro)
-    [const Color(0xFFD500F9), const Color(0xFFFF4081)], // Violeta Ciberpunk / Magenta
-    [const Color(0xFF1A237E), const Color(0xFF536DFE)], // Cielo Nocturno (Azul Marino / Indigo)
-    [const Color(0xFF00E5FF), const Color(0xFFAEEA00)], // Bosque Mistico (Cian / Verde Lima)
-    [const Color(0xFFFF3D00), const Color(0xFFFFC400)], // Fuego Fenix (Rojo Feroz / Naranja)
-    [const Color(0xFFEC407A), const Color(0xFFAB47BC)], // Rosa Orquidea / Lavanda
+    [
+      const Color(0xFF651FFF),
+      const Color(0xFF00E5FF),
+    ], // Purpura Profundo / Azul Electrico
+    [
+      const Color(0xFF00BFA5),
+      const Color(0xFF64FFDA),
+    ], // Menta Fresca / Turquesa Liquido
+    [
+      const Color(0xFFFF4081),
+      const Color(0xFFFFD54F),
+    ], // Atardecer de Ibiza (Coral / Oro)
+    [
+      const Color(0xFFD500F9),
+      const Color(0xFFFF4081),
+    ], // Violeta Ciberpunk / Magenta
+    [
+      const Color(0xFF1A237E),
+      const Color(0xFF536DFE),
+    ], // Cielo Nocturno (Azul Marino / Indigo)
+    [
+      const Color(0xFF00E5FF),
+      const Color(0xFFAEEA00),
+    ], // Bosque Mistico (Cian / Verde Lima)
+    [
+      const Color(0xFFFF3D00),
+      const Color(0xFFFFC400),
+    ], // Fuego Fenix (Rojo Feroz / Naranja)
+    [
+      const Color(0xFFEC407A),
+      const Color(0xFFAB47BC),
+    ], // Rosa Orquidea / Lavanda
     [const Color(0xFF80DEEA), const Color(0xFFB0BEC5)], // Azul Glaciar / Plata
-    [const Color(0xFF76FF03), const Color(0xFF00E5FF)], // Neon Alien (Verde Lima / Turquesa)
+    [
+      const Color(0xFF76FF03),
+      const Color(0xFF00E5FF),
+    ], // Neon Alien (Verde Lima / Turquesa)
   ];
-
 
   Color _parseHexColor(String? hexStr, Color defaultColor) {
     if (hexStr == null || hexStr.isEmpty) return defaultColor;
@@ -42,12 +68,19 @@ class VistaInicio extends StatelessWidget {
     return defaultColor;
   }
 
-  LinearGradient _buildAccountGradient(ModeloCuenta acc, {double alpha = 0.95}) {
+  LinearGradient _buildAccountGradient(
+    ModeloCuenta acc, {
+    double alpha = 0.95,
+  }) {
     if (acc.customColorHex != null && acc.customColorHex!.isNotEmpty) {
       final c1 = _parseHexColor(acc.customColorHex, const Color(0xFFB3E5FC));
-      final c2 = _parseHexColor(acc.customColorSecondaryHex ?? acc.customColorHex!, const Color(0xFFE2E8F0));
-      
-      if (acc.customColorThirdHex != null && acc.customColorThirdHex!.isNotEmpty) {
+      final c2 = _parseHexColor(
+        acc.customColorSecondaryHex ?? acc.customColorHex!,
+        const Color(0xFFE2E8F0),
+      );
+
+      if (acc.customColorThirdHex != null &&
+          acc.customColorThirdHex!.isNotEmpty) {
         final c3 = _parseHexColor(acc.customColorThirdHex, Colors.white);
         final s1 = acc.stop1 ?? 0.0;
         final s2 = acc.stop2 ?? 0.5;
@@ -90,7 +123,7 @@ class VistaInicio extends StatelessWidget {
     final estadoApp = Provider.of<EstadoApp>(context);
     final esOscuro = estadoApp.esTemaOscuro;
     final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
-    
+
     final authUser = ServicioAutenticacion().currentUser;
     final nombreUsuarioCompleto = authUser?.displayName ?? 'Invitado';
     final nombreUsuario = nombreUsuarioCompleto.trim().split(' ').first;
@@ -102,200 +135,283 @@ class VistaInicio extends StatelessWidget {
       letterSpacing: 0.5,
     );
 
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 18),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Row(
+    final colorFondoDock = esOscuro
+        ? const Color(0xFF0A0A0A).withValues(alpha: 0.55)
+        : const Color.fromARGB(255, 228, 228, 228).withValues(alpha: 0.75);
+
+    final colorBordeDock = esOscuro
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.05);
+
+    return Stack(
+      children: [
+        // 1. Área de Contenido Desplazable (Ocupa todo el espacio, pero con top padding para el header)
+        Positioned.fill(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 82 + MediaQuery.of(context).padding.top,
+              bottom: 110,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildBalanceCard(estadoApp),
+                const SizedBox(height: 18),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Imagen del usuario en contenedor premium Liquid Glass
+                    Text('CUENTAS ACTIVAS', style: textStyleSeccion),
+                    InteractiveScale(
+                      onTap: () {
+                        estadoApp.selectedSettingsSubView = 2;
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const PantallaAjustes(),
+                          ),
+                        );
+                      },
+                      child: Text(
+                        'VER DETALLE',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: estadoApp.colorPrincipal,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                _buildAccountsGrid(context, estadoApp),
+                const SizedBox(height: 18),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('MOVIMIENTOS RECIENTES', style: textStyleSeccion),
+                    InteractiveScale(
+                      onTap: () {
+                        estadoApp.selectedDockIndex = 1;
+                      },
+                      child: Text(
+                        'VER TODO',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: estadoApp.colorPrincipal,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                _buildTransactionList(estadoApp),
+                const SizedBox(height: 110),
+              ],
+            ),
+          ),
+        ),
+
+        // 2. Barra Superior Edge-to-Edge Glaseada (Fijada al tope sobre el Stack)
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(
+                sigmaX: 10,
+                sigmaY: 10,
+              ), // Match dock's exact blur sigma
+              child: Container(
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 14 + MediaQuery.of(context).padding.top,
+                  bottom: 14,
+                ),
+                decoration: BoxDecoration(
+                  color: colorFondoDock,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: colorBordeDock,
+                      width: 2.0, // Match dock's exact border width
+                    ),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          // Imagen del usuario en contenedor premium Liquid Glass
+                          InteractiveScale(
+                            onTap: () {
+                              estadoApp.selectedSettingsSubView = 0;
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const PantallaAjustes(),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: estadoApp.colorPrincipal.withValues(
+                                    alpha: 0.2,
+                                  ),
+                                  width: 1.5,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: estadoApp.colorPrincipal.withValues(
+                                      alpha: esOscuro ? 0.15 : 0.05,
+                                    ),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: ClipOval(
+                                child:
+                                    authUser?.photoUrl != null &&
+                                        authUser!.photoUrl!.isNotEmpty
+                                    ? Image.network(
+                                        authUser.photoUrl!,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                              return CircleAvatar(
+                                                backgroundColor: colorTexto
+                                                    .withValues(alpha: 0.06),
+                                                child: Icon(
+                                                  Icons.person_rounded,
+                                                  size: 20,
+                                                  color: colorTexto.withValues(
+                                                    alpha: 0.6,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                      )
+                                    : CircleAvatar(
+                                        backgroundColor: colorTexto.withValues(
+                                          alpha: 0.06,
+                                        ),
+                                        child: Icon(
+                                          Icons.person_rounded,
+                                          size: 20,
+                                          color: colorTexto.withValues(
+                                            alpha: 0.6,
+                                          ),
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text.rich(
+                                  TextSpan(
+                                    text: 'Hola, ',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w900,
+                                      color: colorTexto,
+                                      letterSpacing: -0.5,
+                                    ),
+                                    children: [
+                                      TextSpan(
+                                        text: nombreUsuario,
+                                        style: TextStyle(
+                                          color: estadoApp.colorPrincipal,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 1),
+                                Text(
+                                  'Aquí tienes el resumen de tus finanzas.',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: colorTexto.withValues(alpha: 0.55),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     InteractiveScale(
                       onTap: () {
                         estadoApp.selectedSettingsSubView = 0;
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const PantallaAjustes()),
+                          MaterialPageRoute(
+                            builder: (_) => const PantallaAjustes(),
+                          ),
                         );
                       },
                       child: Container(
-                        width: 40,
-                        height: 40,
+                        width: 36,
+                        height: 36,
                         decoration: BoxDecoration(
+                          color: colorTexto.withValues(alpha: 0.06),
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: estadoApp.colorPrincipal.withValues(alpha: 0.2),
-                            width: 1.5,
+                            color: colorTexto.withValues(alpha: 0.1),
+                            width: 1,
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: estadoApp.colorPrincipal.withValues(alpha: esOscuro ? 0.15 : 0.05),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
                         ),
-                        child: ClipOval(
-                          child: authUser?.photoUrl != null && authUser!.photoUrl!.isNotEmpty
-                              ? Image.network(
-                                  authUser.photoUrl!,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return CircleAvatar(
-                                      backgroundColor: colorTexto.withValues(alpha: 0.06),
-                                      child: Icon(Icons.person_rounded, size: 20, color: colorTexto.withValues(alpha: 0.6)),
-                                    );
-                                  },
-                                )
-                              : CircleAvatar(
-                                  backgroundColor: colorTexto.withValues(alpha: 0.06),
-                                  child: Icon(Icons.person_rounded, size: 20, color: colorTexto.withValues(alpha: 0.6)),
-                                ),
+                        child: Center(
+                          child: Icon(
+                            Icons.settings_rounded,
+                            size: 20,
+                            color: colorTexto.withValues(alpha: 0.8),
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Hola, $nombreUsuario',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w900,
-                              color: colorTexto,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Aquí tienes el resumen de tus finanzas.',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: colorTexto.withValues(alpha: 0.55),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              InteractiveScale(
-                onTap: () {
-                  estadoApp.selectedSettingsSubView = 0;
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const PantallaAjustes()),
-                  );
-                },
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: colorTexto.withValues(alpha: 0.06),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: colorTexto.withValues(alpha: 0.1),
-                      width: 1,
-                    ),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      Icons.settings_rounded,
-                      size: 20,
-                      color: colorTexto.withValues(alpha: 0.8),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-          _buildBalanceCard(estadoApp),
-          const SizedBox(height: 18),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'CUENTAS ACTIVAS',
-                style: textStyleSeccion,
-              ),
-              InteractiveScale(
-                onTap: () {
-                  estadoApp.selectedSettingsSubView = 2;
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const PantallaAjustes()),
-                  );
-                },
-                child: Text(
-                  'VER DETALLE',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: estadoApp.colorPrincipal,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          _buildAccountsGrid(context, estadoApp),
-          const SizedBox(height: 18),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'MOVIMIENTOS RECIENTES',
-                style: textStyleSeccion,
-              ),
-              InteractiveScale(
-                onTap: () {
-                  estadoApp.selectedDockIndex = 1;
-                },
-                child: Text(
-                  'VER TODO',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: estadoApp.colorPrincipal,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          _buildTransactionList(estadoApp),
-          const SizedBox(height: 110),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   String _formatearMonto(double monto, {bool forzarDecimales = false}) {
     final bool esEntero = (monto % 1 == 0) && !forzarDecimales;
     final String formatBase = monto.toStringAsFixed(esEntero ? 0 : 2);
-    
+
     final parts = formatBase.split('.');
     String entero = parts[0];
     final String decimal = parts.length > 1 ? parts[1] : '';
-    
+
     final regExp = RegExp(r'\B(?=(\d{3})+(?!\d))');
     entero = entero.replaceAllMapped(regExp, (Match m) => '.');
-    
+
     if (decimal.isNotEmpty) {
       return '$entero,$decimal';
     }
@@ -321,14 +437,26 @@ class VistaInicio extends StatelessWidget {
     }
 
     const meses = [
-      'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
-      'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'
+      'ENERO',
+      'FEBRERO',
+      'MARZO',
+      'ABRIL',
+      'MAYO',
+      'JUNIO',
+      'JULIO',
+      'AGOSTO',
+      'SEPTIEMBRE',
+      'OCTUBRE',
+      'NOVIEMBRE',
+      'DICIEMBRE',
     ];
     final nombreMes = meses[ahora.month - 1];
 
     // Cuentas de Ahorros y Excluidas
     final tieneAhorros = estadoApp.accounts.any((acc) => acc.type == 'Ahorros');
-    final tieneExcluidas = estadoApp.accounts.any((acc) => acc.contabilizable == false);
+    final tieneExcluidas = estadoApp.accounts.any(
+      (acc) => acc.contabilizable == false,
+    );
 
     double totalAhorros = 0.0;
     double totalExcluido = 0.0;
@@ -337,7 +465,11 @@ class VistaInicio extends StatelessWidget {
       for (var acc in estadoApp.accounts) {
         if (acc.type == 'Ahorros') {
           final accCurrency = acc.currency ?? estadoApp.selectedCurrency;
-          totalAhorros += estadoApp.convertirMoneda(acc.balance, accCurrency, estadoApp.selectedCurrency);
+          totalAhorros += estadoApp.convertirMoneda(
+            acc.balance,
+            accCurrency,
+            estadoApp.selectedCurrency,
+          );
         }
       }
     }
@@ -346,22 +478,34 @@ class VistaInicio extends StatelessWidget {
       for (var acc in estadoApp.accounts) {
         if (acc.contabilizable == false) {
           final accCurrency = acc.currency ?? estadoApp.selectedCurrency;
-          totalExcluido += estadoApp.convertirMoneda(acc.balance, accCurrency, estadoApp.selectedCurrency);
+          totalExcluido += estadoApp.convertirMoneda(
+            acc.balance,
+            accCurrency,
+            estadoApp.selectedCurrency,
+          );
         }
       }
     }
 
     final List<String> parts = [];
     if (tieneAhorros) {
-      parts.add('Ahorros: ${estadoApp.currencySymbol} ${_formatearMonto(totalAhorros)}');
+      parts.add(
+        'Ahorros: ${estadoApp.currencySymbol} ${_formatearMonto(totalAhorros)}',
+      );
     }
     if (tieneExcluidas) {
-      parts.add('No incluidos: ${estadoApp.currencySymbol} ${_formatearMonto(totalExcluido)}');
+      parts.add(
+        'No incluidos: ${estadoApp.currencySymbol} ${_formatearMonto(totalExcluido)}',
+      );
     }
     final subText = parts.join('  •  ');
 
-    final colorGreen = esOscuro ? const Color(0xFF4ADE80) : const Color(0xFF15803D);
-    final colorRed = esOscuro ? const Color(0xFFF87171) : const Color(0xFFB91C1C);
+    final colorGreen = esOscuro
+        ? const Color(0xFF4ADE80)
+        : const Color(0xFF15803D);
+    final colorRed = esOscuro
+        ? const Color(0xFFF87171)
+        : const Color(0xFFB91C1C);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
@@ -370,9 +514,7 @@ class VistaInicio extends StatelessWidget {
         child: Container(
           width: double.infinity,
           decoration: BoxDecoration(
-            color: esOscuro
-                ? const Color(0xFF0F172A)
-                : Colors.white,
+            color: esOscuro ? const Color(0xFF0F172A) : Colors.white,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
               color: esOscuro
@@ -386,7 +528,12 @@ class VistaInicio extends StatelessWidget {
             children: [
               // TOP SECTION (Padded, scaled down spacing and fonts)
               Padding(
-                padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 16),
+                padding: const EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 20,
+                  bottom: 16,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -396,7 +543,9 @@ class VistaInicio extends StatelessWidget {
                         fontSize: 10.5,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.8,
-                        color: esOscuro ? Colors.white.withValues(alpha: 0.5) : const Color(0xFF64748B),
+                        color: esOscuro
+                            ? Colors.white.withValues(alpha: 0.5)
+                            : const Color(0xFF64748B),
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -405,7 +554,9 @@ class VistaInicio extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w800,
-                        color: esOscuro ? Colors.white : const Color(0xFF0F172A),
+                        color: esOscuro
+                            ? Colors.white
+                            : const Color(0xFF0F172A),
                         letterSpacing: -0.5,
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
@@ -417,7 +568,9 @@ class VistaInicio extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
-                          color: esOscuro ? Colors.white.withValues(alpha: 0.5) : const Color(0xFF64748B),
+                          color: esOscuro
+                              ? Colors.white.withValues(alpha: 0.5)
+                              : const Color(0xFF64748B),
                         ),
                       ),
                     ],
@@ -439,7 +592,10 @@ class VistaInicio extends StatelessWidget {
                     // INGRESOS
                     Expanded(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 20,
+                        ),
                         decoration: BoxDecoration(
                           color: esOscuro
                               ? const Color(0xFF064E3B).withValues(alpha: 0.15)
@@ -478,7 +634,9 @@ class VistaInicio extends StatelessWidget {
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
                                 color: colorGreen,
-                                fontFeatures: const [FontFeature.tabularFigures()],
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures(),
+                                ],
                               ),
                             ),
                           ],
@@ -495,7 +653,10 @@ class VistaInicio extends StatelessWidget {
                     // GASTOS
                     Expanded(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 20,
+                        ),
                         decoration: BoxDecoration(
                           color: esOscuro
                               ? const Color(0xFF7F1D1D).withValues(alpha: 0.15)
@@ -534,7 +695,9 @@ class VistaInicio extends StatelessWidget {
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
                                 color: colorRed,
-                                fontFeatures: const [FontFeature.tabularFigures()],
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures(),
+                                ],
                               ),
                             ),
                           ],
@@ -554,12 +717,15 @@ class VistaInicio extends StatelessWidget {
   Widget _buildAccountsGrid(BuildContext context, EstadoApp estadoApp) {
     final activeAccounts = estadoApp.accounts;
     const maxGridItems = 6;
-    final gridCount = activeAccounts.length + 1 > maxGridItems ? maxGridItems : activeAccounts.length + 1;
+    final gridCount = activeAccounts.length + 1 > maxGridItems
+        ? maxGridItems
+        : activeAccounts.length + 1;
     final esOscuro = estadoApp.esTemaOscuro;
 
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.zero,
       itemCount: gridCount,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
@@ -621,16 +787,22 @@ class VistaInicio extends StatelessWidget {
         }
 
         final acc = activeAccounts[index];
-        
+
         Color colorInicio;
         if (acc.customColorHex != null && acc.customColorHex!.isNotEmpty) {
-          colorInicio = _parseHexColor(acc.customColorHex, const Color(0xFFB3E5FC));
+          colorInicio = _parseHexColor(
+            acc.customColorHex,
+            const Color(0xFFB3E5FC),
+          );
         } else {
-          final grad = _cardGradients[acc.gradientIndex % _cardGradients.length];
+          final grad =
+              _cardGradients[acc.gradientIndex % _cardGradients.length];
           colorInicio = grad.first;
         }
 
-        final cardContentColor = (acc.useDarkText ?? false) ? const Color(0xFF0F172A) : Colors.white;
+        final cardContentColor = (acc.useDarkText ?? false)
+            ? const Color(0xFF0F172A)
+            : Colors.white;
 
         return InteractiveScale(
           onTap: () {
@@ -656,7 +828,9 @@ class VistaInicio extends StatelessWidget {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: colorInicio.withValues(alpha: esOscuro ? 0.25 : 0.15),
+                    color: colorInicio.withValues(
+                      alpha: esOscuro ? 0.25 : 0.15,
+                    ),
                     blurRadius: 16,
                     offset: const Offset(0, 8),
                   ),
@@ -671,7 +845,10 @@ class VistaInicio extends StatelessWidget {
                     children: [
                       // Tipo de cuenta en capsula acrilica
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 1.5,
+                        ),
                         decoration: BoxDecoration(
                           color: cardContentColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(6),
@@ -755,7 +932,9 @@ class VistaInicio extends StatelessWidget {
   }
 
   Widget _buildTransactionList(EstadoApp estadoApp) {
-    final txs = estadoApp.transactions.where((tx) => !tx.esRegistroApertura && tx.pagada).toList();
+    final txs = estadoApp.transactions
+        .where((tx) => !tx.esRegistroApertura && tx.pagada)
+        .toList();
     final esOscuro = estadoApp.esTemaOscuro;
     final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
 
@@ -778,9 +957,7 @@ class VistaInicio extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: esOscuro
-            ? const Color(0xFF0E0E0E)
-            : Colors.white,
+        color: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: esOscuro
@@ -799,6 +976,7 @@ class VistaInicio extends StatelessWidget {
       child: ListView.separated(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
+        padding: EdgeInsets.zero,
         itemCount: txs.length > 5 ? 5 : txs.length,
         separatorBuilder: (_, __) => Container(
           height: 1,
@@ -814,10 +992,18 @@ class VistaInicio extends StatelessWidget {
 
           final acc = estadoApp.accounts.firstWhere(
             (a) => a.id == tx.accountId,
-            orElse: () => ModeloCuenta(id: '', name: 'N/A', type: '', balance: 0.0, gradientIndex: 0),
+            orElse: () => ModeloCuenta(
+              id: '',
+              name: 'N/A',
+              type: '',
+              balance: 0.0,
+              gradientIndex: 0,
+            ),
           );
           final accName = acc.name;
-          final txSymbol = EstadoApp.getSymbolOfCurrency(acc.currency ?? estadoApp.selectedCurrency);
+          final txSymbol = EstadoApp.getSymbolOfCurrency(
+            acc.currency ?? estadoApp.selectedCurrency,
+          );
 
           IconData transIcon = Icons.arrow_downward_rounded;
           Color transIconColor = const Color(0xFFEF4444);
@@ -846,15 +1032,13 @@ class VistaInicio extends StatelessWidget {
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: transIconColor.withValues(alpha: esOscuro ? 0.15 : 0.10),
+                      color: transIconColor.withValues(
+                        alpha: esOscuro ? 0.15 : 0.10,
+                      ),
                       shape: BoxShape.circle,
                     ),
                     child: Center(
-                      child: Icon(
-                        transIcon,
-                        color: transIconColor,
-                        size: 18,
-                      ),
+                      child: Icon(transIcon, color: transIconColor, size: 18),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -895,27 +1079,36 @@ class VistaInicio extends StatelessWidget {
                           isIncome
                               ? '+$txSymbol ${tx.amount.toStringAsFixed(2)}'
                               : isTransfer
-                                  ? '$txSymbol ${tx.amount.toStringAsFixed(2)}'
-                                  : '-$txSymbol ${tx.amount.toStringAsFixed(2)}',
+                              ? '$txSymbol ${tx.amount.toStringAsFixed(2)}'
+                              : '-$txSymbol ${tx.amount.toStringAsFixed(2)}',
                           style: TextStyle(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w800,
                             color: isIncome
                                 ? const Color(0xFF10B981)
                                 : isTransfer
-                                    ? const Color(0xFF3B82F6)
-                                    : const Color(0xFFEF4444),
+                                ? const Color(0xFF3B82F6)
+                                : const Color(0xFFEF4444),
                             letterSpacing: -0.2,
                             fontFeatures: const [FontFeature.tabularFigures()],
                           ),
                         ),
                         const SizedBox(height: 2),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: isTransfer
-                                ? (esOscuro ? const Color(0xFF00B0FF) : const Color(0xFF0284C7)).withValues(alpha: 0.08)
-                                : (esOscuro ? Colors.white : const Color(0xFF4B5563)).withValues(alpha: 0.08),
+                                ? (esOscuro
+                                          ? const Color(0xFF00B0FF)
+                                          : const Color(0xFF0284C7))
+                                      .withValues(alpha: 0.08)
+                                : (esOscuro
+                                          ? Colors.white
+                                          : const Color(0xFF4B5563))
+                                      .withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -924,8 +1117,12 @@ class VistaInicio extends StatelessWidget {
                               fontSize: 8.5,
                               fontWeight: FontWeight.w800,
                               color: isTransfer
-                                  ? (esOscuro ? const Color(0xFF00B0FF) : const Color(0xFF0284C7))
-                                  : (esOscuro ? Colors.white70 : const Color(0xFF4B5563)),
+                                  ? (esOscuro
+                                        ? const Color(0xFF00B0FF)
+                                        : const Color(0xFF0284C7))
+                                  : (esOscuro
+                                        ? Colors.white70
+                                        : const Color(0xFF4B5563)),
                             ),
                           ),
                         ),

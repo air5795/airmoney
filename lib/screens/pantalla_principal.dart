@@ -118,20 +118,18 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> with WidgetsBindi
               ),
             ),
 
-            SafeArea(
-              child: PageView(
-                controller: _pageController,
-                onPageChanged: (idx) {
-                  estadoApp.selectedDockIndex = idx;
-                },
-                physics: const BouncingScrollPhysics(),
-                children: const [
-                  VistaInicio(),
-                  VistaMovimientos(),
-                  VistaEstadisticas(),
-                  VistaAhorro(),
-                ],
-              ),
+            PageView(
+              controller: _pageController,
+              onPageChanged: (idx) {
+                estadoApp.selectedDockIndex = idx;
+              },
+              physics: const BouncingScrollPhysics(),
+              children: const [
+                VistaInicio(),
+                SafeArea(child: VistaMovimientos()),
+                SafeArea(child: VistaEstadisticas()),
+                SafeArea(child: VistaAhorro()),
+              ],
             ),
             DockLiquidGlass(
               selectedIndex: estadoApp.selectedDockIndex,
