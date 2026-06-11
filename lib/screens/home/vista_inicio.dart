@@ -204,154 +204,157 @@ class VistaInicio extends StatelessWidget {
                     ),
                   ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Row(
-                        children: [
-                          // Imagen del usuario en contenedor premium Liquid Glass
-                          InteractiveScale(
-                            onTap: () {
-                              estadoApp.selectedSettingsSubView = 0;
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const PantallaAjustes(),
-                                ),
-                              );
-                            },
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: estadoApp.colorPrincipal.withValues(
-                                    alpha: 0.2,
+                child: SizedBox(
+                  height: 44,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Row(
+                          children: [
+                            // Imagen del usuario en contenedor premium Liquid Glass
+                            InteractiveScale(
+                              onTap: () {
+                                estadoApp.selectedSettingsSubView = 0;
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const PantallaAjustes(),
                                   ),
-                                  width: 1.5,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
+                                );
+                              },
+                              child: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
                                     color: estadoApp.colorPrincipal.withValues(
-                                      alpha: esOscuro ? 0.15 : 0.05,
+                                      alpha: 0.2,
                                     ),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
+                                    width: 1.5,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: estadoApp.colorPrincipal.withValues(
+                                        alpha: esOscuro ? 0.15 : 0.05,
+                                      ),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: ClipOval(
+                                  child:
+                                      authUser?.photoUrl != null &&
+                                          authUser!.photoUrl!.isNotEmpty
+                                      ? Image.network(
+                                          authUser.photoUrl!,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) {
+                                                return CircleAvatar(
+                                                  backgroundColor: colorTexto
+                                                      .withValues(alpha: 0.06),
+                                                  child: Icon(
+                                                    Icons.person_rounded,
+                                                    size: 20,
+                                                    color: colorTexto.withValues(
+                                                      alpha: 0.6,
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                        )
+                                      : CircleAvatar(
+                                          backgroundColor: colorTexto.withValues(
+                                            alpha: 0.06,
+                                          ),
+                                          child: Icon(
+                                            Icons.person_rounded,
+                                            size: 20,
+                                            color: colorTexto.withValues(
+                                              alpha: 0.6,
+                                            ),
+                                          ),
+                                        ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text.rich(
+                                    TextSpan(
+                                      text: 'Hola, ',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w900,
+                                        color: colorTexto,
+                                        letterSpacing: -0.5,
+                                      ),
+                                      children: [
+                                        TextSpan(
+                                          text: nombreUsuario,
+                                          style: TextStyle(
+                                            color: estadoApp.colorPrincipal,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 1),
+                                  Text(
+                                    'Aquí tienes el resumen de tus finanzas.',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: colorTexto.withValues(alpha: 0.55),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ],
                               ),
-                              child: ClipOval(
-                                child:
-                                    authUser?.photoUrl != null &&
-                                        authUser!.photoUrl!.isNotEmpty
-                                    ? Image.network(
-                                        authUser.photoUrl!,
-                                        fit: BoxFit.cover,
-                                        errorBuilder:
-                                            (context, error, stackTrace) {
-                                              return CircleAvatar(
-                                                backgroundColor: colorTexto
-                                                    .withValues(alpha: 0.06),
-                                                child: Icon(
-                                                  Icons.person_rounded,
-                                                  size: 20,
-                                                  color: colorTexto.withValues(
-                                                    alpha: 0.6,
-                                                  ),
-                                                ),
-                                              );
-                                            },
-                                      )
-                                    : CircleAvatar(
-                                        backgroundColor: colorTexto.withValues(
-                                          alpha: 0.06,
-                                        ),
-                                        child: Icon(
-                                          Icons.person_rounded,
-                                          size: 20,
-                                          color: colorTexto.withValues(
-                                            alpha: 0.6,
-                                          ),
-                                        ),
-                                      ),
-                              ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text.rich(
-                                  TextSpan(
-                                    text: 'Hola, ',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w900,
-                                      color: colorTexto,
-                                      letterSpacing: -0.5,
-                                    ),
-                                    children: [
-                                      TextSpan(
-                                        text: nombreUsuario,
-                                        style: TextStyle(
-                                          color: estadoApp.colorPrincipal,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 1),
-                                Text(
-                                  'Aquí tienes el resumen de tus finanzas.',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: colorTexto.withValues(alpha: 0.55),
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    InteractiveScale(
-                      onTap: () {
-                        estadoApp.selectedSettingsSubView = 0;
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const PantallaAjustes(),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: colorTexto.withValues(alpha: 0.06),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: colorTexto.withValues(alpha: 0.1),
-                            width: 1,
-                          ),
+                          ],
                         ),
-                        child: Center(
-                          child: Icon(
-                            Icons.settings_rounded,
-                            size: 20,
-                            color: colorTexto.withValues(alpha: 0.8),
+                      ),
+                      const SizedBox(width: 8),
+                      InteractiveScale(
+                        onTap: () {
+                          estadoApp.selectedSettingsSubView = 0;
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const PantallaAjustes(),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: colorTexto.withValues(alpha: 0.06),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: colorTexto.withValues(alpha: 0.1),
+                              width: 1,
+                            ),
+                          ),
+                          child: Center(
+                            child: Icon(
+                              Icons.settings_rounded,
+                              size: 20,
+                              color: colorTexto.withValues(alpha: 0.8),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -469,6 +472,7 @@ class VistaInicio extends StatelessWidget {
 
     return Container(
       width: double.infinity,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
         borderRadius: BorderRadius.circular(24),

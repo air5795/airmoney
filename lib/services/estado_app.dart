@@ -454,8 +454,10 @@ class EstadoApp extends ChangeNotifier {
     };
   }
 
+  late final Future<void> initFuture;
+
   EstadoApp() {
-    _loadFromPreferences();
+    initFuture = _loadFromPreferences();
   }
 
   Future<void> _loadFromPreferences() async {

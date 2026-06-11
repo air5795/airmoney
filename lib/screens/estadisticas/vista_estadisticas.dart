@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../services/estado_app.dart';
 import '../../widgets/interactive_scale.dart';
+import '../../widgets/panel_transaccion.dart';
+
 
 class VistaEstadisticas extends StatefulWidget {
   const VistaEstadisticas({super.key});
@@ -20,6 +22,7 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
   String _selectedType = 'gasto'; // 'gasto' o 'ingreso'
   int? _selectedSliceIndex;
   final Set<String> _expandedParentCategoryIds = {};
+  final Set<String> _expandedSubcategoryIds = {};
 
   static const List<String> _monthsNames = [
     'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
@@ -113,6 +116,7 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
                             _selectedFilterMonth = idx + 1;
                             _selectedSliceIndex = null;
                             _expandedParentCategoryIds.clear();
+                            _expandedSubcategoryIds.clear();
                           });
                           Navigator.pop(context);
                         },
@@ -226,6 +230,7 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
                             _selectedFilterYear = y;
                             _selectedSliceIndex = null;
                             _expandedParentCategoryIds.clear();
+                            _expandedSubcategoryIds.clear();
                           });
                           Navigator.pop(context);
                         },
@@ -327,6 +332,7 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
                         _selectedAccountFilter = null;
                         _selectedSliceIndex = null;
                         _expandedParentCategoryIds.clear();
+                        _expandedSubcategoryIds.clear();
                       });
                       Navigator.pop(context);
                     },
@@ -382,6 +388,7 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
                               _selectedAccountFilter = acc.id;
                               _selectedSliceIndex = null;
                               _expandedParentCategoryIds.clear();
+                              _expandedSubcategoryIds.clear();
                             });
                             Navigator.pop(context);
                           },
@@ -517,14 +524,24 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
         if (esSubcategoria) {
           grupo.childAmounts[cat.id] = (grupo.childAmounts[cat.id] ?? 0.0) + tx.amount;
           grupo.childCategories[cat.id] = cat;
+          grupo.childTransactions.putIfAbsent(cat.id, () => []).add(tx);
         } else {
           grupo.directAmount += tx.amount;
+          grupo.directTransactions.add(tx);
         }
       }
     }
 
     final List<_GrupoCategoriaPadre> desglosePadres = grupos.values.toList();
     desglosePadres.sort((a, b) => b.totalAmount.compareTo(a.totalAmount));
+
+    for (var grupo in desglosePadres) {
+      grupo.directTransactions.sort((a, b) => b.date.compareTo(a.date));
+      grupo.childTransactions.forEach((childId, txs) {
+        txs.sort((a, b) => b.date.compareTo(a.date));
+      });
+    }
+
 
     // 6. Preparar las secciones del anillo para el pintor
     List<SeccionGrafico> seccionesDonut = [];
@@ -574,55 +591,100 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
       }
     }
 
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      child: Column(
-        children: [
-          _buildEstadisticasHeader(esOscuro, colorTexto),
-          const SizedBox(height: 6),
-          _buildDateFilterBar(esOscuro, colorTexto),
-          const SizedBox(height: 12),
-          _buildTypeSelector(esOscuro, colorTexto, estadoApp.colorPrincipal, totalGastos, totalIngresos, currency),
-          const SizedBox(height: 16),
-          
-          if (txsPeriodo.isEmpty)
-            _buildNoDataWidget(colorTexto)
-          else ...[
-            _buildDonutChartSection(esOscuro, colorTexto, totalPeriodo, seccionesDonut, currency, desglosePadres),
-            const SizedBox(height: 28),
-            _buildCategoryDistributionList(desglosePadres, totalPeriodo, esOscuro, colorTexto, currency, estadoApp.colorPrincipal),
-            const SizedBox(height: 24),
-            _buildInsightsPanel(esOscuro, colorTexto, promedioDiario, nombreMayorCategoria, montoMayorCategoria, colorMayorCategoria, currency),
-            const SizedBox(height: 120),
-          ]
-        ],
-      ),
+    final colorFondoDock = esOscuro
+        ? const Color(0xFF0A0A0A).withValues(alpha: 0.55)
+        : const Color.fromARGB(255, 228, 228, 228).withValues(alpha: 0.75);
+
+    final colorBordeDock = esOscuro
+        ? const Color(0xFF1E1E1E)
+        : Colors.black.withValues(alpha: 0.05);
+
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: EdgeInsets.only(
+              top: 82 + MediaQuery.of(context).padding.top,
+              bottom: 110,
+            ),
+            child: Column(
+              children: [
+                _buildDateFilterBar(esOscuro, colorTexto),
+                const SizedBox(height: 12),
+                _buildTypeSelector(esOscuro, colorTexto, estadoApp.colorPrincipal, totalGastos, totalIngresos, currency),
+                const SizedBox(height: 16),
+                
+                if (txsPeriodo.isEmpty)
+                  _buildNoDataWidget(colorTexto)
+                else ...[
+                  _buildDonutChartSection(esOscuro, colorTexto, totalPeriodo, seccionesDonut, currency, desglosePadres),
+                  const SizedBox(height: 28),
+                  _buildCategoryDistributionList(desglosePadres, totalPeriodo, esOscuro, colorTexto, currency, estadoApp.colorPrincipal, estadoApp),
+                  const SizedBox(height: 24),
+                  _buildInsightsPanel(esOscuro, colorTexto, promedioDiario, nombreMayorCategoria, montoMayorCategoria, colorMayorCategoria, currency),
+                ]
+              ],
+            ),
+          ),
+        ),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(
+                sigmaX: 10,
+                sigmaY: 10,
+              ),
+              child: Container(
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 14 + MediaQuery.of(context).padding.top,
+                  bottom: 14,
+                ),
+                decoration: BoxDecoration(
+                  color: colorFondoDock,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: colorBordeDock,
+                      width: 2.0,
+                    ),
+                  ),
+                ),
+                child: SizedBox(
+                  height: 44,
+                  child: _buildEstadisticasHeader(esOscuro, colorTexto),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildEstadisticasHeader(bool esOscuro, Color colorTexto) {
-    return Container(
-      padding: const EdgeInsets.only(left: 20, right: 16, top: 8, bottom: 4),
-      height: 48,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'Estadísticas',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: colorTexto,
-              letterSpacing: -0.5,
-            ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          'Estadísticas',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: colorTexto,
+            letterSpacing: -0.5,
           ),
-          Icon(
-            Icons.pie_chart_rounded,
-            color: colorTexto.withValues(alpha: 0.3),
-            size: 20,
-          )
-        ],
-      ),
+        ),
+        Icon(
+          Icons.pie_chart_rounded,
+          color: colorTexto.withValues(alpha: 0.3),
+          size: 20,
+        )
+      ],
     );
   }
 
@@ -646,6 +708,7 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
                 }
                 _selectedSliceIndex = null;
                 _expandedParentCategoryIds.clear();
+                _expandedSubcategoryIds.clear();
               });
             },
             child: Container(
@@ -745,6 +808,7 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
                 }
                 _selectedSliceIndex = null;
                 _expandedParentCategoryIds.clear();
+                _expandedSubcategoryIds.clear();
               });
             },
             child: Container(
@@ -830,6 +894,7 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
                           _selectedType = 'gasto';
                           _selectedSliceIndex = null;
                           _expandedParentCategoryIds.clear();
+                          _expandedSubcategoryIds.clear();
                         });
                       },
                       child: Center(
@@ -870,6 +935,7 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
                           _selectedType = 'ingreso';
                           _selectedSliceIndex = null;
                           _expandedParentCategoryIds.clear();
+                          _expandedSubcategoryIds.clear();
                         });
                       },
                       child: Center(
@@ -1129,6 +1195,7 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
     Color colorTexto,
     String currency,
     Color colorPrincipal,
+    EstadoApp estadoApp,
   ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1144,8 +1211,9 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
               letterSpacing: 0.8,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           ListView.separated(
+            padding: EdgeInsets.zero,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: desglosePadres.length,
@@ -1187,7 +1255,9 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
 
               childrenList.sort((a, b) => b['monto'].compareTo(a['monto']));
 
-              final hasChildren = childrenList.isNotEmpty;
+              final hasSubcategories = childrenList.isNotEmpty;
+              final hasDirectTransactions = group.directTransactions.isNotEmpty;
+              final hasChildren = hasSubcategories || hasDirectTransactions;
               final isExpanded = _expandedParentCategoryIds.contains(parentCat.id);
 
               IconData parentIcon = _galleryIcons[parentCat.iconCode] ?? Icons.category_rounded;
@@ -1361,115 +1431,179 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
                                 ),
                               ),
                             ),
-                            child: ListView.separated(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: childrenList.length,
-                              separatorBuilder: (_, __) => const SizedBox(height: 8),
-                              itemBuilder: (context, cIdx) {
-                                final childItem = childrenList[cIdx];
-                                final childCat = childItem['categoria'] as ModeloCategoria;
-                                final childMonto = childItem['monto'] as double;
-                                final childPorcentaje = childItem['porcentaje'] as double;
-                                final childPorcentajeTexto = (childPorcentaje * 100).toStringAsFixed(1);
+                            child: hasSubcategories
+                                ? ListView.separated(
+                                    padding: EdgeInsets.zero,
+                                    shrinkWrap: true,
+                                    physics: const NeverScrollableScrollPhysics(),
+                                    itemCount: childrenList.length,
+                                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                                    itemBuilder: (context, cIdx) {
+                                      final childItem = childrenList[cIdx];
+                                      final childCat = childItem['categoria'] as ModeloCategoria;
+                                      final childMonto = childItem['monto'] as double;
+                                      final childPorcentaje = childItem['porcentaje'] as double;
+                                      final childPorcentajeTexto = (childPorcentaje * 100).toStringAsFixed(1);
 
-                                IconData childIcon = _galleryIcons[childCat.iconCode] ?? Icons.circle_outlined;
+                                      IconData childIcon = _galleryIcons[childCat.iconCode] ?? Icons.circle_outlined;
 
-                                return Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-                                  decoration: BoxDecoration(
-                                    color: esOscuro
-                                        ? Colors.white.withValues(alpha: 0.01)
-                                        : Colors.black.withValues(alpha: 0.005),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 26,
-                                        height: 26,
-                                        decoration: BoxDecoration(
-                                          color: colorCategoria.withValues(alpha: esOscuro ? 0.12 : 0.06),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Icon(
-                                          childIcon,
-                                          color: colorCategoria.withValues(alpha: 0.8),
-                                          size: 12,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Row(
-                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                              children: [
-                                                Text(
-                                                  childCat.name,
-                                                  style: TextStyle(
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: colorTexto.withValues(alpha: 0.8),
+                                      final isVirtualDirect = childCat.id == '${parentCat.id}_direct';
+                                      final List<ModeloTransaccion> subCatTxs = isVirtualDirect
+                                          ? group.directTransactions
+                                          : (group.childTransactions[childCat.id] ?? []);
+
+                                      return Column(
+                                        children: [
+                                          InteractiveScale(
+                                            onTap: () {
+                                              setState(() {
+                                                if (_expandedSubcategoryIds.contains(childCat.id)) {
+                                                  _expandedSubcategoryIds.remove(childCat.id);
+                                                } else {
+                                                  _expandedSubcategoryIds.add(childCat.id);
+                                                }
+                                              });
+                                            },
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                                              decoration: BoxDecoration(
+                                                color: esOscuro
+                                                    ? Colors.white.withValues(alpha: 0.01)
+                                                    : Colors.black.withValues(alpha: 0.005),
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Container(
+                                                    width: 26,
+                                                    height: 26,
+                                                    decoration: BoxDecoration(
+                                                      color: colorCategoria.withValues(alpha: esOscuro ? 0.12 : 0.06),
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                    child: Icon(
+                                                      childIcon,
+                                                      color: colorCategoria.withValues(alpha: 0.8),
+                                                      size: 12,
+                                                    ),
                                                   ),
-                                                ),
-                                                Text(
-                                                  _formatCurrency(childMonto, currency),
-                                                  style: TextStyle(
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: colorTexto.withValues(alpha: 0.9),
-                                                    fontFeatures: const [FontFeature.tabularFigures()],
+                                                  const SizedBox(width: 10),
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        Row(
+                                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                          children: [
+                                                            Text(
+                                                              childCat.name,
+                                                              style: TextStyle(
+                                                                fontSize: 11,
+                                                                fontWeight: FontWeight.w700,
+                                                                color: colorTexto.withValues(alpha: 0.8),
+                                                              ),
+                                                            ),
+                                                            Text(
+                                                              _formatCurrency(childMonto, currency),
+                                                              style: TextStyle(
+                                                                fontSize: 11,
+                                                                fontWeight: FontWeight.w700,
+                                                                color: colorTexto.withValues(alpha: 0.9),
+                                                                fontFeatures: const [FontFeature.tabularFigures()],
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        const SizedBox(height: 4),
+                                                        Row(
+                                                          children: [
+                                                            Expanded(
+                                                              child: ClipRRect(
+                                                                borderRadius: BorderRadius.circular(2),
+                                                                child: Container(
+                                                                  height: 4,
+                                                                  color: esOscuro
+                                                                      ? Colors.white.withValues(alpha: 0.02)
+                                                                      : Colors.black.withValues(alpha: 0.02),
+                                                                  child: FractionallySizedBox(
+                                                                    alignment: Alignment.centerLeft,
+                                                                    widthFactor: childPorcentaje,
+                                                                    child: Container(
+                                                                      color: colorCategoria.withValues(alpha: 0.7),
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                            const SizedBox(width: 8),
+                                                            Container(
+                                                              width: 34,
+                                                              alignment: Alignment.centerRight,
+                                                              child: Text(
+                                                                '$childPorcentajeTexto%',
+                                                                style: TextStyle(
+                                                                  fontSize: 8.5,
+                                                                  fontWeight: FontWeight.w700,
+                                                                  color: colorTexto.withValues(alpha: 0.45),
+                                                                  fontFeatures: const [FontFeature.tabularFigures()],
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ],
+                                                    ),
                                                   ),
-                                                ),
-                                              ],
+                                                  const SizedBox(width: 6),
+                                                  Icon(
+                                                    _expandedSubcategoryIds.contains(childCat.id)
+                                                        ? Icons.keyboard_arrow_up_rounded
+                                                        : Icons.keyboard_arrow_down_rounded,
+                                                    color: colorTexto.withValues(alpha: 0.35),
+                                                    size: 16,
+                                                  ),
+                                                ],
+                                              ),
                                             ),
-                                            const SizedBox(height: 4),
-                                            Row(
-                                              children: [
-                                                Expanded(
-                                                  child: ClipRRect(
-                                                    borderRadius: BorderRadius.circular(2),
-                                                    child: Container(
-                                                      height: 4,
-                                                      color: esOscuro
-                                                          ? Colors.white.withValues(alpha: 0.02)
-                                                          : Colors.black.withValues(alpha: 0.02),
-                                                      child: FractionallySizedBox(
-                                                        alignment: Alignment.centerLeft,
-                                                        widthFactor: childPorcentaje,
-                                                        child: Container(
-                                                          color: colorCategoria.withValues(alpha: 0.7),
+                                          ),
+                                          AnimatedSize(
+                                            duration: const Duration(milliseconds: 200),
+                                            curve: Curves.fastOutSlowIn,
+                                            child: _expandedSubcategoryIds.contains(childCat.id)
+                                                ? Container(
+                                                    margin: const EdgeInsets.only(top: 6, left: 12, bottom: 4),
+                                                    padding: const EdgeInsets.only(left: 10),
+                                                    decoration: BoxDecoration(
+                                                      border: Border(
+                                                        left: BorderSide(
+                                                          color: colorCategoria.withValues(alpha: 0.1),
+                                                          width: 1.5,
                                                         ),
                                                       ),
                                                     ),
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Container(
-                                                  width: 30,
-                                                  alignment: Alignment.centerRight,
-                                                  child: Text(
-                                                    '$childPorcentajeTexto%',
-                                                    style: TextStyle(
-                                                      fontSize: 8.5,
-                                                      fontWeight: FontWeight.w700,
-                                                      color: colorTexto.withValues(alpha: 0.45),
-                                                      fontFeatures: const [FontFeature.tabularFigures()],
+                                                    child: Column(
+                                                      children: subCatTxs.map((tx) {
+                                                        return _buildMiniTransactionRow(tx, esOscuro, colorTexto, currency, estadoApp);
+                                                      }).toList(),
                                                     ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
+                                                  )
+                                                : const SizedBox.shrink(),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  )
+                                : ListView.separated(
+                                    padding: EdgeInsets.zero,
+                                    shrinkWrap: true,
+                                    physics: const NeverScrollableScrollPhysics(),
+                                    itemCount: group.directTransactions.length,
+                                    separatorBuilder: (_, __) => const SizedBox(height: 6),
+                                    itemBuilder: (context, tIdx) {
+                                      final tx = group.directTransactions[tIdx];
+                                      return _buildMiniTransactionRow(tx, esOscuro, colorTexto, currency, estadoApp);
+                                    },
                                   ),
-                                );
-                              },
-                            ),
                           )
                         : const SizedBox.shrink(),
                   ),
@@ -1650,6 +1784,97 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
     );
   }
 
+  Widget _buildMiniTransactionRow(ModeloTransaccion tx, bool esOscuro, Color colorTexto, String currency, EstadoApp estadoApp) {
+    final isIncome = tx.type == 'ingreso';
+    final isTransfer = tx.type == 'transferencia';
+    final String dateStr = '${tx.date.day} ${_monthsNames[tx.date.month - 1].substring(0, 3)}';
+    
+    final acc = estadoApp.accounts.firstWhere(
+      (a) => a.id == tx.accountId,
+      orElse: () => ModeloCuenta(id: '', name: '...', balance: 0, gradientIndex: 0, type: 'Efectivo'),
+    );
+
+    final amountColor = isIncome
+        ? const Color(0xFF10B981)
+        : (isTransfer ? const Color(0xFF3B82F6) : const Color(0xFFEF4444));
+
+    return InteractiveScale(
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => PanelTransaccion(transaccion: tx),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+        margin: const EdgeInsets.symmetric(vertical: 2),
+        decoration: BoxDecoration(
+          color: esOscuro ? Colors.white.withValues(alpha: 0.01) : Colors.black.withValues(alpha: 0.005),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+              decoration: BoxDecoration(
+                color: esOscuro ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                dateStr,
+                style: TextStyle(
+                  fontSize: 8.5,
+                  fontWeight: FontWeight.w700,
+                  color: colorTexto.withValues(alpha: 0.6),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    tx.title,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: colorTexto.withValues(alpha: 0.9),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    acc.name,
+                    style: TextStyle(
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w500,
+                      color: colorTexto.withValues(alpha: 0.45),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              _formatCurrency(isIncome ? tx.amount : (isTransfer ? tx.amount : -tx.amount), currency),
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: amountColor,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildNoDataWidget(Color colorTexto) {
     return Container(
       height: 380,
@@ -1810,6 +2035,8 @@ class _GrupoCategoriaPadre {
   double directAmount = 0.0;
   final Map<String, double> childAmounts = {};
   final Map<String, ModeloCategoria> childCategories = {};
+  final List<ModeloTransaccion> directTransactions = [];
+  final Map<String, List<ModeloTransaccion>> childTransactions = {};
 
   _GrupoCategoriaPadre(this.parent);
 }

@@ -107,34 +107,48 @@ class ServicioAutenticacion {
   }
 
   Future<void> checkInitialSession() async {
-    if (_isFirebaseInitialized) {
-      try {
-        // Esperar el primer evento de authStateChanges para garantizar que se restaure la sesión local
-        final User? user = await FirebaseAuth.instance
-            .authStateChanges()
-            .first
-            .timeout(
-              const Duration(seconds: 2),
-              onTimeout: () => FirebaseAuth.instance.currentUser,
-            );
-        if (user != null) {
-          _currentUser = UsuarioApp.fromFirebase(user);
-          _userStreamController.add(_currentUser);
-        } else {
-          _currentUser = null;
-          _userStreamController.add(null);
-        }
-      } catch (e) {
-        // Fallback en caso de error o timeout
-        final User? user = FirebaseAuth.instance.currentUser;
-        if (user != null) {
-          _currentUser = UsuarioApp.fromFirebase(user);
-          _userStreamController.add(_currentUser);
-        } else {
-          _currentUser = null;
-          _userStreamController.add(null);
-        }
+    if (!_isFirebaseInitialized) {
+      _currentUser = null;
+      _userStreamController.add(null);
+      return;
+    }
+
+    // 1. Verificar si ya tenemos el usuario cargado en memoria
+    if (_currentUser != null) {
+      return;
+    }
+
+    // 2. Verificar si FirebaseAuth ya tiene el usuario cargado de forma síncrona
+    User? firebaseUser = FirebaseAuth.instance.currentUser;
+    if (firebaseUser != null) {
+      _currentUser = UsuarioApp.fromFirebase(firebaseUser);
+      _userStreamController.add(_currentUser);
+      return;
+    }
+
+    // 3. Esperar una breve ventana de tiempo para capturar la restauración asíncrona del token nativo
+    final completer = Completer<User?>();
+    StreamSubscription<User?>? subscription;
+
+    subscription = FirebaseAuth.instance.authStateChanges().listen((User? u) {
+      if (u != null && !completer.isCompleted) {
+        completer.complete(u);
       }
+    });
+
+    // Esperar como máximo 800ms antes de asumir que no hay sesión activa
+    Future.delayed(const Duration(milliseconds: 800), () {
+      if (!completer.isCompleted) {
+        completer.complete(null);
+      }
+    });
+
+    final User? user = await completer.future;
+    await subscription.cancel();
+
+    if (user != null) {
+      _currentUser = UsuarioApp.fromFirebase(user);
+      _userStreamController.add(_currentUser);
     } else {
       _currentUser = null;
       _userStreamController.add(null);

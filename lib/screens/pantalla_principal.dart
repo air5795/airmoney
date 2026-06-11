@@ -126,9 +126,9 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> with WidgetsBindi
               physics: const BouncingScrollPhysics(),
               children: const [
                 VistaInicio(),
-                SafeArea(child: VistaMovimientos()),
-                SafeArea(child: VistaEstadisticas()),
-                SafeArea(child: VistaAhorro()),
+                VistaMovimientos(),
+                VistaEstadisticas(),
+                VistaAhorro(),
               ],
             ),
             DockLiquidGlass(

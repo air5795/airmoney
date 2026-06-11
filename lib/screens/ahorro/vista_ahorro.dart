@@ -943,22 +943,32 @@ class _VistaAhorroState extends State<VistaAhorro> {
     final double totalObjetivos = estadoApp.savingsGoals.fold(0.0, (sum, item) => sum + item.targetAmount);
     final double porcentajeAhorro = totalObjetivos > 0 ? (totalAhorrado / totalObjetivos) * 100 : 0.0;
 
+    final colorFondoDock = esOscuro
+        ? const Color(0xFF0A0A0A).withValues(alpha: 0.55)
+        : const Color.fromARGB(255, 228, 228, 228).withValues(alpha: 0.75);
+
+    final colorBordeDock = esOscuro
+        ? const Color(0xFF1E1E1E)
+        : Colors.black.withValues(alpha: 0.05);
+
     return Container(
       width: double.infinity,
       height: double.infinity,
       color: colorFondo,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          _buildAhorroHeader(estadoApp, esOscuro, colorTexto),
-          Expanded(
+          Positioned.fill(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 82 + MediaQuery.of(context).padding.top,
+                bottom: 110,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 12),
                   // Selector Deslizable Premium de Vista
                   _buildTabSelector(estadoApp, esOscuro, colorTexto),
             const SizedBox(height: 24),
@@ -1062,7 +1072,7 @@ class _VistaAhorroState extends State<VistaAhorro> {
                   letterSpacing: 0.8,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
 
               // Empty State
               if (estadoApp.savingsGoals.isEmpty) ...[
@@ -1120,6 +1130,7 @@ class _VistaAhorroState extends State<VistaAhorro> {
               ] else ...[
                 // Grid de metas de ahorro Bento
                 ListView.separated(
+                  padding: EdgeInsets.zero,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: estadoApp.savingsGoals.length,
@@ -1391,9 +1402,43 @@ class _VistaAhorroState extends State<VistaAhorro> {
         ),
       ),
     ),
-  ],
-),
-);
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(
+                  sigmaX: 10,
+                  sigmaY: 10,
+                ),
+                child: Container(
+                  padding: EdgeInsets.only(
+                    left: 20,
+                    right: 20,
+                    top: 14 + MediaQuery.of(context).padding.top,
+                    bottom: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colorFondoDock,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: colorBordeDock,
+                        width: 2.0,
+                      ),
+                    ),
+                  ),
+                  child: SizedBox(
+                    height: 44,
+                    child: _buildAhorroHeader(estadoApp, esOscuro, colorTexto),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // --- HELPERS Y UI DE PRESUPUESTOS ---
@@ -1468,75 +1513,73 @@ class _VistaAhorroState extends State<VistaAhorro> {
   }
 
   Widget _buildAhorroHeader(EstadoApp estadoApp, bool esOscuro, Color colorTexto) {
-    return Container(
-      padding: const EdgeInsets.only(left: 20, right: 16, top: 12, bottom: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Planificación',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: colorTexto,
-                    letterSpacing: -0.5,
-                  ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Planificación',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: colorTexto,
+                  letterSpacing: -0.5,
+                  height: 1.1,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  _activeTab == 0
-                      ? 'Construye tu futuro paso a paso.'
-                      : (_activeTab == 1
-                          ? 'Controla tus gastos con límites inteligentes.'
-                          : 'Organiza tus cobros y pagos futuros.'),
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: colorTexto.withValues(alpha: 0.55),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                _activeTab == 0
+                    ? 'Construye tu futuro paso a paso.'
+                    : (_activeTab == 1
+                        ? 'Controla tus gastos con límites inteligentes.'
+                        : 'Organiza tus cobros y pagos futuros.'),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: colorTexto.withValues(alpha: 0.55),
+                  height: 1.1,
                 ),
-              ],
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        InteractiveScale(
+          onTap: () {
+            if (_activeTab == 0) {
+              _showAddOrEditGoalSheet();
+            } else if (_activeTab == 1) {
+              _showAddOrEditBudgetSheet();
+            } else {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => const PanelTransaccion(esPlanificacion: true),
+              );
+            }
+          },
+          child: Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: estadoApp.colorPrincipal.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.add_rounded,
+              color: _getPrimaryColor(estadoApp, esOscuro),
+              size: 22,
             ),
           ),
-          const SizedBox(width: 8),
-          InteractiveScale(
-            onTap: () {
-              if (_activeTab == 0) {
-                _showAddOrEditGoalSheet();
-              } else if (_activeTab == 1) {
-                _showAddOrEditBudgetSheet();
-              } else {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (context) => const PanelTransaccion(esPlanificacion: true),
-                );
-              }
-            },
-            child: Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: estadoApp.colorPrincipal.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.add_rounded,
-                color: _getPrimaryColor(estadoApp, esOscuro),
-                size: 22,
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -3163,7 +3206,7 @@ class _VistaAhorroState extends State<VistaAhorro> {
             letterSpacing: 0.8,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
 
         if (pendingTxs.isEmpty) ...[
           Container(
@@ -3235,6 +3278,7 @@ class _VistaAhorroState extends State<VistaAhorro> {
               ),
             ),
             child: ListView.separated(
+              padding: EdgeInsets.zero,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: pendingTxs.length,

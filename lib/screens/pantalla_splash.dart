@@ -23,13 +23,18 @@ class _PantallaSplashState extends State<PantallaSplash> {
   }
 
   Future<void> _handleNavigation() async {
+    if (!mounted) return;
+    final estadoApp = Provider.of<EstadoApp>(context, listen: false);
+
+    // 1. Esperar a que se carguen las preferencias locales
+    await estadoApp.initFuture;
+
     final ServicioAutenticacion servicioAuth = ServicioAutenticacion();
+    // 2. Comprobar la sesión inicial con robustez
     await servicioAuth.checkInitialSession();
-    
+
     if (servicioAuth.currentUser != null) {
       if (!mounted) return;
-      final estadoApp = Provider.of<EstadoApp>(context, listen: false);
-      
       // Sincronizar con la nube de inmediato en el arranque si hay sesion activa
       await estadoApp.sincronizarConNube(servicioAuth.currentUser!.uid);
     }
@@ -37,8 +42,6 @@ class _PantallaSplashState extends State<PantallaSplash> {
     await Future.delayed(const Duration(milliseconds: 1500));
 
     if (!mounted) return;
-
-    final estadoApp = Provider.of<EstadoApp>(context, listen: false);
 
     if (servicioAuth.currentUser != null) {
       final Widget target = estadoApp.hasCompletedOnboarding
@@ -48,7 +51,9 @@ class _PantallaSplashState extends State<PantallaSplash> {
       if (estadoApp.biometricEnabled || estadoApp.pinEnabled) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => PantallaBloqueo(targetScreen: target)),
+          MaterialPageRoute(
+            builder: (_) => PantallaBloqueo(targetScreen: target),
+          ),
         );
       } else {
         Navigator.pushReplacement(
@@ -69,10 +74,16 @@ class _PantallaSplashState extends State<PantallaSplash> {
     final estadoApp = Provider.of<EstadoApp>(context);
     final esOscuro = estadoApp.esTemaOscuro;
     final colorPrimario = estadoApp.colorPrincipal;
-    
-    final colorFondo = esOscuro ? const Color(0xFF000000) : const Color(0xFFF8FAFC);
-    final colorTexto = esOscuro ? const Color(0xFFF1F5F9) : const Color(0xFF0F172A);
-    final colorSecundario = esOscuro ? const Color(0xFF64748B) : const Color(0xFF475569);
+
+    final colorFondo = esOscuro
+        ? const Color(0xFF000000)
+        : const Color(0xFFF8FAFC);
+    final colorTexto = esOscuro
+        ? const Color(0xFFF1F5F9)
+        : const Color(0xFF0F172A);
+    final colorSecundario = esOscuro
+        ? const Color(0xFF64748B)
+        : const Color(0xFF475569);
 
     return Scaffold(
       backgroundColor: colorFondo,
@@ -97,20 +108,20 @@ class _PantallaSplashState extends State<PantallaSplash> {
                 ),
               ),
             ),
-            
+
             Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Logotipo institucional con efecto fisico tactil
                   SizedBox(
-                    width: 100,
-                    height: 100,
-                    child: Image.asset(
-                      'assets/images/512-trans.png',
-                      fit: BoxFit.contain,
-                    ),
-                  )
+                        width: 100,
+                        height: 100,
+                        child: Image.asset(
+                          'assets/images/512-trans.png',
+                          fit: BoxFit.contain,
+                        ),
+                      )
                       .animate()
                       .fadeIn(duration: 800.ms, curve: Curves.easeOutCubic)
                       .scale(
@@ -119,33 +130,37 @@ class _PantallaSplashState extends State<PantallaSplash> {
                         duration: 800.ms,
                         curve: Curves.easeOutCubic,
                       ),
-                  
+
                   const SizedBox(height: 32),
-                  
+
                   // Títulos y marcas de tipografía fina y estable
                   RichText(
-                    text: TextSpan(
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w800,
-                        color: colorTexto,
-                        fontFamily: 'Roboto',
-                        letterSpacing: -0.8,
-                      ),
-                      children: [
-                        const TextSpan(text: 'Air'),
-                        TextSpan(
-                          text: 'Money',
+                        text: TextSpan(
                           style: TextStyle(
-                            color: colorPrimario,
-                            fontWeight: FontWeight.w900,
+                            fontSize: 32,
+                            fontWeight: FontWeight.w800,
+                            color: colorTexto,
+                            fontFamily: 'Roboto',
+                            letterSpacing: -0.8,
                           ),
+                          children: [
+                            const TextSpan(text: 'Air'),
+                            TextSpan(
+                              text: 'Money',
+                              style: TextStyle(
+                                color: colorPrimario,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  )
+                      )
                       .animate()
-                      .fadeIn(duration: 800.ms, delay: 200.ms, curve: Curves.easeOutCubic)
+                      .fadeIn(
+                        duration: 800.ms,
+                        delay: 200.ms,
+                        curve: Curves.easeOutCubic,
+                      )
                       .slideY(
                         begin: 0.15,
                         end: 0.0,
@@ -153,23 +168,25 @@ class _PantallaSplashState extends State<PantallaSplash> {
                         delay: 200.ms,
                         curve: Curves.easeOutCubic,
                       ),
-                  
+
                   const SizedBox(height: 6),
-                  
+
                   Text(
-                    'TU DINERO, SEGURO Y LIGERO.',
+                    'CUIDA TUS FINANZAS.',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 4.0,
                       color: colorSecundario.withValues(alpha: 0.6),
                     ),
-                  )
-                      .animate()
-                      .fadeIn(duration: 800.ms, delay: 350.ms, curve: Curves.easeOutCubic),
-                  
+                  ).animate().fadeIn(
+                    duration: 800.ms,
+                    delay: 350.ms,
+                    curve: Curves.easeOutCubic,
+                  ),
+
                   const SizedBox(height: 36),
-                  
+
                   // Indicador lineal de carga/sincronización institucional
                   SizedBox(
                     width: 120,
@@ -185,13 +202,15 @@ class _PantallaSplashState extends State<PantallaSplash> {
                         ),
                       ),
                     ),
-                  )
-                      .animate()
-                      .fadeIn(duration: 800.ms, delay: 500.ms, curve: Curves.easeOutCubic),
+                  ).animate().fadeIn(
+                    duration: 800.ms,
+                    delay: 500.ms,
+                    curve: Curves.easeOutCubic,
+                  ),
                 ],
               ),
             ),
-            
+
             // Pie de pantalla con seguridad implícita
             Positioned(
               bottom: 24,
@@ -219,9 +238,11 @@ class _PantallaSplashState extends State<PantallaSplash> {
                   ],
                 ),
               ),
-            )
-                .animate()
-                .fadeIn(duration: 800.ms, delay: 700.ms, curve: Curves.easeOutCubic),
+            ).animate().fadeIn(
+              duration: 800.ms,
+              delay: 700.ms,
+              curve: Curves.easeOutCubic,
+            ),
           ],
         ),
       ),

@@ -629,73 +629,124 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
       return dateB.compareTo(dateA);
     });
 
-    return Column(
+    final colorFondoDock = esOscuro
+        ? const Color(0xFF0A0A0A).withValues(alpha: 0.55)
+        : const Color.fromARGB(255, 228, 228, 228).withValues(alpha: 0.75);
+
+    final colorBordeDock = esOscuro
+        ? const Color(0xFF1E1E1E)
+        : Colors.black.withValues(alpha: 0.05);
+
+    return Stack(
       children: [
-        _buildMovimientosHeader(esOscuro, colorTexto),
-        const SizedBox(height: 6),
-        _buildDateFilterBar(esOscuro, colorTexto),
-        _buildCategoryChipsBar(estadoApp, categoriasUsadas, esOscuro, estadoApp.colorPrincipal),
-        const SizedBox(height: 10),
-        Expanded(
-          child: txsFiltradas.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.receipt_long_rounded,
-                        size: 48,
-                        color: colorTexto.withValues(alpha: 0.1),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'NO HAY REGISTROS EN ESTE PERIODO',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: colorTexto.withValues(alpha: 0.4),
-                          letterSpacing: 0.5,
+        Positioned.fill(
+          child: Column(
+            children: [
+              SizedBox(height: 82 + MediaQuery.of(context).padding.top),
+              _buildDateFilterBar(esOscuro, colorTexto),
+              _buildCategoryChipsBar(estadoApp, categoriasUsadas, esOscuro, estadoApp.colorPrincipal),
+              const SizedBox(height: 4),
+              Expanded(
+                child: txsFiltradas.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.receipt_long_rounded,
+                              size: 48,
+                              color: colorTexto.withValues(alpha: 0.1),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'NO HAY REGISTROS EN ESTE PERIODO',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: colorTexto.withValues(alpha: 0.4),
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : MediaQuery.removePadding(
+                        context: context,
+                        removeTop: true,
+                        child: ListView.builder(
+                          physics: const BouncingScrollPhysics(),
+                          padding: const EdgeInsets.only(left: 16, right: 16, top: 4, bottom: 110),
+                          itemCount: clavesDiasOrdenadas.length,
+                          itemBuilder: (context, index) {
+                            final claveDia = clavesDiasOrdenadas[index];
+                            final transaccionesDia = agrupadoPorDia[claveDia]!;
+                            final parts = claveDia.split('-').map(int.parse).toList();
+                            final fechaDia = DateTime(parts[0], parts[1], parts[2]);
+
+                            double netoDia = transaccionesDia.fold(0.0, (sum, tx) {
+                              if (!tx.pagada) return sum; // Ignorar transacciones pendientes en el neto del día
+                              if (_selectedAccountFilter == null) {
+                                if (tx.type == 'ingreso') return sum + tx.amount;
+                                if (tx.type == 'gasto') return sum - tx.amount;
+                              } else {
+                                if (tx.accountId == _selectedAccountFilter) return sum - tx.amount;
+                                if (tx.toAccountId == _selectedAccountFilter) return sum + tx.amount;
+                              }
+                              return sum;
+                            });
+
+                            transaccionesDia.sort((a, b) => b.date.compareTo(a.date));
+                            final saldoAcumuladoDia = saldoHistoricoTxs[transaccionesDia.first.id] ?? 0.0;
+
+                            return _buildDayCard(
+                              fechaDia: fechaDia,
+                              netoDia: netoDia,
+                              saldoAcumuladoDia: saldoAcumuladoDia,
+                              transacciones: transaccionesDia,
+                              currency: currency,
+                              estadoApp: estadoApp,
+                              esOscuro: esOscuro,
+                            );
+                          },
                         ),
                       ),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.only(left: 16, right: 16, top: 4, bottom: 110),
-                  itemCount: clavesDiasOrdenadas.length,
-                  itemBuilder: (context, index) {
-                    final claveDia = clavesDiasOrdenadas[index];
-                    final transaccionesDia = agrupadoPorDia[claveDia]!;
-                    final parts = claveDia.split('-').map(int.parse).toList();
-                    final fechaDia = DateTime(parts[0], parts[1], parts[2]);
-
-                    double netoDia = transaccionesDia.fold(0.0, (sum, tx) {
-                      if (!tx.pagada) return sum; // Ignorar transacciones pendientes en el neto del día
-                      if (_selectedAccountFilter == null) {
-                        if (tx.type == 'ingreso') return sum + tx.amount;
-                        if (tx.type == 'gasto') return sum - tx.amount;
-                      } else {
-                        if (tx.accountId == _selectedAccountFilter) return sum - tx.amount;
-                        if (tx.toAccountId == _selectedAccountFilter) return sum + tx.amount;
-                      }
-                      return sum;
-                    });
-
-                    transaccionesDia.sort((a, b) => b.date.compareTo(a.date));
-                    final saldoAcumuladoDia = saldoHistoricoTxs[transaccionesDia.first.id] ?? 0.0;
-
-                    return _buildDayCard(
-                      fechaDia: fechaDia,
-                      netoDia: netoDia,
-                      saldoAcumuladoDia: saldoAcumuladoDia,
-                      transacciones: transaccionesDia,
-                      currency: currency,
-                      estadoApp: estadoApp,
-                      esOscuro: esOscuro,
-                    );
-                  },
+              ),
+            ],
+          ),
+        ),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(
+                sigmaX: 10,
+                sigmaY: 10,
+              ),
+              child: Container(
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 14 + MediaQuery.of(context).padding.top,
+                  bottom: 14,
                 ),
+                decoration: BoxDecoration(
+                  color: colorFondoDock,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: colorBordeDock,
+                      width: 2.0,
+                    ),
+                  ),
+                ),
+                child: SizedBox(
+                  height: 44,
+                  child: _buildMovimientosHeader(esOscuro, colorTexto),
+                ),
+              ),
+            ),
+          ),
         ),
       ],
     );
@@ -705,155 +756,151 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
     final estadoApp = Provider.of<EstadoApp>(context, listen: false);
     final activeColor = estadoApp.colorPrincipal;
 
-    return Container(
-      padding: const EdgeInsets.only(left: 20, right: 12, top: 8, bottom: 4),
-      height: 48,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: _isSearchExpanded
-                ? Container(
-                    height: 38,
-                    decoration: BoxDecoration(
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: _isSearchExpanded
+              ? Container(
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: esOscuro 
+                        ? const Color(0xFF0E0E0E) 
+                        : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
                       color: esOscuro 
-                          ? const Color(0xFF0E0E0E) 
-                          : const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: esOscuro 
-                            ? Colors.white.withValues(alpha: 0.08) 
-                            : const Color(0xFFE2E8F0),
-                        width: 1.0,
+                          ? Colors.white.withValues(alpha: 0.08) 
+                          : const Color(0xFFE2E8F0),
+                      width: 1.0,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 10),
+                      Icon(
+                        Icons.search_rounded,
+                        color: colorTexto.withValues(alpha: 0.4),
+                        size: 18,
                       ),
-                    ),
-                    child: Row(
-                      children: [
-                        const SizedBox(width: 10),
-                        Icon(
-                          Icons.search_rounded,
-                          color: colorTexto.withValues(alpha: 0.4),
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: TextField(
-                            onChanged: (val) {
-                              setState(() {
-                                _searchQuery = val;
-                              });
-                            },
-                            style: TextStyle(
-                              color: colorTexto,
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          onChanged: (val) {
+                            setState(() {
+                              _searchQuery = val;
+                            });
+                          },
+                          style: TextStyle(
+                            color: colorTexto,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'Buscar movimiento...',
+                            hintStyle: TextStyle(
+                              color: colorTexto.withValues(alpha: 0.3),
                               fontSize: 13.5,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500,
                             ),
-                            decoration: InputDecoration(
-                              hintText: 'Buscar movimiento...',
-                              hintStyle: TextStyle(
-                                color: colorTexto.withValues(alpha: 0.3),
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              border: InputBorder.none,
-                              isDense: true,
-                              contentPadding: EdgeInsets.zero,
-                            ),
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
                           ),
                         ),
-                        if (_searchQuery.isNotEmpty)
-                          InteractiveScale(
-                            onTap: () {
-                              setState(() {
-                                _searchQuery = '';
-                              });
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                              child: Icon(Icons.close_rounded, color: colorTexto.withValues(alpha: 0.4), size: 16),
-                            ),
+                      ),
+                      if (_searchQuery.isNotEmpty)
+                        InteractiveScale(
+                          onTap: () {
+                            setState(() {
+                              _searchQuery = '';
+                            });
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                            child: Icon(Icons.close_rounded, color: colorTexto.withValues(alpha: 0.4), size: 16),
                           ),
-                      ],
-                    ),
-                  )
-                : Text(
-                    'Libro Mayor',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: colorTexto,
-                      letterSpacing: -0.5,
-                    ),
+                        ),
+                    ],
                   ),
-          ),
-          const SizedBox(width: 8),
-          Row(
-            children: [
-              InteractiveScale(
-                onTap: () {
-                  setState(() {
-                    _isSearchExpanded = !_isSearchExpanded;
-                    if (!_isSearchExpanded) {
-                      _searchQuery = '';
-                    }
-                  });
-                },
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: esOscuro ? const Color(0xFF0E0E0E) : const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    _isSearchExpanded ? Icons.search_off_rounded : Icons.search_rounded,
-                    color: _isSearchExpanded ? activeColor : colorTexto.withValues(alpha: 0.6),
-                    size: 20,
+                )
+              : Text(
+                  'Libro Mayor',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: colorTexto,
+                    letterSpacing: -0.5,
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              InteractiveScale(
-                onTap: () {
-                  setState(() {
-                    _hideBalances = !_hideBalances;
-                  });
-                },
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: esOscuro ? const Color(0xFF0E0E0E) : const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    _hideBalances ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                    color: colorTexto.withValues(alpha: 0.6),
-                    size: 20,
-                  ),
+        ),
+        const SizedBox(width: 8),
+        Row(
+          children: [
+            InteractiveScale(
+              onTap: () {
+                setState(() {
+                  _isSearchExpanded = !_isSearchExpanded;
+                  if (!_isSearchExpanded) {
+                    _searchQuery = '';
+                  }
+                });
+              },
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: esOscuro ? const Color(0xFF0E0E0E) : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  _isSearchExpanded ? Icons.search_off_rounded : Icons.search_rounded,
+                  color: _isSearchExpanded ? activeColor : colorTexto.withValues(alpha: 0.6),
+                  size: 20,
                 ),
               ),
-              const SizedBox(width: 8),
-              InteractiveScale(
-                onTap: _showSortMenu,
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: esOscuro ? const Color(0xFF0E0E0E) : const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    Icons.sort_rounded,
-                    color: colorTexto.withValues(alpha: 0.6),
-                    size: 20,
-                  ),
+            ),
+            const SizedBox(width: 8),
+            InteractiveScale(
+              onTap: () {
+                setState(() {
+                  _hideBalances = !_hideBalances;
+                });
+              },
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: esOscuro ? const Color(0xFF0E0E0E) : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  _hideBalances ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                  color: colorTexto.withValues(alpha: 0.6),
+                  size: 20,
                 ),
               ),
-            ],
-          ),
-        ],
-      ),
+            ),
+            const SizedBox(width: 8),
+            InteractiveScale(
+              onTap: _showSortMenu,
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: esOscuro ? const Color(0xFF0E0E0E) : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.sort_rounded,
+                  color: colorTexto.withValues(alpha: 0.6),
+                  size: 20,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 

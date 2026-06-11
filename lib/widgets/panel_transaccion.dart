@@ -200,6 +200,9 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
       if (res.categoria != null && res.tipo != 'transferencia') {
         _selectedCategory = res.categoria!;
       }
+      if (res.fecha != null) {
+        _selectedDate = res.fecha!;
+      }
       _isListening = false;
     });
 
@@ -1069,8 +1072,8 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                             children: [
                               _buildLabel('ORIGEN', esOscuro),
                               const SizedBox(height: 4),
-                              _buildAccountSelectorCard(
-                                accountId: _selectedAccountId,
+                              _buildHorizontalAccountSelector(
+                                selectedAccountId: _selectedAccountId,
                                 accounts: estadoApp.accounts,
                                 onSelected: (val) {
                                   setState(() {
@@ -1078,9 +1081,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                                   });
                                 },
                                 esOscuro: esOscuro,
-                                colorTexto: colorTexto,
                                 colorTipo: colorTipo,
-                                compacto: false,
                               ),
                             ],
                           ),
@@ -1091,8 +1092,8 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                             children: [
                               _buildLabel('DESTINO', esOscuro),
                               const SizedBox(height: 4),
-                              _buildAccountSelectorCard(
-                                accountId: _selectedToAccountId,
+                              _buildHorizontalAccountSelector(
+                                selectedAccountId: _selectedToAccountId,
                                 accounts: estadoApp.accounts,
                                 onSelected: (val) {
                                   setState(() {
@@ -1100,9 +1101,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                                   });
                                 },
                                 esOscuro: esOscuro,
-                                colorTexto: colorTexto,
                                 colorTipo: colorTipo,
-                                compacto: false,
                               ),
                             ],
                           ),
@@ -1113,8 +1112,8 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                             children: [
                               _buildLabel(_tabController.index == 0 ? 'CUENTA ORIGEN' : 'CUENTA DESTINO', esOscuro),
                               const SizedBox(height: 4),
-                              _buildAccountSelectorCard(
-                                accountId: _selectedAccountId,
+                              _buildHorizontalAccountSelector(
+                                selectedAccountId: _selectedAccountId,
                                 accounts: estadoApp.accounts,
                                 onSelected: (val) {
                                   setState(() {
@@ -1122,9 +1121,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                                   });
                                 },
                                 esOscuro: esOscuro,
-                                colorTexto: colorTexto,
                                 colorTipo: colorTipo,
-                                compacto: false,
                               ),
                             ],
                           ),
@@ -1596,90 +1593,122 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
     );
   }
 
-  // --- Selector de Cuentas Premium ---
-  Widget _buildAccountSelectorCard({
-    required String? accountId,
-    required List<ModeloCuenta> accounts,
-    required ValueChanged<String?> onSelected,
+  // --- Mini Tarjeta Real ---
+  Widget _buildMiniAccountCard({
+    required ModeloCuenta acc,
+    required bool isSelected,
     required bool esOscuro,
-    required Color colorTexto,
     required Color colorTipo,
-    bool compacto = false,
+    required VoidCallback onTap,
   }) {
+    final colors = _getAccountColors(acc, esOscuro);
+    final topBgColor = colors.background;
+    final topTextColor = colors.text;
     final estadoApp = Provider.of<EstadoApp>(context, listen: false);
-    final activeAccount = accounts.firstWhere((a) => a.id == accountId, orElse: () => ModeloCuenta(id: '', name: 'No seleccionada', balance: 0.0, gradientIndex: 0, type: ''));
-    final isSelected = activeAccount.id.isNotEmpty;
 
     return InteractiveScale(
-      onTap: () => _showAccountSelectorBottomSheet(accounts, accountId, onSelected, esOscuro, colorTexto, colorTipo),
+      onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: compacto ? 10 : 16,
-          vertical: compacto ? 6 : 12,
-        ),
-        height: compacto ? 46 : null,
+        width: 120,
+        height: 64,
         decoration: BoxDecoration(
-          color: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
-          borderRadius: BorderRadius.circular(16),
+          color: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? colorTipo.withValues(alpha: 0.5) : (esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05)),
-            width: 1.0,
+            color: isSelected
+                ? (esOscuro ? Colors.white : colorTipo)
+                : (esOscuro ? const Color(0xFF1E1E1E) : const Color(0xFFCBD5E1).withValues(alpha: 0.4)),
+            width: isSelected ? 2.0 : 1.0,
           ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: compacto ? 28 : 38,
-              height: compacto ? 28 : 38,
-              decoration: BoxDecoration(
-                color: isSelected ? colorTipo.withValues(alpha: 0.08) : (esOscuro ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF3F4F6)),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected ? colorTipo.withValues(alpha: 0.2) : Colors.transparent,
-                  width: 1.0,
-                ),
+          boxShadow: [
+            if (isSelected)
+              BoxShadow(
+                color: (esOscuro ? Colors.white : colorTipo).withValues(alpha: 0.25),
+                blurRadius: 8,
+                spreadRadius: 1,
               ),
-              child: Icon(
-                Icons.account_balance_wallet_rounded,
-                color: isSelected ? colorTipo : colorTexto.withValues(alpha: 0.5),
-                size: compacto ? 14 : 18,
-              ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: esOscuro ? 0.2 : 0.03),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
             ),
-            SizedBox(width: compacto ? 8 : 12),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Sección Superior de Color Sólido
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    activeAccount.name,
-                    style: TextStyle(
-                      fontSize: compacto ? 13 : 14.5,
-                      fontWeight: FontWeight.bold,
-                      color: colorTexto,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: topBgColor,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(10),
+                    topRight: Radius.circular(10),
                   ),
-                  if (isSelected && !compacto) ...[
-                    const SizedBox(height: 1),
+                ),
+                padding: const EdgeInsets.only(left: 8, right: 8, top: 4, bottom: 2),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            acc.type.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 7.0,
+                              fontWeight: FontWeight.w900,
+                              color: topTextColor.withValues(alpha: 0.75),
+                              letterSpacing: 0.2,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        _buildAccountIcon(acc, topTextColor, topBgColor),
+                      ],
+                    ),
                     Text(
-                      '${activeAccount.type} • ${EstadoApp.getSymbolOfCurrency(activeAccount.currency ?? estadoApp.selectedCurrency)} ${activeAccount.balance.toStringAsFixed(0)}',
+                      acc.name.toUpperCase(),
                       style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: colorTexto.withValues(alpha: 0.45),
-                        fontFeatures: const [FontFeature.tabularFigures()],
+                        fontSize: 9.0,
+                        fontWeight: FontWeight.w900,
+                        color: topTextColor,
+                        letterSpacing: -0.1,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
-                ],
+                ),
               ),
             ),
-            Icon(
-              Icons.keyboard_arrow_down_rounded,
-              color: colorTexto.withValues(alpha: 0.5),
-              size: compacto ? 16 : 20,
+            // Sección Inferior con Saldo
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: _getBottomBgColor(topBgColor),
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(10),
+                  bottomRight: Radius.circular(10),
+                ),
+              ),
+              child: Text(
+                '${EstadoApp.getSymbolOfCurrency(acc.currency ?? estadoApp.selectedCurrency)} ${_formatearMonto(acc.balance, forzarDecimales: true)}',
+                style: TextStyle(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w900,
+                  color: topTextColor,
+                  letterSpacing: -0.2,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
@@ -1687,173 +1716,165 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
     );
   }
 
-  void _showAccountSelectorBottomSheet(
-    List<ModeloCuenta> accounts,
-    String? selectedId,
-    ValueChanged<String?> onSelected,
-    bool esOscuro,
-    Color colorTexto,
-    Color colorTipo,
-  ) {
-    final estadoApp = Provider.of<EstadoApp>(context, listen: false);
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        final colorFondo = esOscuro ? const Color(0xFF0A0A0A) : Colors.white;
+  // --- Selector Horizontal de Cuentas Premium ---
+  Widget _buildHorizontalAccountSelector({
+    required String? selectedAccountId,
+    required List<ModeloCuenta> accounts,
+    required ValueChanged<String?> onSelected,
+    required bool esOscuro,
+    required Color colorTipo,
+  }) {
+    return SizedBox(
+      height: 70,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+        itemCount: accounts.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final acc = accounts[index];
+          final isSelected = acc.id == selectedAccountId;
+          return _buildMiniAccountCard(
+            acc: acc,
+            isSelected: isSelected,
+            esOscuro: esOscuro,
+            colorTipo: colorTipo,
+            onTap: () => onSelected(acc.id),
+          );
+        },
+      ),
+    );
+  }
 
-        return ClipRRect(
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(28),
-            topRight: Radius.circular(28),
-          ),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+  Widget _buildAccountIcon(ModeloCuenta acc, Color color, Color bgColor) {
+    if (acc.type.toLowerCase().contains('efectivo')) {
+      return Icon(
+        Icons.wallet_rounded,
+        color: color,
+        size: 14,
+      );
+    }
+    
+    // De lo contrario, pintar el chip de tarjeta de crédito
+    return Container(
+      width: 16,
+      height: 12,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            top: 3,
+            left: 0,
+            right: 0,
             child: Container(
-              decoration: BoxDecoration(
-                color: colorFondo.withValues(alpha: esOscuro ? 0.85 : 0.90),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(28),
-                  topRight: Radius.circular(28),
-                ),
-                border: Border(
-                  top: BorderSide(
-                    color: esOscuro ? Colors.white.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.65),
-                    width: 1.0,
-                  ),
-                ),
-              ),
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 36,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: colorTexto.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(2.5),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Seleccionar Cuenta',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: colorTexto,
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.close_rounded, color: colorTexto.withValues(alpha: 0.5)),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  ConstrainedBox(
-                    constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.4),
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: accounts.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (context, idx) {
-                        final acc = accounts[idx];
-                        final isAct = acc.id == selectedId;
-
-                        return GestureDetector(
-                          onTap: () {
-                            onSelected(acc.id);
-                            Navigator.pop(context);
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: isAct 
-                                  ? colorTipo.withValues(alpha: 0.08)
-                                  : (esOscuro ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03)),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: isAct ? colorTipo : (esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05)),
-                                width: 1.0,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 36,
-                                  height: 36,
-                                  decoration: BoxDecoration(
-                                    color: colorTipo.withValues(alpha: 0.08),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: colorTipo.withValues(alpha: 0.2),
-                                      width: 1.0,
-                                    ),
-                                  ),
-                                  child: Icon(
-                                    Icons.account_balance_rounded,
-                                    color: colorTipo,
-                                    size: 16,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        acc.name,
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: colorTexto,
-                                        ),
-                                      ),
-                                      Text(
-                                        acc.type,
-                                        style: TextStyle(
-                                          fontSize: 10.5,
-                                          fontWeight: FontWeight.w600,
-                                          color: colorTexto.withValues(alpha: 0.4),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Text(
-                                  '${EstadoApp.getSymbolOfCurrency(acc.currency ?? estadoApp.selectedCurrency)} ${acc.balance.toStringAsFixed(2)}',
-                                  style: const TextStyle(
-                                    fontSize: 13.5,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF10B981),
-                                  ),
-                                ),
-                                if (isAct) ...[
-                                  const SizedBox(width: 10),
-                                  Icon(Icons.check_circle_rounded, color: colorTipo, size: 20),
-                                ],
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
+              height: 0.5,
+              color: bgColor.withValues(alpha: 0.8),
             ),
           ),
-        );
-      },
+          Positioned(
+            bottom: 3,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: 0.5,
+              color: bgColor.withValues(alpha: 0.8),
+            ),
+          ),
+          Positioned(
+            top: 0,
+            bottom: 0,
+            left: 8,
+            child: Container(
+              width: 0.5,
+              color: bgColor.withValues(alpha: 0.8),
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  static final List<SolidCardColors> _predefinedSchemes = [
+    const SolidCardColors(Color(0xFFC8E6C9), Color(0xFF0F5132)), // Verde Esmeralda
+    const SolidCardColors(Color(0xFFE1F5FE), Color(0xFF01579B)), // Azul Vibrante
+    const SolidCardColors(Color(0xFFFFCDD2), Color(0xFF842029)), // Rosa/Rojo Neon
+    const SolidCardColors(Color(0xFFFFE0B2), Color(0xFFE65100)), // Naranja/Amarillo
+    const SolidCardColors(Color(0xFFE1BEE7), Color(0xFF4A148C)), // Purpura Profundo
+    const SolidCardColors(Color(0xFFE0F2F1), Color(0xFF004D40)), // Menta Fresca
+    const SolidCardColors(Color(0xFFFFCCBC), Color(0xFFBF360C)), // Atardecer de Ibiza
+    const SolidCardColors(Color(0xFFF8BBD0), Color(0xFF880E4F)), // Violeta Ciberpunk
+    const SolidCardColors(Color(0xFFE8EAF6), Color(0xFF1A237E)), // Cielo Nocturno
+    const SolidCardColors(Color(0xFFE0F7FA), Color(0xFF006064)), // Bosque Mistico
+    const SolidCardColors(Color(0xFFFFE0B2), Color(0xFFDD2C00)), // Fuego Fenix
+    const SolidCardColors(Color(0xFFF3E5F5), Color(0xFF6A1B9A)), // Rosa Orquidea
+    const SolidCardColors(Color(0xFFECEFF1), Color(0xFF37474F)), // Azul Glaciar
+    const SolidCardColors(Color(0xFFF1F8E9), Color(0xFF33691E)), // Neon Alien
+  ];
+
+  SolidCardColors _getAccountColors(ModeloCuenta acc, bool esOscuro) {
+    Color bg;
+    Color text;
+    if (acc.customColorHex != null && acc.customColorHex!.isNotEmpty) {
+      bg = _parseHexColor(acc.customColorHex, const Color(0xFFC8E6C9));
+      text = _parseHexColor(acc.customColorSecondaryHex, _getDarkShade(bg));
+    } else {
+      final index = acc.gradientIndex % _predefinedSchemes.length;
+      bg = _predefinedSchemes[index].background;
+      text = _predefinedSchemes[index].text;
+    }
+
+    if (esOscuro) {
+      final hsl = HSLColor.fromColor(bg);
+      bg = hsl.withLightness((hsl.lightness - 0.12).clamp(0.0, 1.0)).toColor();
+    }
+    return SolidCardColors(bg, text);
+  }
+
+  Color _parseHexColor(String? hexStr, Color defaultColor) {
+    if (hexStr == null || hexStr.isEmpty) return defaultColor;
+    try {
+      final cleanHex = hexStr.trim().replaceAll('#', '');
+      if (cleanHex.length == 6) {
+        return Color(int.parse('0xFF$cleanHex'));
+      } else if (cleanHex.length == 8) {
+        return Color(int.parse('0x$cleanHex'));
+      }
+    } catch (_) {}
+    return defaultColor;
+  }
+
+  Color _getDarkShade(Color color) {
+    final hsl = HSLColor.fromColor(color);
+    return hsl
+        .withLightness((hsl.lightness - 0.5).clamp(0.12, 0.35))
+        .withSaturation((hsl.saturation + 0.2).clamp(0.6, 0.95))
+        .toColor();
+  }
+
+  Color _getBottomBgColor(Color baseColor) {
+    final hsl = HSLColor.fromColor(baseColor);
+    return hsl.withLightness((hsl.lightness - 0.08).clamp(0.0, 1.0)).toColor();
+  }
+
+  String _formatearMonto(double monto, {bool forzarDecimales = false}) {
+    final bool esEntero = (monto % 1 == 0) && !forzarDecimales;
+    final String formatBase = monto.toStringAsFixed(esEntero ? 0 : 2);
+
+    final parts = formatBase.split('.');
+    String entero = parts[0];
+    final String decimal = parts.length > 1 ? parts[1] : '';
+
+    final regExp = RegExp(r'\B(?=(\d{3})+(?!\d))');
+    entero = entero.replaceAllMapped(regExp, (Match m) => '.');
+
+    if (decimal.isNotEmpty) {
+      return '$entero,$decimal';
+    }
+    return entero;
   }
 
   // --- Selector de Categorías Premium ---
@@ -2766,6 +2787,56 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
     return prod;
   }
 
+  Widget _buildExampleCard(String tipo, String ejemplos, Color colorTipo, bool esOscuro) {
+    final baseColor = esOscuro ? Colors.white : const Color(0xFF0F172A);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: (esOscuro ? Colors.white : Colors.black).withValues(alpha: esOscuro ? 0.04 : 0.02),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: colorTipo.withValues(alpha: 0.22),
+          width: 0.8,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: colorTipo.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: colorTipo.withValues(alpha: 0.25), width: 0.8),
+            ),
+            child: Text(
+              tipo,
+              style: TextStyle(
+                color: colorTipo,
+                fontSize: 8.5,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              ejemplos,
+              style: TextStyle(
+                color: baseColor.withValues(alpha: 0.75),
+                fontSize: 11.5,
+                fontWeight: FontWeight.w500,
+                height: 1.45,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildListeningOverlay(Color colorTexto, Color colorTipo) {
     final estadoApp = Provider.of<EstadoApp>(context, listen: false);
     final esOscuro = estadoApp.esTemaOscuro;
@@ -2774,15 +2845,16 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
         child: Container(
-          color: (esOscuro ? Colors.black : Colors.white).withValues(alpha: 0.75),
+          color: (esOscuro ? Colors.black : Colors.white).withValues(alpha: esOscuro ? 0.82 : 0.88),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              const SizedBox(height: 20),
               // Indicador de estado de escucha
               Text(
                 'Escuchando...',
                 style: TextStyle(
-                  fontSize: 24,
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
                   color: colorTexto,
                   letterSpacing: -0.5,
@@ -2792,24 +2864,24 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 32),
                 child: Text(
-                  _lastWords.isEmpty ? 'Di algo como: "Gasto 50 Bs en comida para la cena"' : _lastWords,
+                  _lastWords.isEmpty ? 'Di tu movimiento de forma natural' : _lastWords,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 16,
-                    color: colorTexto.withValues(alpha: 0.7),
-                    height: 1.4,
+                    fontSize: 15,
+                    fontWeight: _lastWords.isEmpty ? FontWeight.normal : FontWeight.w600,
+                    color: colorTexto.withValues(alpha: _lastWords.isEmpty ? 0.6 : 0.9),
+                    height: 1.3,
                   ),
                 ),
               ),
-              const SizedBox(height: 48),
+              const SizedBox(height: 24),
               
               // Animacion de ondas Siri-style usando flutter_animate
               SizedBox(
-                height: 100,
+                height: 60,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: List.generate(5, (index) {
-                    // Genera ondas acrilicas vibrando con delay
                     final List<Color> siriColors = [
                       const Color(0xFF3B82F6), // Azul
                       const Color(0xFF10B981), // Verde
@@ -2818,69 +2890,112 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                       const Color(0xFFF59E0B), // Naranja
                     ];
                     final color = siriColors[index % siriColors.length];
-                    final baseHeight = 30.0 + (index * 10);
+                    final baseHeight = 20.0 + (index * 5);
                     
                     return Container(
-                      width: 8,
+                      width: 5,
                       height: baseHeight,
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
                       decoration: BoxDecoration(
                         color: color.withValues(alpha: 0.8),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(3),
                         boxShadow: [
                           BoxShadow(
-                            color: color.withValues(alpha: 0.4),
-                            blurRadius: 8,
-                            spreadRadius: 1,
+                            color: color.withValues(alpha: 0.3),
+                            blurRadius: 6,
                           ),
                         ],
                       ),
                     )
                     .animate(onPlay: (controller) => controller.repeat(reverse: true))
                     .scaleY(
-                      begin: 0.3,
-                      end: 1.5,
-                      duration: Duration(milliseconds: 400 + (index * 100)),
+                      begin: 0.4,
+                      end: 1.4,
+                      duration: Duration(milliseconds: 350 + (index * 80)),
                       curve: Curves.easeInOut,
                     );
                   }),
                 ),
               ),
               
-              const SizedBox(height: 48),
+              const SizedBox(height: 24),
+              
+              // Guía de voz rápida / Ejemplos
+              Text(
+                'GUÍA DE VOZ RÁPIDA',
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w900,
+                  color: colorTexto.withValues(alpha: 0.45),
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 12),
+              
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  children: [
+                    _buildExampleCard(
+                      'GASTO',
+                      '“Gasto 120 Bs en comida desde Efectivo hoy”\n“Pagué 450 en combustible con Tarjeta ayer”',
+                      const Color(0xFFEF4444),
+                      esOscuro,
+                    ),
+                    const SizedBox(height: 8),
+                    _buildExampleCard(
+                      'INGRESO',
+                      '“Sueldo de 5000 en Mi Banco hoy”\n“Recibí 800 por venta en Efectivo ayer”',
+                      const Color(0xFF10B981),
+                      esOscuro,
+                    ),
+                    const SizedBox(height: 8),
+                    _buildExampleCard(
+                      'TRANSFERENCIA',
+                      '“Transferí 300 de Efectivo a Mi Banco ayer”\n“Mover 150 de BCP a Efectivo hoy”',
+                      const Color(0xFF3B82F6),
+                      esOscuro,
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 28),
+              
               // Boton para detener y procesar
               GestureDetector(
                 onTap: _stopListening,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 11),
                   decoration: BoxDecoration(
                     color: colorTipo,
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(22),
                     boxShadow: [
                       BoxShadow(
                         color: colorTipo.withValues(alpha: 0.3),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
                       ),
                     ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: const [
-                      Icon(Icons.stop_rounded, color: Colors.white, size: 20),
+                      Icon(Icons.stop_rounded, color: Colors.white, size: 18),
                       SizedBox(width: 8),
                       Text(
                         'Listo, Procesar',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                          fontSize: 13.5,
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
+              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -2905,4 +3020,10 @@ class AbsBottomKeyboard extends StatelessWidget {
       ),
     );
   }
+}
+
+class SolidCardColors {
+  final Color background;
+  final Color text;
+  const SolidCardColors(this.background, this.text);
 }
