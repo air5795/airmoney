@@ -33,9 +33,11 @@ class _PantallaSplashState extends State<PantallaSplash> {
     // 2. Comprobar la sesión inicial con robustez
     await servicioAuth.checkInitialSession();
 
-    if (servicioAuth.currentUser != null) {
+    if (servicioAuth.currentUser != null && !estadoApp.hasCompletedOnboarding) {
       if (!mounted) return;
-      // Sincronizar con la nube de inmediato en el arranque si hay sesion activa
+      // Solo bloquear el arranque sincronizando si aun no hay datos locales
+      // (primer ingreso o dispositivo nuevo). En el caso normal la pantalla
+      // principal sincroniza en segundo plano al cargar.
       await estadoApp.sincronizarConNube(servicioAuth.currentUser!.uid);
     }
 

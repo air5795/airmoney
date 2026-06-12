@@ -106,23 +106,15 @@ class _VistaAjustesState extends State<VistaAjustes> {
 
                   try {
                     final uid = user.uid;
-                    print('=== DEBUG AJUSTES: Iniciando proceso de eliminacion ===');
-                    
-                    print('=== DEBUG AJUSTES: Llamando a eliminarDatosNubeYLocal ===');
                     await estadoApp.eliminarDatosNubeYLocal(uid);
-                    print('=== DEBUG AJUSTES: eliminarDatosNubeYLocal completado ===');
-                    
-                    print('=== DEBUG AJUSTES: Llamando a deleteFirebaseAccount ===');
                     await _servicioAuth.deleteFirebaseAccount();
-                    print('=== DEBUG AJUSTES: deleteFirebaseAccount completado ===');
 
-                    print('=== DEBUG AJUSTES: Redireccionando a PantallaLogin ===');
                     mainNavigator.pushReplacement(
                       MaterialPageRoute(builder: (_) => const PantallaLogin()),
                     );
-                    print('=== DEBUG AJUSTES: Redireccion completa ===');
                   } catch (e) {
-                    print('=== DEBUG AJUSTES: Error capturado en onPressed: $e ===');
+                    debugPrint('Error al eliminar la cuenta: $e');
+                    if (!mounted) return;
                     setState(() {
                       _isDeleting = false;
                     });

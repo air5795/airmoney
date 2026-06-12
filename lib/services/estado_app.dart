@@ -503,13 +503,10 @@ class EstadoApp extends ChangeNotifier {
     for (var acc in _accounts) {
       if (acc.contabilizable == false) continue;
       final accCurrency = acc.currency ?? _selectedCurrency;
-      final balanceConvertido = convertirMoneda(acc.balance, accCurrency, _selectedCurrency);
-      
-      if (acc.type == 'Credito' || acc.type == 'Crédito') {
-        total -= balanceConvertido;
-      } else {
-        total += balanceConvertido;
-      }
+      // El saldo siempre representa el dinero/valor de la cuenta.
+      // Una deuda de tarjeta de credito se registra como saldo negativo
+      // y se resta sola; no hay que invertir el signo por tipo de cuenta.
+      total += convertirMoneda(acc.balance, accCurrency, _selectedCurrency);
     }
     return total;
   }
@@ -1310,7 +1307,6 @@ class EstadoApp extends ChangeNotifier {
   }
 
   Future<void> clearAllData() async {
-    print('=== DEBUG ESTADO: clearAllData - Iniciando ===');
     desactivarEscuchaTiempoReal();
     _accounts.clear();
     _transactions.clear();
@@ -1321,9 +1317,7 @@ class EstadoApp extends ChangeNotifier {
     _pinEnabled = false;
     _hashedPin = '';
 
-    print('=== DEBUG ESTADO: clearAllData - Obteniendo SharedPreferences ===');
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    print('=== DEBUG ESTADO: clearAllData - Removiendo SharedPreferences keys ===');
     await prefs.remove('app_onboarding_completed');
     await prefs.remove('app_accounts');
     await prefs.remove('app_transactions');
@@ -1332,24 +1326,18 @@ class EstadoApp extends ChangeNotifier {
     await prefs.remove('app_biometric_enabled');
     await prefs.remove('app_pin_enabled');
     await prefs.remove('app_pin_code');
-    
-    print('=== DEBUG ESTADO: clearAllData - Notificando listeners ===');
+
     notifyListeners();
-    print('=== DEBUG ESTADO: clearAllData - Fin ===');
   }
 
   Future<void> eliminarDatosNubeYLocal(String uid) async {
     try {
-      print('=== DEBUG ESTADO: Intentando borrar Firestore doc: usuarios/$uid ===');
       final docRef = FirebaseFirestore.instance.collection('usuarios').doc(uid);
-      await docRef.delete().timeout(const Duration(seconds: 4));
-      print('=== DEBUG ESTADO: Firestore doc borrado con exito ===');
+      await docRef.delete().timeout(const Duration(seconds: 10));
     } catch (e) {
-      print('=== DEBUG ESTADO: Error al eliminar datos de la nube: $e ===');
+      debugPrint('Error al eliminar datos de la nube: $e');
     }
-    print('=== DEBUG ESTADO: Llamando a clearAllData ===');
     await clearAllData();
-    print('=== DEBUG ESTADO: clearAllData completado ===');
   }
 
   static final Map<String, IconData> galleryIcons = {
@@ -1620,7 +1608,7 @@ class EstadoApp extends ChangeNotifier {
     _isSyncing = true; // Bloquear re-subida durante sincronizacion inicial
     try {
       final docRef = FirebaseFirestore.instance.collection('usuarios').doc(uid);
-      final docSnap = await docRef.get().timeout(const Duration(seconds: 4));
+      final docSnap = await docRef.get().timeout(const Duration(seconds: 10));
 
       if (docSnap.exists) {
         final data = docSnap.data();
@@ -1733,7 +1721,7 @@ class EstadoApp extends ChangeNotifier {
         'ahorros': savingsMapList,
         'presupuestos': budgetsMapList,
         'ultimaActualizacion': FieldValue.serverTimestamp(),
-      }).timeout(const Duration(seconds: 4));
+      }).timeout(const Duration(seconds: 10));
 
       // Actualizar timestamp local al momento actual tras la subida exitosa
       _lastLocalUpdateMillis = DateTime.now().millisecondsSinceEpoch;

@@ -64,10 +64,15 @@ class _AjustesSeguridadState extends State<AjustesSeguridad> {
           await estadoApp.setBiometricEnabled(true);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Acceso biométrico activado correctamente.'),
-                backgroundColor: Color(0xFF10B981),
+              SnackBar(
+                content: Text(
+                  estadoApp.pinEnabled
+                      ? 'Acceso biométrico activado correctamente.'
+                      : 'Acceso biométrico activado. Te recomendamos configurar un PIN de respaldo por si la huella falla.',
+                ),
+                backgroundColor: const Color(0xFF10B981),
                 behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 4),
               ),
             );
           }

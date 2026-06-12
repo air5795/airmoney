@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
@@ -51,25 +50,43 @@ class _PantallaLoginState extends State<PantallaLogin> {
 
       if (user != null) {
         final estadoApp = Provider.of<EstadoApp>(context, listen: false);
-        
+
         // Sincronizar con la nube inmediatamente para descargar las cuentas del usuario logueado
         final bool syncSuccess = await estadoApp.sincronizarConNube(user.uid);
 
         if (!mounted) return;
 
         if (!syncSuccess) {
-          await _servicioAuth.signOut();
+          if (!estadoApp.hasCompletedOnboarding) {
+            // Sin datos locales no se puede continuar de forma segura:
+            // el onboarding crearia cuentas nuevas que pisarian las de la nube
+            await _servicioAuth.signOut();
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text(
+                  'No se pudo descargar tus datos desde la nube. Por favor, verifica tu conexion a internet e intenta de nuevo.',
+                  style: TextStyle(color: Colors.white),
+                ),
+                backgroundColor: Colors.redAccent.withValues(alpha: 0.85),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+            return;
+          }
+
+          // Ya hay datos locales: entrar igual. La escucha en tiempo real y la
+          // pantalla principal reintentan la sincronizacion automaticamente.
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Text(
-                'No se pudo sincronizar tus datos desde la nube. Por favor, verifica tu conexion a internet.',
+                'Sin conexion con la nube. Veras tus datos locales y se sincronizara automaticamente.',
                 style: TextStyle(color: Colors.white),
               ),
-              backgroundColor: Colors.redAccent.withValues(alpha: 0.85),
+              backgroundColor: const Color(0xFF64748B).withValues(alpha: 0.95),
               behavior: SnackBarBehavior.floating,
             ),
           );
-          return;
         }
 
         if (estadoApp.hasCompletedOnboarding) {
@@ -83,7 +100,8 @@ class _PantallaLoginState extends State<PantallaLogin> {
             MaterialPageRoute(builder: (_) => const PantallaIdioma()),
           );
         }
-      } else {
+      } else if (!_servicioAuth.ultimoIntentoCancelado) {
+        // Solo mostrar error si NO fue el usuario quien cerro el selector de cuentas
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(

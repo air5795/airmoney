@@ -1299,7 +1299,8 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
                     onChanged: (val) {
                       setState(() {});
                     },
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    // signed: true para poder registrar deudas (saldo negativo)
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                     style: TextStyle(
                       color: esOscuro ? Colors.white : const Color(0xFF0F172A),
                       fontWeight: FontWeight.bold,
@@ -1338,6 +1339,20 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
             ),
           ],
         ),
+        if (_selectedAccountType == 'Crédito') ...[
+          const SizedBox(height: 10),
+          Text(
+            'Tarjeta de crédito: si tienes deuda, ingresa el saldo en negativo (ej. -500) para que se reste del balance total. El dinero a favor va en positivo.',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              height: 1.35,
+              color: esOscuro
+                  ? Colors.white.withValues(alpha: 0.45)
+                  : const Color(0xFF0F172A).withValues(alpha: 0.5),
+            ),
+          ),
+        ],
         const SizedBox(height: 20),
         Text(
           'MONEDA DE LA CUENTA',

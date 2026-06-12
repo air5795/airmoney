@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/usuario_app.dart';
 
 class ServicioAutenticacion {
@@ -13,8 +14,17 @@ class ServicioAutenticacion {
     _checkFirebaseStatus();
   }
 
+  // Marca local de que existe una sesion de Google guardada en el dispositivo.
+  // Permite al arranque saber si vale la pena esperar la restauracion del token.
+  static const String _kSesionGoogleActiva = 'app_sesion_google_activa';
+
   bool _isFirebaseInitialized = false;
   bool get isFirebaseInitialized => _isFirebaseInitialized;
+
+  bool _ultimoIntentoCancelado = false;
+  /// True si el ultimo signInWithGoogle fallido fue porque el usuario
+  /// cerro el selector de cuentas (no es un error real).
+  bool get ultimoIntentoCancelado => _ultimoIntentoCancelado;
 
   final StreamController<UsuarioApp?> _userStreamController = StreamController<UsuarioApp?>.broadcast();
   Stream<UsuarioApp?> get authStateChanges => _userStreamController.stream;
@@ -30,6 +40,7 @@ class ServicioAutenticacion {
         if (user != null) {
           _currentUser = UsuarioApp.fromFirebase(user);
           _userStreamController.add(_currentUser);
+          _guardarMarcaSesion(true);
         } else {
           _currentUser = null;
           _userStreamController.add(null);
@@ -42,11 +53,25 @@ class ServicioAutenticacion {
     }
   }
 
+  Future<void> _guardarMarcaSesion(bool activa) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kSesionGoogleActiva, activa);
+    } catch (_) {
+      // La marca es solo una optimizacion del arranque; no debe romper el flujo
+    }
+  }
+
   Future<UsuarioApp?> signInWithGoogle() async {
+    _ultimoIntentoCancelado = false;
     if (_isFirebaseInitialized) {
       try {
         final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-        if (googleUser == null) return null;
+        if (googleUser == null) {
+          // El usuario cerro el selector de cuentas: no es un error
+          _ultimoIntentoCancelado = true;
+          return null;
+        }
 
         final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
         final OAuthCredential credential = GoogleAuthProvider.credential(
@@ -58,9 +83,11 @@ class ServicioAutenticacion {
         if (userCredential.user != null) {
           _currentUser = UsuarioApp.fromFirebase(userCredential.user!);
           _userStreamController.add(_currentUser);
+          await _guardarMarcaSesion(true);
           return _currentUser;
         }
       } catch (e) {
+        debugPrint('Error en signInWithGoogle: $e');
         return null;
       }
       return null;
@@ -83,6 +110,7 @@ class ServicioAutenticacion {
       await FirebaseAuth.instance.signOut();
       await GoogleSignIn().signOut();
     }
+    await _guardarMarcaSesion(false);
     _currentUser = null;
     _userStreamController.add(null);
   }
@@ -91,6 +119,7 @@ class ServicioAutenticacion {
     if (_isFirebaseInitialized && FirebaseAuth.instance.currentUser != null) {
       try {
         await FirebaseAuth.instance.currentUser!.delete();
+        await _guardarMarcaSesion(false);
         _currentUser = null;
         _userStreamController.add(null);
         return true;
@@ -126,7 +155,33 @@ class ServicioAutenticacion {
       return;
     }
 
-    // 3. Esperar una breve ventana de tiempo para capturar la restauración asíncrona del token nativo
+    // 3. Esperar la restauración asíncrona del token nativo.
+    //    Si la marca local indica que había una sesión guardada, esperar con
+    //    generosidad (la restauración puede tardar en arranques en frío);
+    //    si no, solo una ventana corta para no demorar el primer arranque.
+    bool habiaSesion = false;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      habiaSesion = prefs.getBool(_kSesionGoogleActiva) ?? false;
+    } catch (_) {}
+
+    final Duration maxEspera = habiaSesion
+        ? const Duration(seconds: 10)
+        : const Duration(milliseconds: 800);
+
+    final User? user = await _esperarRestauracionDeSesion(maxEspera);
+
+    if (user != null) {
+      _currentUser = UsuarioApp.fromFirebase(user);
+      _userStreamController.add(_currentUser);
+      await _guardarMarcaSesion(true);
+    } else {
+      _currentUser = null;
+      _userStreamController.add(null);
+    }
+  }
+
+  Future<User?> _esperarRestauracionDeSesion(Duration maxEspera) async {
     final completer = Completer<User?>();
     StreamSubscription<User?>? subscription;
 
@@ -136,8 +191,7 @@ class ServicioAutenticacion {
       }
     });
 
-    // Esperar como máximo 800ms antes de asumir que no hay sesión activa
-    Future.delayed(const Duration(milliseconds: 800), () {
+    Future.delayed(maxEspera, () {
       if (!completer.isCompleted) {
         completer.complete(null);
       }
@@ -145,13 +199,6 @@ class ServicioAutenticacion {
 
     final User? user = await completer.future;
     await subscription.cancel();
-
-    if (user != null) {
-      _currentUser = UsuarioApp.fromFirebase(user);
-      _userStreamController.add(_currentUser);
-    } else {
-      _currentUser = null;
-      _userStreamController.add(null);
-    }
+    return user;
   }
 }
