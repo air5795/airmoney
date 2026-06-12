@@ -25,6 +25,8 @@ dependencies:
   google_fonts: ^8.1.0
   local_auth: ^3.0.1
   crypto: ^3.0.7
+  google_generative_ai: ^0.4.1
+  flutter_local_notifications: ^22.0.0
 
 dev_dependencies:
   flutter_test:

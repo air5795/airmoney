@@ -10,6 +10,8 @@ import 'subvistas/ajustes_cuentas.dart';
 import 'subvistas/ajustes_categorias.dart';
 import 'subvistas/ajustes_tipo_cambio.dart';
 import 'subvistas/ajustes_seguridad.dart';
+import 'subvistas/ajustes_voz.dart';
+import 'subvistas/ajustes_notificacion_fija.dart';
 import '../../widgets/interactive_scale.dart';
 
 class VistaAjustes extends StatefulWidget {
@@ -175,6 +177,18 @@ class _VistaAjustesState extends State<VistaAjustes> {
       );
     } else if (estadoApp.selectedSettingsSubView == 5) {
       cuerpoSettings = AjustesSeguridad(
+        onBack: () {
+          estadoApp.selectedSettingsSubView = 0;
+        },
+      );
+    } else if (estadoApp.selectedSettingsSubView == 6) {
+      cuerpoSettings = AjustesVoz(
+        onBack: () {
+          estadoApp.selectedSettingsSubView = 0;
+        },
+      );
+    } else if (estadoApp.selectedSettingsSubView == 7) {
+      cuerpoSettings = AjustesNotificacionFija(
         onBack: () {
           estadoApp.selectedSettingsSubView = 0;
         },
@@ -626,6 +640,40 @@ class _VistaAjustesState extends State<VistaAjustes> {
                     esOscuro: esOscuro,
                     onTap: () {
                       estadoApp.selectedSettingsSubView = 5;
+                    },
+                  ),
+                  Container(
+                    height: 1,
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    color: esOscuro
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : const Color(0xFF0A0A0A).withValues(alpha: 0.05),
+                  ),
+                  _buildSettingsMenuItem(
+                    icon: Icons.psychology_rounded,
+                    title: 'Asistente de Voz',
+                    subtitle: 'Configurar API Key de Google Gemini',
+                    color: colorPrincipal,
+                    esOscuro: esOscuro,
+                    onTap: () {
+                      estadoApp.selectedSettingsSubView = 6;
+                    },
+                  ),
+                  Container(
+                    height: 1,
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    color: esOscuro
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : const Color(0xFF0A0A0A).withValues(alpha: 0.05),
+                  ),
+                  _buildSettingsMenuItem(
+                    icon: Icons.notifications_active_rounded,
+                    title: 'Notificación Fija',
+                    subtitle: 'Mostrar resumen financiero persistente en el celular',
+                    color: colorPrincipal,
+                    esOscuro: esOscuro,
+                    onTap: () {
+                      estadoApp.selectedSettingsSubView = 7;
                     },
                   ),
                   Container(

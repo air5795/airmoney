@@ -33,23 +33,49 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> with WidgetsBindi
     );
   }
 
+  void _onEstadoAppChange() {
+    if (mounted) {
+      final estadoApp = Provider.of<EstadoApp>(context, listen: false);
+      if (estadoApp.debeMostrarFormularioTransaccion) {
+        estadoApp.debeMostrarFormularioTransaccion = false; // reset
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _showAddTransactionSheet();
+        });
+      }
+    }
+  }
+
+  void _checkAddTransactionOnStart() {
+    final estadoApp = Provider.of<EstadoApp>(context, listen: false);
+    if (estadoApp.debeMostrarFormularioTransaccion) {
+      estadoApp.debeMostrarFormularioTransaccion = false; // reset
+      _showAddTransactionSheet();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     final estadoApp = Provider.of<EstadoApp>(context, listen: false);
     _pageController = PageController(initialPage: estadoApp.selectedDockIndex);
+    
+    estadoApp.addListener(_onEstadoAppChange);
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authUser = _servicioAuth.currentUser;
       if (authUser != null) {
         estadoApp.sincronizarConNube(authUser.uid);
       }
+      _checkAddTransactionOnStart();
     });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    final estadoApp = Provider.of<EstadoApp>(context, listen: false);
+    estadoApp.removeListener(_onEstadoAppChange);
     _pageController.dispose();
     super.dispose();
   }

@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'firebase_options.dart';
 import 'services/estado_app.dart';
+import 'services/servicio_notificaciones.dart';
 import 'screens/pantalla_splash.dart';
 
 void main() async {
@@ -67,7 +68,11 @@ void main() async {
 
     runApp(
       ChangeNotifierProvider(
-        create: (_) => EstadoApp(),
+        create: (_) {
+          final estado = EstadoApp();
+          ServicioNotificaciones.inicializar(estado);
+          return estado;
+        },
         child: const GastosApp(),
       ),
     );

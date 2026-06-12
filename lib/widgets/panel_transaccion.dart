@@ -48,6 +48,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
   final SpeechToText _speechToText = SpeechToText();
   bool _speechEnabled = false;
   bool _isListening = false;
+  bool _isProcessingVoice = false;
   String _lastWords = '';
 
   // Galería de iconos que coincide con la de Ajustes para pintar el dropdown
@@ -131,6 +132,9 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
             if (_isListening) {
               setState(() {
                 _isListening = false;
+                if (_lastWords.trim().isNotEmpty) {
+                  _isProcessingVoice = true;
+                }
               });
               _procesarVozResult(_lastWords);
             }
@@ -150,6 +154,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
     _lastWords = '';
     setState(() {
       _isListening = true;
+      _isProcessingVoice = false;
     });
     await _speechToText.listen(
       onResult: (result) {
@@ -157,6 +162,16 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
           _lastWords = result.recognizedWords;
         });
         if (result.finalResult == true) {
+          if (_lastWords.trim().isNotEmpty) {
+            setState(() {
+              _isListening = false;
+              _isProcessingVoice = true;
+            });
+          } else {
+            setState(() {
+              _isListening = false;
+            });
+          }
           _procesarVozResult(_lastWords);
         }
       },
@@ -166,47 +181,80 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
 
   void _stopListening() async {
     await _speechToText.stop();
-    setState(() {
-      _isListening = false;
-    });
+    if (_lastWords.trim().isNotEmpty) {
+      setState(() {
+        _isListening = false;
+        _isProcessingVoice = true;
+      });
+    } else {
+      setState(() {
+        _isListening = false;
+      });
+    }
     _procesarVozResult(_lastWords);
   }
 
-  void _procesarVozResult(String frase) {
+  void _procesarVozResult(String frase) async {
     if (frase.trim().isEmpty) {
       setState(() {
         _isListening = false;
+        _isProcessingVoice = false;
       });
       return;
     }
 
-    final estadoApp = Provider.of<EstadoApp>(context, listen: false);
-    final res = AsistenteVozHelper.procesarFrase(frase, estadoApp.accounts, estadoApp.categories);
-
     setState(() {
-      if (res.titulo != null) _titleController.text = res.titulo!;
-      if (res.importe != null) _amountController.text = res.importe!.toStringAsFixed(2);
-      if (res.tipo != null) {
-        if (res.tipo == 'ingreso') {
-          _tabController.index = 1;
-        } else if (res.tipo == 'transferencia') {
-          _tabController.index = 2;
-        } else {
-          _tabController.index = 0;
-        }
-      }
-      if (res.accountId != null) _selectedAccountId = res.accountId;
-      if (res.toAccountId != null) _selectedToAccountId = res.toAccountId;
-      if (res.categoria != null && res.tipo != 'transferencia') {
-        _selectedCategory = res.categoria!;
-      }
-      if (res.fecha != null) {
-        _selectedDate = res.fecha!;
-      }
       _isListening = false;
+      _isProcessingVoice = true;
     });
 
-    ToastHelper.showInfo(context, 'Asistente: Rellenado "$frase"');
+    try {
+      final estadoApp = Provider.of<EstadoApp>(context, listen: false);
+
+      final res = await AsistenteVozHelper.procesarFrase(
+        frase,
+        estadoApp.accounts,
+        estadoApp.categories,
+        geminiApiKey: estadoApp.geminiApiKey,
+      );
+
+      setState(() {
+        if (res.titulo != null) _titleController.text = res.titulo!;
+        if (res.importe != null) _amountController.text = res.importe!.toStringAsFixed(2);
+        if (res.tipo != null) {
+          if (res.tipo == 'ingreso') {
+            _tabController.index = 1;
+          } else if (res.tipo == 'transferencia') {
+            _tabController.index = 2;
+          } else {
+            _tabController.index = 0;
+          }
+        }
+        if (res.accountId != null) _selectedAccountId = res.accountId;
+        if (res.toAccountId != null) _selectedToAccountId = res.toAccountId;
+        if (res.categoria != null && res.tipo != 'transferencia') {
+          _selectedCategory = res.categoria!;
+        }
+        if (res.fecha != null) {
+          _selectedDate = res.fecha!;
+        }
+      });
+
+      if (mounted) {
+        ToastHelper.showSuccess(context, 'Asistente: Relleno completado');
+      }
+    } catch (e) {
+      debugPrint('Error en _procesarVozResult: $e');
+      if (mounted) {
+        ToastHelper.showError(context, 'Error al procesar el dictado');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessingVoice = false;
+        });
+      }
+    }
   }
 
   // Obtener el color dinámico basado en el tipo de transacción seleccionado
@@ -1536,9 +1584,9 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
                   ),
                   ],
                 ),
-                if (_isListening)
+                if (_isListening || _isProcessingVoice)
                   Positioned.fill(
-                    child: _buildListeningOverlay(colorTexto, colorTipo),
+                    child: _buildListeningOrProcessingOverlay(colorTexto, colorTipo),
                   ),
               ],
             ),
@@ -2837,7 +2885,7 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
     );
   }
 
-  Widget _buildListeningOverlay(Color colorTexto, Color colorTipo) {
+  Widget _buildListeningOrProcessingOverlay(Color colorTexto, Color colorTipo) {
     final estadoApp = Provider.of<EstadoApp>(context, listen: false);
     final esOscuro = estadoApp.esTemaOscuro;
     return ClipRRect(
@@ -2846,160 +2894,294 @@ class _PanelTransaccionState extends State<PanelTransaccion> with SingleTickerPr
         filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
         child: Container(
           color: (esOscuro ? Colors.black : Colors.white).withValues(alpha: esOscuro ? 0.82 : 0.88),
-          child: Column(
+          child: _isProcessingVoice
+              ? _buildProcessingState(colorTexto, colorTipo, esOscuro)
+              : _buildListeningState(colorTexto, colorTipo, esOscuro),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildListeningState(Color colorTexto, Color colorTipo, bool esOscuro) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const SizedBox(height: 20),
+        // Indicador de estado de escucha
+        Text(
+          'Escuchando...',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: colorTexto,
+            letterSpacing: -0.5,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Text(
+            _lastWords.isEmpty ? 'Di tu movimiento de forma natural' : _lastWords,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: _lastWords.isEmpty ? FontWeight.normal : FontWeight.w600,
+              color: colorTexto.withValues(alpha: _lastWords.isEmpty ? 0.6 : 0.9),
+              height: 1.3,
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        
+        // Animacion de ondas Siri-style usando flutter_animate
+        SizedBox(
+          height: 60,
+          child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const SizedBox(height: 20),
-              // Indicador de estado de escucha
-              Text(
-                'Escuchando...',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: colorTexto,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Text(
-                  _lastWords.isEmpty ? 'Di tu movimiento de forma natural' : _lastWords,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: _lastWords.isEmpty ? FontWeight.normal : FontWeight.w600,
-                    color: colorTexto.withValues(alpha: _lastWords.isEmpty ? 0.6 : 0.9),
-                    height: 1.3,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
+            children: List.generate(5, (index) {
+              final List<Color> siriColors = [
+                const Color(0xFF3B82F6), // Azul
+                const Color(0xFF10B981), // Verde
+                const Color(0xFFEF4444), // Rojo
+                const Color(0xFF8B5CF6), // Morado
+                const Color(0xFFF59E0B), // Naranja
+              ];
+              final color = siriColors[index % siriColors.length];
+              final baseHeight = 20.0 + (index * 5);
               
-              // Animacion de ondas Siri-style usando flutter_animate
-              SizedBox(
-                height: 60,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(5, (index) {
-                    final List<Color> siriColors = [
-                      const Color(0xFF3B82F6), // Azul
-                      const Color(0xFF10B981), // Verde
-                      const Color(0xFFEF4444), // Rojo
-                      const Color(0xFF8B5CF6), // Morado
-                      const Color(0xFFF59E0B), // Naranja
-                    ];
-                    final color = siriColors[index % siriColors.length];
-                    final baseHeight = 20.0 + (index * 5);
-                    
-                    return Container(
-                      width: 5,
-                      height: baseHeight,
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.8),
-                        borderRadius: BorderRadius.circular(3),
-                        boxShadow: [
-                          BoxShadow(
-                            color: color.withValues(alpha: 0.3),
-                            blurRadius: 6,
-                          ),
-                        ],
-                      ),
-                    )
-                    .animate(onPlay: (controller) => controller.repeat(reverse: true))
-                    .scaleY(
-                      begin: 0.4,
-                      end: 1.4,
-                      duration: Duration(milliseconds: 350 + (index * 80)),
-                      curve: Curves.easeInOut,
-                    );
-                  }),
-                ),
-              ),
-              
-              const SizedBox(height: 24),
-              
-              // Guía de voz rápida / Ejemplos
-              Text(
-                'GUÍA DE VOZ RÁPIDA',
-                style: TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w900,
-                  color: colorTexto.withValues(alpha: 0.45),
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(height: 12),
-              
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  children: [
-                    _buildExampleCard(
-                      'GASTO',
-                      '“Gasto 120 Bs en comida desde Efectivo hoy”\n“Pagué 450 en combustible con Tarjeta ayer”',
-                      const Color(0xFFEF4444),
-                      esOscuro,
-                    ),
-                    const SizedBox(height: 8),
-                    _buildExampleCard(
-                      'INGRESO',
-                      '“Sueldo de 5000 en Mi Banco hoy”\n“Recibí 800 por venta en Efectivo ayer”',
-                      const Color(0xFF10B981),
-                      esOscuro,
-                    ),
-                    const SizedBox(height: 8),
-                    _buildExampleCard(
-                      'TRANSFERENCIA',
-                      '“Transferí 300 de Efectivo a Mi Banco ayer”\n“Mover 150 de BCP a Efectivo hoy”',
-                      const Color(0xFF3B82F6),
-                      esOscuro,
+              return Container(
+                width: 5,
+                height: baseHeight,
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.8),
+                  borderRadius: BorderRadius.circular(3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.3),
+                      blurRadius: 6,
                     ),
                   ],
                 ),
+              )
+              .animate(onPlay: (controller) => controller.repeat(reverse: true))
+              .scaleY(
+                begin: 0.4,
+                end: 1.4,
+                duration: Duration(milliseconds: 350 + (index * 80)),
+                curve: Curves.easeInOut,
+              );
+            }),
+          ),
+        ),
+        
+        const SizedBox(height: 24),
+        
+        // Guía de voz rápida / Ejemplos
+        Text(
+          'GUÍA DE VOZ RÁPIDA',
+          style: TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w900,
+            color: colorTexto.withValues(alpha: 0.45),
+            letterSpacing: 1.2,
+          ),
+        ),
+        const SizedBox(height: 12),
+        
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            children: [
+              _buildExampleCard(
+                'GASTO',
+                '“Gasto 120 Bs en comida desde Efectivo hoy”\n“Pagué 450 en combustible con Tarjeta ayer”',
+                const Color(0xFFEF4444),
+                esOscuro,
               ),
-              
-              const SizedBox(height: 28),
-              
-              // Boton para detener y procesar
-              GestureDetector(
-                onTap: _stopListening,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 11),
-                  decoration: BoxDecoration(
-                    color: colorTipo,
-                    borderRadius: BorderRadius.circular(22),
-                    boxShadow: [
-                      BoxShadow(
-                        color: colorTipo.withValues(alpha: 0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(Icons.stop_rounded, color: Colors.white, size: 18),
-                      SizedBox(width: 8),
-                      Text(
-                        'Listo, Procesar',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              const SizedBox(height: 8),
+              _buildExampleCard(
+                'INGRESO',
+                '“Sueldo de 5000 en Mi Banco hoy”\n“Recibí 800 por venta en Efectivo ayer”',
+                const Color(0xFF10B981),
+                esOscuro,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 8),
+              _buildExampleCard(
+                'TRANSFERENCIA',
+                '“Transferí 300 de Efectivo a Mi Banco ayer”\n“Mover 150 de BCP a Efectivo hoy”',
+                const Color(0xFF3B82F6),
+                esOscuro,
+              ),
             ],
           ),
         ),
-      ),
+        
+        const SizedBox(height: 28),
+        
+        // Boton para detener y procesar
+        GestureDetector(
+          onTap: _stopListening,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 11),
+            decoration: BoxDecoration(
+              color: colorTipo,
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: [
+                BoxShadow(
+                  color: colorTipo.withValues(alpha: 0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Icon(Icons.stop_rounded, color: Colors.white, size: 18),
+                SizedBox(width: 8),
+                Text(
+                  'Listo, Procesar',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _buildProcessingState(Color colorTexto, Color colorTipo, bool esOscuro) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const SizedBox(height: 40),
+        
+        // Icono de IA animado
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [
+                colorTipo,
+                colorTipo.withValues(alpha: 0.7),
+                const Color(0xFF8B5CF6), // Morado
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: colorTipo.withValues(alpha: 0.4),
+                blurRadius: 20,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.auto_awesome,
+            color: Colors.white,
+            size: 40,
+          ),
+        )
+        .animate(onPlay: (controller) => controller.repeat(reverse: true))
+        .scale(
+          begin: const Offset(0.92, 0.92),
+          end: const Offset(1.08, 1.08),
+          duration: const Duration(milliseconds: 1000),
+          curve: Curves.easeInOut,
+        ),
+        
+        const SizedBox(height: 32),
+        
+        // Título de procesamiento
+        Text(
+          'Procesando con IA...',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: colorTexto,
+            letterSpacing: -0.5,
+          ),
+        ),
+        
+        const SizedBox(height: 8),
+        
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40),
+          child: Text(
+            'Gemini está organizando tu dictado para rellenar los datos del movimiento.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: colorTexto.withValues(alpha: 0.6),
+              height: 1.35,
+            ),
+          ),
+        ),
+        
+        const SizedBox(height: 32),
+        
+        // Card con el texto transcrito
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 32),
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: (esOscuro ? Colors.white : Colors.black).withValues(alpha: esOscuro ? 0.04 : 0.025),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: colorTexto.withValues(alpha: 0.08),
+              width: 1.0,
+            ),
+          ),
+          child: Column(
+            children: [
+              Text(
+                'TU DICTADO:',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  color: colorTexto.withValues(alpha: 0.4),
+                  letterSpacing: 1.0,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                '“$_lastWords”',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  fontStyle: FontStyle.italic,
+                  color: colorTexto.withValues(alpha: 0.95),
+                  height: 1.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        const SizedBox(height: 40),
+        
+        // Loader animado
+        SizedBox(
+          width: 32,
+          height: 32,
+          child: CircularProgressIndicator(
+            strokeWidth: 3.0,
+            valueColor: AlwaysStoppedAnimation<Color>(colorTipo),
+          ),
+        ),
+        
+        const SizedBox(height: 40),
+      ],
     );
   }
 }

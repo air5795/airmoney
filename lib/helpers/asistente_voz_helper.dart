@@ -1,4 +1,7 @@
 import 'dart:math';
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
 import '../services/estado_app.dart';
 
 class ResultadoAsistenteVoz {
@@ -26,7 +29,7 @@ class ResultadoAsistenteVoz {
   }
 }
 
-// Clases auxiliares para el mapeo de coincidencias
+// Clases auxiliares para el mapeo de coincidencias local
 class _CuentaCoincidencia {
   final ModeloCuenta cuenta;
   final int index;
@@ -293,8 +296,119 @@ class AsistenteVozHelper {
     return parts.last;
   }
 
-  // Motor NLP principal mejorado
-  static ResultadoAsistenteVoz procesarFrase(String frase, List<ModeloCuenta> cuentas, List<ModeloCategoria> categorias) {
+  // Motor NLP principal (Gemini Asíncrono con Fallback Local)
+  static Future<ResultadoAsistenteVoz> procesarFrase(
+    String frase,
+    List<ModeloCuenta> cuentas,
+    List<ModeloCategoria> categorias, {
+    String? geminiApiKey,
+  }) async {
+    if (geminiApiKey == null || geminiApiKey.trim().isEmpty) {
+      return procesarFraseLocal(frase, cuentas, categorias);
+    }
+
+    try {
+      final model = GenerativeModel(
+        model: 'gemini-flash-latest',
+        apiKey: geminiApiKey.trim(),
+      );
+
+      final String nowIso = DateTime.now().toIso8601String();
+
+      final String systemPrompt = '''
+Eres el motor de análisis de voz de una aplicación de finanzas personales.
+Tu tarea es analizar una frase transcrita por voz y extraer un JSON estructurado con la información de la transacción.
+Debes basarte en la lista de cuentas y categorías disponibles en la aplicación.
+
+Cuentas disponibles en la app:
+${cuentas.map((c) => '- Nombre: "${c.name}", ID: "${c.id}", Tipo: "${c.type}"').join('\n')}
+
+Categorías disponibles en la app:
+${categorias.map((c) => '- Nombre: "${c.name}", ID: "${c.id}"').join('\n')}
+
+La fecha actual del sistema es: $nowIso
+
+Debes devolver obligatoriamente y únicamente un JSON con la estructura detallada abajo.
+NO uses bloques de formato tipo ```json, responde solo con el JSON crudo en texto plano:
+{
+  "titulo": "Un título descriptivo y limpio del gasto (ej: Almuerzo familiar, Carga de Gasolina, Compra de Zapatos, etc.)",
+  "importe": 150.0, // número decimal (float), null si no se detecta
+  "tipo": "gasto" | "ingreso" | "transferencia",
+  "accountId": "ID de la cuenta de origen (de la lista de cuentas proporcionada). null si no se detecta", 
+  "toAccountId": "ID de la cuenta de destino (solo si es transferencia y se detecta, de lo contrario null)", 
+  "categoria": "Nombre exacto de la categoría detectada (de la lista de categorías proporcionada). null si es transferencia o no se detecta", 
+  "fecha": "Fecha detectada en formato ISO 8601 (ej: 2026-06-12T12:00:00Z). Calcula esta fecha en base a la fecha actual y palabras como 'ayer', 'hoy', 'hace 3 días', 'el lunes pasado', 'el 12 de junio'"
+}
+
+Ejemplos:
+1. "Gasto 50 pesos en comida con Efectivo hoy" -> {"titulo": "Comida", "importe": 50.0, "tipo": "gasto", "accountId": "ID_efectivo", "toAccountId": null, "categoria": "Alimentación", "fecha": "$nowIso"}
+2. "Sueldo de 5000 en Mi Banco ayer" -> {"titulo": "Sueldo", "importe": 5000.0, "tipo": "ingreso", "accountId": "ID_mi_banco", "toAccountId": null, "categoria": "Ingresos", "fecha": "2026-06-11T12:00:00Z"}
+3. "Transferí 100 de Efectivo a Mi Banco" -> {"titulo": "Transferencia", "importe": 100.0, "tipo": "transferencia", "accountId": "ID_efectivo", "toAccountId": "ID_mi_banco", "categoria": null, "fecha": "$nowIso"}
+''';
+
+      final response = await model.generateContent([
+        Content.text('$systemPrompt\n\nFrase dictada por el usuario:\n"$frase"')
+      ]);
+
+      final text = response.text;
+      if (text == null || text.trim().isEmpty) {
+        return procesarFraseLocal(frase, cuentas, categorias);
+      }
+
+      // Limpiar posibles bloques markdown de código si Gemini los devolvió
+      String cleanJson = text.trim();
+      if (cleanJson.startsWith('```')) {
+        cleanJson = cleanJson.replaceAll(RegExp(r'^```json\s*'), '');
+        cleanJson = cleanJson.replaceAll(RegExp(r'^```\s*'), '');
+        cleanJson = cleanJson.replaceAll(RegExp(r'\s*```$'), '');
+      }
+
+      final Map<String, dynamic> data = json.decode(cleanJson);
+
+      double? parsedImporte;
+      if (data['importe'] != null) {
+        parsedImporte = (data['importe'] as num).toDouble();
+      }
+
+      DateTime? parsedFecha;
+      if (data['fecha'] != null) {
+        parsedFecha = DateTime.tryParse(data['fecha'] as String);
+      }
+
+      // Buscar si el nombre o ID de la categoría coincide
+      String? catFinal;
+      if (data['categoria'] != null) {
+        final catStr = data['categoria'] as String;
+        final match = categorias.firstWhere(
+          (c) => c.name.toLowerCase() == catStr.toLowerCase() || c.id == catStr,
+          orElse: () => categorias.firstWhere(
+            (c) => c.name.toLowerCase().contains(catStr.toLowerCase()) || catStr.toLowerCase().contains(c.name.toLowerCase()),
+            orElse: () => ModeloCategoria(id: '', name: '', iconCode: '', hexColor: ''),
+          ),
+        );
+        if (match.name.isNotEmpty) {
+          catFinal = match.name;
+        }
+      }
+
+      return ResultadoAsistenteVoz(
+        titulo: data['titulo'] as String?,
+        importe: parsedImporte,
+        tipo: data['tipo'] as String?,
+        accountId: data['accountId'] as String?,
+        toAccountId: data['toAccountId'] as String?,
+        categoria: catFinal,
+        fecha: parsedFecha,
+      );
+
+    } catch (e) {
+      debugPrint('Error invocando Gemini API: $e. Usando parser local de respaldo.');
+      return procesarFraseLocal(frase, cuentas, categorias);
+    }
+  }
+
+  // Parser Local Offline (Mantenido como fallback)
+  static ResultadoAsistenteVoz procesarFraseLocal(String frase, List<ModeloCuenta> cuentas, List<ModeloCategoria> categorias) {
     if (frase.trim().isEmpty) {
       return ResultadoAsistenteVoz();
     }

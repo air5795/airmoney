@@ -5,6 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crypto/crypto.dart';
 import 'servicio_autenticacion.dart';
+import 'servicio_notificaciones.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
+import '../config/api_keys.dart';
 
 class ModeloCuenta {
   final String id;
@@ -294,6 +297,17 @@ class EstadoApp extends ChangeNotifier {
   bool _biometricEnabled = false;
   bool _pinEnabled = false;
   String _hashedPin = '';
+  String _geminiApiKey = '';
+  
+  bool _notificacionFijaHabilitada = false;
+  String _notificacionPlantilla = 'resumen';
+  bool _notificacionMostrarSaldo = true;
+  bool _notificacionMostrarIngresos = true;
+  bool _notificacionMostrarGastos = true;
+  bool _notificacionMostrarGastosHoy = true;
+  bool _notificacionMostrarPresupuesto = true;
+  bool _notificacionMostrarAcciones = true;
+  bool _debeMostrarFormularioTransaccion = false;
 
   String get selectedLanguage => _selectedLanguage;
   String get selectedCurrency => _selectedCurrency;
@@ -304,6 +318,8 @@ class EstadoApp extends ChangeNotifier {
   bool get hasCompletedOnboarding => _hasCompletedOnboarding;
   List<ModeloCuenta> get accounts => _accounts;
   List<ModeloTransaccion> get transactions => _transactions;
+  String get geminiApiKey => _geminiApiKey.isEmpty ? ApiKeys.geminiDefaultApiKey : _geminiApiKey;
+  String get rawGeminiApiKey => _geminiApiKey;
   List<ModeloCategoria> get categories {
     return [...categoriasPorDefecto, ..._categories];
   }
@@ -325,6 +341,98 @@ class EstadoApp extends ChangeNotifier {
   bool get biometricEnabled => _biometricEnabled;
   bool get pinEnabled => _pinEnabled;
   String get hashedPin => _hashedPin;
+
+  bool get notificacionFijaHabilitada => _notificacionFijaHabilitada;
+  String get notificacionPlantilla => _notificacionPlantilla;
+  bool get notificacionMostrarSaldo => _notificacionMostrarSaldo;
+  bool get notificacionMostrarIngresos => _notificacionMostrarIngresos;
+  bool get notificacionMostrarGastos => _notificacionMostrarGastos;
+  bool get notificacionMostrarGastosHoy => _notificacionMostrarGastosHoy;
+  bool get notificacionMostrarPresupuesto => _notificacionMostrarPresupuesto;
+  bool get notificacionMostrarAcciones => _notificacionMostrarAcciones;
+
+  bool get debeMostrarFormularioTransaccion => _debeMostrarFormularioTransaccion;
+  set debeMostrarFormularioTransaccion(bool val) {
+    _debeMostrarFormularioTransaccion = val;
+    notifyListeners();
+  }
+
+  Future<void> setNotificacionFijaHabilitada(bool val) async {
+    _notificacionFijaHabilitada = val;
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('app_notificacion_fija_habilitada', val);
+    _notificarYSincronizar();
+  }
+
+  Future<void> setNotificacionPlantilla(String val) async {
+    _notificacionPlantilla = val;
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('app_notificacion_plantilla', val);
+    _notificarYSincronizar();
+  }
+
+  Future<void> setNotificacionMostrarSaldo(bool val) async {
+    _notificacionMostrarSaldo = val;
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('app_notificacion_mostrar_saldo', val);
+    _notificarYSincronizar();
+  }
+
+  Future<void> setNotificacionMostrarIngresos(bool val) async {
+    _notificacionMostrarIngresos = val;
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('app_notificacion_mostrar_ingresos', val);
+    _notificarYSincronizar();
+  }
+
+  Future<void> setNotificacionMostrarGastos(bool val) async {
+    _notificacionMostrarGastos = val;
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('app_notificacion_mostrar_gastos', val);
+    _notificarYSincronizar();
+  }
+
+  Future<void> setNotificacionMostrarGastosHoy(bool val) async {
+    _notificacionMostrarGastosHoy = val;
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('app_notificacion_mostrar_gastos_hoy', val);
+    _notificarYSincronizar();
+  }
+
+  Future<void> setNotificacionMostrarPresupuesto(bool val) async {
+    _notificacionMostrarPresupuesto = val;
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('app_notificacion_mostrar_presupuesto', val);
+    _notificarYSincronizar();
+  }
+
+  Future<void> setNotificacionMostrarAcciones(bool val) async {
+    _notificacionMostrarAcciones = val;
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('app_notificacion_mostrar_acciones', val);
+    _notificarYSincronizar();
+  }
+
+  double get totalExpensesToday {
+    double total = 0.0;
+    final now = DateTime.now();
+    for (var tx in _transactions) {
+      if (!tx.pagada) continue;
+      if (tx.type == 'gasto' &&
+          tx.date.year == now.year &&
+          tx.date.month == now.month &&
+          tx.date.day == now.day) {
+        final acc = _accounts.firstWhere(
+          (a) => a.id == tx.accountId,
+          orElse: () => _accounts.isNotEmpty ? _accounts.first : ModeloCuenta(id: '', name: '', type: '', balance: 0, gradientIndex: 0),
+        );
+        if (acc.contabilizable == false) continue;
+        final txCurrency = acc.currency ?? _selectedCurrency;
+        total += convertirMoneda(tx.amount, txCurrency, _selectedCurrency);
+      }
+    }
+    return total;
+  }
 
   int get selectedDockIndex => _selectedDockIndex;
   set selectedDockIndex(int val) {
@@ -487,6 +595,16 @@ class EstadoApp extends ChangeNotifier {
     _biometricEnabled = prefs.getBool('app_biometric_enabled') ?? false;
     _pinEnabled = prefs.getBool('app_pin_enabled') ?? false;
     _hashedPin = prefs.getString('app_pin_code') ?? '';
+    _geminiApiKey = prefs.getString('app_gemini_api_key') ?? '';
+
+    _notificacionFijaHabilitada = prefs.getBool('app_notificacion_fija_habilitada') ?? false;
+    _notificacionPlantilla = prefs.getString('app_notificacion_plantilla') ?? 'resumen';
+    _notificacionMostrarSaldo = prefs.getBool('app_notificacion_mostrar_saldo') ?? true;
+    _notificacionMostrarIngresos = prefs.getBool('app_notificacion_mostrar_ingresos') ?? true;
+    _notificacionMostrarGastos = prefs.getBool('app_notificacion_mostrar_gastos') ?? true;
+    _notificacionMostrarGastosHoy = prefs.getBool('app_notificacion_mostrar_gastos_hoy') ?? true;
+    _notificacionMostrarPresupuesto = prefs.getBool('app_notificacion_mostrar_presupuesto') ?? true;
+    _notificacionMostrarAcciones = prefs.getBool('app_notificacion_mostrar_acciones') ?? true;
 
     final int colorVal = prefs.getInt('app_primary_color') ?? const Color(0xFF000000).toARGB32();
     _colorPrincipal = Color(colorVal);
@@ -630,6 +748,29 @@ class EstadoApp extends ChangeNotifier {
   bool verifyPin(String pin) {
     if (!_pinEnabled || _hashedPin.isEmpty) return false;
     return _hashPin(pin) == _hashedPin;
+  }
+
+  Future<void> setGeminiApiKey(String key) async {
+    _geminiApiKey = key.trim();
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('app_gemini_api_key', _geminiApiKey);
+    notifyListeners();
+  }
+
+  Future<bool> probarConexionGemini(String key) async {
+    try {
+      final model = GenerativeModel(
+        model: 'gemini-flash-latest',
+        apiKey: key.trim(),
+      );
+      final response = await model.generateContent([
+        Content.text('responde con la palabra OK')
+      ]);
+      return response.text != null && response.text!.toUpperCase().contains('OK');
+    } catch (e) {
+      debugPrint('Error de prueba Gemini: $e');
+      return false;
+    }
   }
 
   Future<void> completeOnboarding(String firstAccountName, String firstAccountType, double initialBalance, {String? currency}) async {
@@ -1456,6 +1597,7 @@ class EstadoApp extends ChangeNotifier {
   void _notificarYSincronizar() {
     notifyListeners();
     _programarSubidaANube();
+    ServicioNotificaciones.actualizarNotificacion(this);
   }
 
   /// Programa una subida a Firestore con debounce de 3 segundos.
