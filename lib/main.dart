@@ -12,7 +12,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'firebase_options.dart';
 import 'services/estado_app.dart';
 import 'services/servicio_notificaciones.dart';
-import 'screens/pantalla_splash.dart';
+import 'screens/auth_gate.dart';
 
 void main() async {
   // Capturar TODOS los errores async no manejados para evitar crashes silenciosos
@@ -174,7 +174,7 @@ class GastosApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const PantallaSplash(),
+      home: const AuthGate(),
     );
   }
 }

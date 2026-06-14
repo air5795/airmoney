@@ -1316,6 +1316,7 @@ class EstadoApp extends ChangeNotifier {
     _biometricEnabled = false;
     _pinEnabled = false;
     _hashedPin = '';
+    _lastLocalUpdateMillis = 0;
 
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.remove('app_onboarding_completed');
@@ -1326,6 +1327,7 @@ class EstadoApp extends ChangeNotifier {
     await prefs.remove('app_biometric_enabled');
     await prefs.remove('app_pin_enabled');
     await prefs.remove('app_pin_code');
+    await prefs.remove('app_last_local_update_millis');
 
     notifyListeners();
   }
@@ -1603,10 +1605,21 @@ class EstadoApp extends ChangeNotifier {
     });
   }
 
-  Future<bool> sincronizarConNube(String uid) async {
+  Future<bool> sincronizarConNube(String uid, {bool forceUploadLocal = false}) async {
     activarEscuchaTiempoReal(uid);
     _isSyncing = true; // Bloquear re-subida durante sincronizacion inicial
     try {
+      // Registrar a que cuenta pertenecen los datos locales de este dispositivo.
+      // Permite a la pantalla de login no preguntar por conflicto cuando el
+      // usuario vuelve a entrar con la MISMA cuenta.
+      try {
+        final SharedPreferences prefsUid = await SharedPreferences.getInstance();
+        await prefsUid.setString('app_last_uid', uid);
+      } catch (_) {}
+      if (forceUploadLocal) {
+        await _subirDatosANube(uid);
+        return true;
+      }
       final docRef = FirebaseFirestore.instance.collection('usuarios').doc(uid);
       final docSnap = await docRef.get().timeout(const Duration(seconds: 10));
 
@@ -1831,5 +1844,55 @@ class EstadoApp extends ChangeNotifier {
   void desactivarEscuchaTiempoReal() {
     _nubeSubscription?.cancel();
     _nubeSubscription = null;
+  }
+
+  Future<bool> importarDatosDesdeJson(String jsonString) async {
+    try {
+      final Map<String, dynamic> data = json.decode(jsonString);
+      
+      // Validar estructura básica
+      if (data['cuentas'] == null || data['transacciones'] == null) {
+        return false;
+      }
+      
+      final List<dynamic> accountsData = data['cuentas'];
+      final List<dynamic> transactionsData = data['transacciones'];
+      
+      _accounts = accountsData.map((item) => ModeloCuenta.fromMap(Map<String, dynamic>.from(item))).toList();
+      _transactions = transactionsData.map((item) => ModeloTransaccion.fromMap(Map<String, dynamic>.from(item))).toList();
+      
+      if (data['categorias'] != null) {
+        final List<dynamic> categoriesData = data['categorias'];
+        _categories = categoriesData.map((item) => ModeloCategoria.fromMap(Map<String, dynamic>.from(item))).toList();
+      }
+      
+      if (data['ahorros'] != null) {
+        final List<dynamic> savingsData = data['ahorros'];
+        _savingsGoals = savingsData.map((item) => ModeloAhorro.fromMap(Map<String, dynamic>.from(item))).toList();
+      }
+      
+      if (data['presupuestos'] != null) {
+        final List<dynamic> budgetsData = data['presupuestos'];
+        _budgets = budgetsData.map((item) => ModeloPresupuesto.fromMap(Map<String, dynamic>.from(item))).toList();
+      }
+      
+      if (_accounts.isNotEmpty) {
+        _hasCompletedOnboarding = true;
+      }
+
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('app_onboarding_completed', _hasCompletedOnboarding);
+      await _saveAccountsToPrefs(prefs);
+      await _saveTransactionsToPrefs(prefs);
+      await _saveCategoriesToPrefs(prefs);
+      await _saveSavingsGoalsToPrefs(prefs);
+      await _saveBudgetsToPrefs(prefs);
+
+      _notificarYSincronizar();
+      return true;
+    } catch (e) {
+      debugPrint('Error al importar datos: $e');
+      return false;
+    }
   }
 }

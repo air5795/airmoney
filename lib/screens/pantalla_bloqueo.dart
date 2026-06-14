@@ -13,12 +13,17 @@ import 'pantalla_login.dart';
 class PantallaBloqueo extends StatefulWidget {
   final Widget? targetScreen;
   final bool popOnSuccess;
+  /// Si se proporciona, al desbloquear se llama a este callback en lugar de
+  /// navegar. Lo usa el AuthGate para mostrar el contenido sin cambiar de ruta.
+  final VoidCallback? onUnlocked;
 
   const PantallaBloqueo({
     super.key,
     this.targetScreen,
     this.popOnSuccess = false,
-  }) : assert(popOnSuccess || targetScreen != null, 'Debe especificarse targetScreen si popOnSuccess es false');
+    this.onUnlocked,
+  }) : assert(popOnSuccess || targetScreen != null || onUnlocked != null,
+            'Debe especificarse targetScreen, popOnSuccess u onUnlocked');
 
   @override
   State<PantallaBloqueo> createState() => _PantallaBloqueoState();
@@ -119,7 +124,10 @@ class _PantallaBloqueoState extends State<PantallaBloqueo> {
 
   void _unlockAndNavigate() {
     if (!mounted) return;
-    if (widget.popOnSuccess) {
+    if (widget.onUnlocked != null) {
+      // Modo AuthGate: avisar que se desbloqueo, el gate muestra el contenido.
+      widget.onUnlocked!();
+    } else if (widget.popOnSuccess) {
       Navigator.of(context).pop(true);
     } else {
       Navigator.pushReplacement(

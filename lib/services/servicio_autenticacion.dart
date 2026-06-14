@@ -26,11 +26,36 @@ class ServicioAutenticacion {
   /// cerro el selector de cuentas (no es un error real).
   bool get ultimoIntentoCancelado => _ultimoIntentoCancelado;
 
+  /// True mientras PantallaLogin esta ejecutando su flujo completo de inicio de
+  /// sesion (selector de Google, dialogo de conflicto de datos y sincronizacion).
+  /// El AuthGate respeta este flag para NO cambiar de pantalla a mitad del
+  /// proceso: la propia pantalla de login decide a donde navegar al terminar.
+  bool loginEnProgreso = false;
+
   final StreamController<UsuarioApp?> _userStreamController = StreamController<UsuarioApp?>.broadcast();
   Stream<UsuarioApp?> get authStateChanges => _userStreamController.stream;
 
   UsuarioApp? _currentUser;
   UsuarioApp? get currentUser => _currentUser;
+
+  /// Stream reactivo del estado de sesion para el AuthGate.
+  /// Emite el usuario persistido en cuanto Firebase termina de hidratarlo
+  /// (sin carreras de timeout) y mantiene [currentUser] sincronizado.
+  /// Si Firebase no esta disponible, emite null (se mostrara el login).
+  Stream<UsuarioApp?> get sesionStream {
+    if (!_isFirebaseInitialized) {
+      return Stream<UsuarioApp?>.value(null);
+    }
+    return FirebaseAuth.instance.authStateChanges().map((User? user) {
+      if (user != null) {
+        _currentUser = UsuarioApp.fromFirebase(user);
+        _guardarMarcaSesion(true);
+      } else {
+        _currentUser = null;
+      }
+      return _currentUser;
+    });
+  }
 
   Future<void> _checkFirebaseStatus() async {
     try {
@@ -84,6 +109,7 @@ class ServicioAutenticacion {
           _currentUser = UsuarioApp.fromFirebase(userCredential.user!);
           _userStreamController.add(_currentUser);
           await _guardarMarcaSesion(true);
+          debugPrint('[Auth] Sesion Firebase establecida: uid=${userCredential.user!.uid}');
           return _currentUser;
         }
       } catch (e) {
@@ -95,6 +121,47 @@ class ServicioAutenticacion {
       // Firebase no esta inicializado, no se permite iniciar sesion en modo demo
       return null;
     }
+  }
+
+  /// Intenta reingresar SIN interaccion del usuario.
+  ///
+  /// Util cuando el almacenamiento cifrado de Firebase Auth no logra persistir
+  /// la sesion (p. ej. en algunos dispositivos MIUI/HyperOS, donde el keystore
+  /// falla con "FirebearStorageCryptoHelper"). Google Sign-In mantiene su
+  /// propia persistencia en los Servicios de Google del sistema (mas robusta),
+  /// asi que pedimos la cuenta recordada y reconstruimos la sesion de Firebase
+  /// sin mostrar ninguna pantalla.
+  Future<UsuarioApp?> intentarReingresoSilencioso() async {
+    if (!_isFirebaseInitialized) return null;
+    try {
+      final GoogleSignInAccount? googleUser =
+          await GoogleSignIn().signInSilently().timeout(const Duration(seconds: 8));
+      if (googleUser == null) {
+        debugPrint('[Auth] Reingreso silencioso: no hay cuenta Google recordada');
+        return null;
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final OAuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithCredential(credential)
+          .timeout(const Duration(seconds: 8));
+
+      if (userCredential.user != null) {
+        _currentUser = UsuarioApp.fromFirebase(userCredential.user!);
+        _userStreamController.add(_currentUser);
+        await _guardarMarcaSesion(true);
+        debugPrint('[Auth] Reingreso silencioso OK: uid=${userCredential.user!.uid}');
+        return _currentUser;
+      }
+    } catch (e) {
+      debugPrint('[Auth] Reingreso silencioso fallo: $e');
+    }
+    return null;
   }
 
   Future<UsuarioApp?> signInWithFacebook() async {
@@ -133,72 +200,5 @@ class ServicioAutenticacion {
       _userStreamController.add(null);
       return true;
     }
-  }
-
-  Future<void> checkInitialSession() async {
-    if (!_isFirebaseInitialized) {
-      _currentUser = null;
-      _userStreamController.add(null);
-      return;
-    }
-
-    // 1. Verificar si ya tenemos el usuario cargado en memoria
-    if (_currentUser != null) {
-      return;
-    }
-
-    // 2. Verificar si FirebaseAuth ya tiene el usuario cargado de forma síncrona
-    User? firebaseUser = FirebaseAuth.instance.currentUser;
-    if (firebaseUser != null) {
-      _currentUser = UsuarioApp.fromFirebase(firebaseUser);
-      _userStreamController.add(_currentUser);
-      return;
-    }
-
-    // 3. Esperar la restauración asíncrona del token nativo.
-    //    Si la marca local indica que había una sesión guardada, esperar con
-    //    generosidad (la restauración puede tardar en arranques en frío);
-    //    si no, solo una ventana corta para no demorar el primer arranque.
-    bool habiaSesion = false;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      habiaSesion = prefs.getBool(_kSesionGoogleActiva) ?? false;
-    } catch (_) {}
-
-    final Duration maxEspera = habiaSesion
-        ? const Duration(seconds: 10)
-        : const Duration(milliseconds: 800);
-
-    final User? user = await _esperarRestauracionDeSesion(maxEspera);
-
-    if (user != null) {
-      _currentUser = UsuarioApp.fromFirebase(user);
-      _userStreamController.add(_currentUser);
-      await _guardarMarcaSesion(true);
-    } else {
-      _currentUser = null;
-      _userStreamController.add(null);
-    }
-  }
-
-  Future<User?> _esperarRestauracionDeSesion(Duration maxEspera) async {
-    final completer = Completer<User?>();
-    StreamSubscription<User?>? subscription;
-
-    subscription = FirebaseAuth.instance.authStateChanges().listen((User? u) {
-      if (u != null && !completer.isCompleted) {
-        completer.complete(u);
-      }
-    });
-
-    Future.delayed(maxEspera, () {
-      if (!completer.isCompleted) {
-        completer.complete(null);
-      }
-    });
-
-    final User? user = await completer.future;
-    await subscription.cancel();
-    return user;
   }
 }

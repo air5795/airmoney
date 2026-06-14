@@ -12,6 +12,8 @@ import 'subvistas/ajustes_tipo_cambio.dart';
 import 'subvistas/ajustes_seguridad.dart';
 import 'subvistas/ajustes_voz.dart';
 import 'subvistas/ajustes_notificacion_fija.dart';
+import 'subvistas/ajustes_sincronizacion.dart';
+import 'subvistas/ajustes_respaldos.dart';
 import '../../widgets/interactive_scale.dart';
 
 class VistaAjustes extends StatefulWidget {
@@ -44,6 +46,74 @@ class _VistaAjustesState extends State<VistaAjustes> {
         ),
       );
     }
+  }
+
+  Future<void> _showClearLocalDataConfirmation() async {
+    final estadoApp = Provider.of<EstadoApp>(context, listen: false);
+    final esOscuro = estadoApp.esTemaOscuro;
+    final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: AlertDialog(
+            backgroundColor: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            title: Text(
+              '¿Borrar datos locales?',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                color: colorTexto,
+              ),
+            ),
+            content: Text(
+              'Esta acción borrará permanentemente todos tus datos financieros de este dispositivo. No podrás recuperarlos si no has sincronizado con la nube.',
+              style: TextStyle(
+                color: colorTexto.withValues(alpha: 0.7),
+                fontSize: 14,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(
+                  'Cancelar',
+                  style: TextStyle(
+                    color: colorTexto.withValues(alpha: 0.5),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  await estadoApp.clearAllData();
+                  if (!mounted) return;
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PantallaLogin()),
+                  );
+                },
+                child: const Text(
+                  'Borrar',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _showDeleteAccountConfirmation() async {
@@ -181,6 +251,18 @@ class _VistaAjustesState extends State<VistaAjustes> {
       );
     } else if (estadoApp.selectedSettingsSubView == 7) {
       cuerpoSettings = AjustesNotificacionFija(
+        onBack: () {
+          estadoApp.selectedSettingsSubView = 0;
+        },
+      );
+    } else if (estadoApp.selectedSettingsSubView == 8) {
+      cuerpoSettings = AjustesSincronizacion(
+        onBack: () {
+          estadoApp.selectedSettingsSubView = 0;
+        },
+      );
+    } else if (estadoApp.selectedSettingsSubView == 9) {
+      cuerpoSettings = AjustesRespaldos(
         onBack: () {
           estadoApp.selectedSettingsSubView = 0;
         },
@@ -445,91 +527,6 @@ class _VistaAjustesState extends State<VistaAjustes> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Expanded(
-                      child: InteractiveScale(
-                        onTap: () async {
-                          if (user != null) {
-                            // Forzar sincronizacion Firebase
-                            final bool syncSuccess = await estadoApp.sincronizarConNube(user.uid);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(syncSuccess
-                                      ? 'Sincronización manual completada con éxito'
-                                      : 'No se pudo sincronizar. Verifica tu conexión a internet.'),
-                                  behavior: SnackBarBehavior.floating,
-                                  backgroundColor: syncSuccess ? const Color(0xFF10B981) : Colors.redAccent,
-                                ),
-                              );
-                            }
-                          }
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            color: colorPrincipal.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: colorPrincipal.withValues(alpha: 0.15),
-                              width: 1.0,
-                            ),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            'Sincronizar Ahora',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.bold,
-                              color: colorPrincipal,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: InteractiveScale(
-                        onTap: () {
-                          // Simular exportación respaldo local
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Respaldo exportado localmente en formato JSON encriptado'),
-                              behavior: SnackBarBehavior.floating,
-                              backgroundColor: Color(0xFF10B981),
-                            ),
-                          );
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            color: esOscuro
-                                ? Colors.white.withValues(alpha: 0.04)
-                                : Colors.black.withValues(alpha: 0.03),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: esOscuro
-                                  ? Colors.white.withValues(alpha: 0.08)
-                                  : Colors.black.withValues(alpha: 0.05),
-                              width: 1.0,
-                            ),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            'Exportar Datos',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.bold,
-                              color: colorTexto.withValues(alpha: 0.7),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ],
             ),
           ),
@@ -676,13 +673,14 @@ class _VistaAjustesState extends State<VistaAjustes> {
                         : const Color(0xFF0A0A0A).withValues(alpha: 0.05),
                   ),
                   _buildSettingsMenuItem(
-                    icon: Icons.logout_rounded,
-                    title: 'Cerrar Sesión',
-                    subtitle: 'Salir de la cuenta actual',
-                    color: Colors.redAccent,
+                    icon: Icons.sync_rounded,
+                    title: 'Sincronización',
+                    subtitle: 'Gestionar copia de seguridad en la nube',
+                    color: colorPrincipal,
                     esOscuro: esOscuro,
-                    isDestructive: true,
-                    onTap: _handleLogout,
+                    onTap: () {
+                      estadoApp.selectedSettingsSubView = 8;
+                    },
                   ),
                   Container(
                     height: 1,
@@ -692,14 +690,79 @@ class _VistaAjustesState extends State<VistaAjustes> {
                         : const Color(0xFF0A0A0A).withValues(alpha: 0.05),
                   ),
                   _buildSettingsMenuItem(
-                    icon: Icons.delete_forever_rounded,
-                    title: 'Eliminar Cuenta',
-                    subtitle: 'Borrar permanentemente todos tus datos',
-                    color: Colors.redAccent,
+                    icon: Icons.backup_rounded,
+                    title: 'Respaldos',
+                    subtitle: 'Exportar e importar datos locales',
+                    color: colorPrincipal,
                     esOscuro: esOscuro,
-                    isDestructive: true,
-                    onTap: _showDeleteAccountConfirmation,
+                    onTap: () {
+                      estadoApp.selectedSettingsSubView = 9;
+                    },
                   ),
+                  Container(
+                    height: 1,
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    color: esOscuro
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : const Color(0xFF0A0A0A).withValues(alpha: 0.05),
+                  ),
+                  if (user == null) ...[
+                    _buildSettingsMenuItem(
+                      icon: Icons.cloud_upload_rounded,
+                      title: 'Vincular Cuenta (Google)',
+                      subtitle: 'Sincronizar tus datos locales con la nube',
+                      color: colorPrincipal,
+                      esOscuro: esOscuro,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const PantallaLogin()),
+                        );
+                      },
+                    ),
+                    Container(
+                      height: 1,
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      color: esOscuro
+                          ? Colors.white.withValues(alpha: 0.05)
+                          : const Color(0xFF0A0A0A).withValues(alpha: 0.05),
+                    ),
+                    _buildSettingsMenuItem(
+                      icon: Icons.delete_sweep_rounded,
+                      title: 'Borrar Datos Locales',
+                      subtitle: 'Limpiar base de datos local de este dispositivo',
+                      color: Colors.redAccent,
+                      esOscuro: esOscuro,
+                      isDestructive: true,
+                      onTap: _showClearLocalDataConfirmation,
+                    ),
+                  ] else ...[
+                    _buildSettingsMenuItem(
+                      icon: Icons.logout_rounded,
+                      title: 'Cerrar Sesión',
+                      subtitle: 'Salir de la cuenta actual',
+                      color: Colors.redAccent,
+                      esOscuro: esOscuro,
+                      isDestructive: true,
+                      onTap: _handleLogout,
+                    ),
+                    Container(
+                      height: 1,
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      color: esOscuro
+                          ? Colors.white.withValues(alpha: 0.05)
+                          : const Color(0xFF0A0A0A).withValues(alpha: 0.05),
+                    ),
+                    _buildSettingsMenuItem(
+                      icon: Icons.delete_forever_rounded,
+                      title: 'Eliminar Cuenta',
+                      subtitle: 'Borrar permanentemente todos tus datos',
+                      color: Colors.redAccent,
+                      esOscuro: esOscuro,
+                      isDestructive: true,
+                      onTap: _showDeleteAccountConfirmation,
+                    ),
+                  ],
                 ],
               ),
             ),

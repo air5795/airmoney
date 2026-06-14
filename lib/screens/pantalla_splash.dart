@@ -1,75 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
-import '../services/servicio_autenticacion.dart';
 import '../services/estado_app.dart';
-import 'pantalla_login.dart';
-import 'pantalla_principal.dart';
-import 'pantalla_bloqueo.dart';
-import 'onboarding/pantalla_idioma.dart';
 
-class PantallaSplash extends StatefulWidget {
+/// Pantalla de marca puramente visual.
+///
+/// La decision de a donde ir la toma el [AuthGate]; este widget solo se muestra
+/// mientras se cargan las preferencias y Firebase restaura la sesion.
+class PantallaSplash extends StatelessWidget {
   const PantallaSplash({super.key});
-
-  @override
-  State<PantallaSplash> createState() => _PantallaSplashState();
-}
-
-class _PantallaSplashState extends State<PantallaSplash> {
-  @override
-  void initState() {
-    super.initState();
-    _handleNavigation();
-  }
-
-  Future<void> _handleNavigation() async {
-    if (!mounted) return;
-    final estadoApp = Provider.of<EstadoApp>(context, listen: false);
-
-    // 1. Esperar a que se carguen las preferencias locales
-    await estadoApp.initFuture;
-
-    final ServicioAutenticacion servicioAuth = ServicioAutenticacion();
-    // 2. Comprobar la sesión inicial con robustez
-    await servicioAuth.checkInitialSession();
-
-    if (servicioAuth.currentUser != null && !estadoApp.hasCompletedOnboarding) {
-      if (!mounted) return;
-      // Solo bloquear el arranque sincronizando si aun no hay datos locales
-      // (primer ingreso o dispositivo nuevo). En el caso normal la pantalla
-      // principal sincroniza en segundo plano al cargar.
-      await estadoApp.sincronizarConNube(servicioAuth.currentUser!.uid);
-    }
-
-    await Future.delayed(const Duration(milliseconds: 1500));
-
-    if (!mounted) return;
-
-    if (servicioAuth.currentUser != null) {
-      final Widget target = estadoApp.hasCompletedOnboarding
-          ? const PantallaPrincipal()
-          : const PantallaIdioma();
-
-      if (estadoApp.biometricEnabled || estadoApp.pinEnabled) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => PantallaBloqueo(targetScreen: target),
-          ),
-        );
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => target),
-        );
-      }
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const PantallaLogin()),
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {

@@ -24,6 +24,9 @@ class _PantallaLoginState extends State<PantallaLogin> {
       _isLoading = true;
       _loadingProvider = provider;
     });
+    // Avisar al AuthGate que NO cambie de pantalla mientras dura este flujo
+    // (selector de Google y sincronizacion).
+    _servicioAuth.loginEnProgreso = true;
 
     try {
       if (!_servicioAuth.isFirebaseInitialized) {
@@ -51,7 +54,8 @@ class _PantallaLoginState extends State<PantallaLogin> {
       if (user != null) {
         final estadoApp = Provider.of<EstadoApp>(context, listen: false);
 
-        // Sincronizar con la nube inmediatamente para descargar las cuentas del usuario logueado
+        // Sincronizar con la nube. La sincronizacion decide sola por marca de
+        // tiempo si descarga la nube o sube lo local (lo mas reciente gana).
         final bool syncSuccess = await estadoApp.sincronizarConNube(user.uid);
 
         if (!mounted) return;
@@ -126,6 +130,7 @@ class _PantallaLoginState extends State<PantallaLogin> {
         ),
       );
     } finally {
+      _servicioAuth.loginEnProgreso = false;
       if (mounted) {
         setState(() {
           _isLoading = false;
