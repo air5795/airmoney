@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../config/app_config.dart';
 import '../../services/estado_app.dart';
 import '../pantalla_principal.dart';
 
@@ -426,7 +427,7 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                     elevation: 0,
                   ),
                   child: Text(
-                    'Empezar a usar AirMoney',
+                    'Empezar a usar ${AppConfig.appName}',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w900,

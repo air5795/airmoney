@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../../config/app_config.dart';
 import '../../../services/estado_app.dart';
 import '../../../widgets/hex_color_picker.dart';
 import '../../../widgets/interactive_scale.dart';
@@ -269,7 +270,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
         ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, end: 0, duration: 400.ms),
         const SizedBox(height: 4),
         Text(
-          _isCreatingOrEditingAccount ? 'CONFIGURAR DATOS DE LA TARJETA' : 'GESTIONAR CUENTAS DE AIRMONEY',
+          _isCreatingOrEditingAccount ? 'CONFIGURAR DATOS DE LA TARJETA' : 'GESTIONAR CUENTAS DE ${AppConfig.appName.toUpperCase()}',
           style: TextStyle(
             fontSize: 9.5,
             fontWeight: FontWeight.w900,

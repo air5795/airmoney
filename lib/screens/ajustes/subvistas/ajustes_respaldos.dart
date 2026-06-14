@@ -7,6 +7,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
+import '../../../config/app_config.dart';
 import '../../../services/estado_app.dart';
 import '../../../widgets/interactive_scale.dart';
 
@@ -42,12 +43,12 @@ class _AjustesRespaldosState extends State<AjustesRespaldos> {
       final jsonString = const JsonEncoder.withIndent('  ').convert(backupData);
       final tempDir = await getTemporaryDirectory();
       final dateSuffix = DateTime.now().toIso8601String().split('T').first;
-      final file = File('${tempDir.path}/airmoney_respaldo_$dateSuffix.json');
+      final file = File('${tempDir.path}/${AppConfig.appName.toLowerCase()}_respaldo_$dateSuffix.json');
       await file.writeAsString(jsonString);
 
       await Share.shareXFiles(
         [XFile(file.path)],
-        text: 'Copia de seguridad de AirMoney ($dateSuffix)',
+        text: 'Copia de seguridad de ${AppConfig.appName} ($dateSuffix)',
       );
     } catch (e) {
       if (!mounted) return;
@@ -89,12 +90,12 @@ class _AjustesRespaldosState extends State<AjustesRespaldos> {
 
       final tempDir = await getTemporaryDirectory();
       final dateSuffix = DateTime.now().toIso8601String().split('T').first;
-      final file = File('${tempDir.path}/airmoney_movimientos_$dateSuffix.csv');
+      final file = File('${tempDir.path}/${AppConfig.appName.toLowerCase()}_movimientos_$dateSuffix.csv');
       await file.writeAsString(csvBuffer.toString(), encoding: utf8);
 
       await Share.shareXFiles(
         [XFile(file.path)],
-        text: 'Reporte de movimientos de AirMoney ($dateSuffix)',
+        text: 'Reporte de movimientos de ${AppConfig.appName} ($dateSuffix)',
       );
     } catch (e) {
       if (!mounted) return;

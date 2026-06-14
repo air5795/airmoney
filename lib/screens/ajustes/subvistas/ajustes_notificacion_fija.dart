@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../../config/app_config.dart';
 import '../../../services/estado_app.dart';
 import '../../../services/servicio_notificaciones.dart';
 import '../../../widgets/interactive_scale.dart';
@@ -391,7 +392,7 @@ class _AjustesNotificacionFijaState extends State<AjustesNotificacionFija> {
               ),
               const SizedBox(width: 8),
               Text(
-                'AirMoney',
+                AppConfig.appName,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w800,

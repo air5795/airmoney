@@ -1,3 +1,5 @@
+import '../config/app_config.dart';
+
 class UsuarioApp {
   final String uid;
   final String displayName;
@@ -16,7 +18,7 @@ class UsuarioApp {
   factory UsuarioApp.fromFirebase(dynamic firebaseUser) {
     return UsuarioApp(
       uid: firebaseUser.uid,
-      displayName: firebaseUser.displayName ?? 'Usuario de AIRMONEY',
+      displayName: firebaseUser.displayName ?? 'Usuario de ${AppConfig.appName.toUpperCase()}',
       email: firebaseUser.email ?? '',
       photoUrl: firebaseUser.photoURL,
       provider: 'google',
@@ -36,7 +38,7 @@ class UsuarioApp {
   factory UsuarioApp.fromMap(Map<String, dynamic> map) {
     return UsuarioApp(
       uid: map['uid'] ?? '',
-      displayName: map['displayName'] ?? 'Usuario de AIRMONEY',
+      displayName: map['displayName'] ?? 'Usuario de ${AppConfig.appName.toUpperCase()}',
       email: map['email'] ?? '',
       photoUrl: map['photoUrl'],
       provider: map['provider'] ?? 'demo',

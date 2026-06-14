@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:local_auth/local_auth.dart';
+import '../config/app_config.dart';
 import '../services/estado_app.dart';
 import '../services/servicio_autenticacion.dart';
 import '../models/usuario_app.dart';
@@ -66,7 +67,7 @@ class _PantallaBloqueoState extends State<PantallaBloqueo> {
 
     try {
       final authenticated = await _auth.authenticate(
-        localizedReason: 'Desbloquea AirMoney para acceder a tus finanzas.',
+        localizedReason: 'Desbloquea ${AppConfig.appName} para acceder a tus finanzas.',
         biometricOnly: true,
         persistAcrossBackgrounding: true,
       );

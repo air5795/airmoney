@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:app_gastos/http_overrides.dart';
 import 'package:flutter/material.dart';
+import 'config/app_config.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -96,7 +97,7 @@ class GastosApp extends StatelessWidget {
     final colorMarca = estadoApp.colorPrincipal;
 
     return MaterialApp(
-      title: 'AirMoney',
+      title: AppConfig.appName,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+import '../config/app_config.dart';
 import '../services/servicio_autenticacion.dart';
 import '../services/estado_app.dart';
 import '../models/usuario_app.dart';
@@ -321,7 +322,7 @@ class _PantallaLoginState extends State<PantallaLogin> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            'AirMoney protege tus datos de acuerdo al estándar PCI-DSS.',
+                            '${AppConfig.appName} protege tus datos de acuerdo al estándar PCI-DSS.',
                             style: TextStyle(
                               fontSize: 9.5,
                               color: colorSecundario.withValues(alpha: 0.4),

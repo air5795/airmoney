@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../config/app_config.dart';
 import '../../services/estado_app.dart';
 import 'pantalla_moneda.dart';
 
@@ -92,7 +93,7 @@ class _PantallaIdiomaState extends State<PantallaIdioma> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Personaliza AirMoney en tu idioma.',
+                'Personaliza ${AppConfig.appName} en tu idioma.',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
