@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -275,16 +276,223 @@ class ModeloPresupuesto {
   }
 }
 
+class ModeloDeuda {
+  final String id;
+  final String lender; // Acreedor
+  final double totalAmount; // Monto total
+  double paidAmount; // Monto pagado
+  final DateTime date; // Fecha de inicio
+  final DateTime dueDate; // Fecha límite
+  final String hexColor;
+  final String notes;
+  final String? accountId; // Cuenta origen predeterminada para abonos
+
+  ModeloDeuda({
+    required this.id,
+    required this.lender,
+    required this.totalAmount,
+    required this.paidAmount,
+    required this.date,
+    required this.dueDate,
+    required this.hexColor,
+    required this.notes,
+    this.accountId,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'acreedor': lender,
+      'montoTotal': totalAmount,
+      'montoPagado': paidAmount,
+      'fecha': date.toIso8601String(),
+      'fechaLimite': dueDate.toIso8601String(),
+      'colorHex': hexColor,
+      'notas': notes,
+      'idCuenta': accountId,
+    };
+  }
+
+  factory ModeloDeuda.fromMap(Map<String, dynamic> map) {
+    return ModeloDeuda(
+      id: map['id'] ?? '',
+      lender: map['acreedor'] ?? '',
+      totalAmount: (map['montoTotal'] as num?)?.toDouble() ?? 0.0,
+      paidAmount: (map['montoPagado'] as num?)?.toDouble() ?? 0.0,
+      date: DateTime.parse(map['fecha'] ?? DateTime.now().toIso8601String()),
+      dueDate: DateTime.parse(map['fechaLimite'] ?? DateTime.now().toIso8601String()),
+      hexColor: map['colorHex'] ?? '#EF4444',
+      notes: map['notas'] ?? '',
+      accountId: map['idCuenta'],
+    );
+  }
+}
+
 class EstadoApp extends ChangeNotifier {
+  static const List<Map<String, String>> listaMonedas = [
+    {'code': 'BOB', 'symbol': 'Bs', 'name': 'Boliviano boliviano', 'flag': '🇧🇴'},
+    {'code': 'USD', 'symbol': r'$', 'name': 'Dólar estadounidense', 'flag': '🇺🇸'},
+    {'code': 'EUR', 'symbol': '€', 'name': 'Euro', 'flag': '🇪🇺'},
+    {'code': 'MXN', 'symbol': r'$', 'name': 'Peso mexicano', 'flag': '🇲🇽'},
+    {'code': 'ARS', 'symbol': r'$', 'name': 'Peso argentino', 'flag': '🇦🇷'},
+    {'code': 'BRL', 'symbol': r'R$', 'name': 'Real brasileño', 'flag': '🇧🇷'},
+    {'code': 'CLP', 'symbol': r'$', 'name': 'Peso chileno', 'flag': '🇨🇱'},
+    {'code': 'COP', 'symbol': r'$', 'name': 'Peso colombiano', 'flag': '🇨🇴'},
+    {'code': 'PEN', 'symbol': 'S/.', 'name': 'Sol peruano', 'flag': '🇵🇪'},
+    {'code': 'UYU', 'symbol': r'$U', 'name': 'Peso uruguayo', 'flag': '🇺🇾'},
+    {'code': 'PYG', 'symbol': '₲', 'name': 'Guaraní paraguayo', 'flag': '🇵🇾'},
+    {'code': 'CRC', 'symbol': '₡', 'name': 'Colón costarricense', 'flag': '🇨🇷'},
+    {'code': 'GTQ', 'symbol': 'Q', 'name': 'Quetzal guatemalteco', 'flag': '🇬🇹'},
+    {'code': 'HNL', 'symbol': 'L', 'name': 'Lempira hondureña', 'flag': '🇭🇳'},
+    {'code': 'NIO', 'symbol': r'C$', 'name': 'Córdoba nicaragüense', 'flag': '🇳🇮'},
+    {'code': 'VES', 'symbol': 'Bs.S', 'name': 'Bolívar venezolano', 'flag': '🇻🇪'},
+    {'code': 'DOP', 'symbol': r'RD$', 'name': 'Peso dominicano', 'flag': '🇩🇴'},
+    {'code': 'PAB', 'symbol': 'B/.', 'name': 'Balboa panameño', 'flag': '🇵🇦'},
+    {'code': 'CAD', 'symbol': r'$', 'name': 'Dólar canadiense', 'flag': '🇨🇦'},
+    {'code': 'GBP', 'symbol': '£', 'name': 'Libra esterlina', 'flag': '🇬🇧'},
+    {'code': 'JPY', 'symbol': '¥', 'name': 'Yen japonés', 'flag': '🇯🇵'},
+    {'code': 'CNY', 'symbol': '¥', 'name': 'Yuan chino', 'flag': '🇨🇳'},
+    {'code': 'KRW', 'symbol': '₩', 'name': 'Won surcoreano', 'flag': '🇰🇷'},
+    {'code': 'INR', 'symbol': '₹', 'name': 'Rupia india', 'flag': '🇮🇳'},
+    {'code': 'AUD', 'symbol': r'$', 'name': 'Dólar australiano', 'flag': '🇦🇺'},
+    {'code': 'NZD', 'symbol': r'$', 'name': 'Dólar neozelandés', 'flag': '🇳🇿'},
+    {'code': 'CHF', 'symbol': 'CHF', 'name': 'Franco suizo', 'flag': '🇨🇭'},
+    {'code': 'RUB', 'symbol': '₽', 'name': 'Rublo ruso', 'flag': '🇷🇺'},
+    {'code': 'TRY', 'symbol': '₺', 'name': 'Lira turca', 'flag': '🇹🇷'},
+    {'code': 'ZAR', 'symbol': 'R', 'name': 'Rand sudafricano', 'flag': '🇿🇦'},
+    {'code': 'AED', 'symbol': 'د.إ', 'name': 'Dírham de los Emiratos Árabes Unidos', 'flag': '🇦🇪'},
+    {'code': 'SAR', 'symbol': 'ر.س', 'name': 'Riyal saudí', 'flag': '🇸🇦'},
+    {'code': 'SGD', 'symbol': r'S$', 'name': 'Dólar de Singapur', 'flag': '🇸🇬'},
+    {'code': 'HKD', 'symbol': r'HK$', 'name': 'Dólar de Hong Kong', 'flag': '🇭🇰'},
+    {'code': 'SEK', 'symbol': 'kr', 'name': 'Corona sueca', 'flag': '🇸🇪'},
+    {'code': 'NOK', 'symbol': 'kr', 'name': 'Corona noruega', 'flag': '🇳🇴'},
+    {'code': 'DKK', 'symbol': 'kr', 'name': 'Corona danesa', 'flag': '🇩🇰'},
+    {'code': 'PLN', 'symbol': 'zł', 'name': 'Zloty polaco', 'flag': '🇵🇱'},
+    {'code': 'ILS', 'symbol': '₪', 'name': 'Nuevo séquel israelí', 'flag': '🇮🇱'},
+    {'code': 'EGP', 'symbol': 'E£', 'name': 'Libra egipcia', 'flag': '🇪🇬'},
+    {'code': 'NGN', 'symbol': '₦', 'name': 'Naira nigeriana', 'flag': '🇳🇬'},
+    {'code': 'KES', 'symbol': 'KSh', 'name': 'Chelín keniano', 'flag': '🇰🇪'},
+    {'code': 'GHS', 'symbol': 'GH₵', 'name': 'Cedi ghanés', 'flag': '🇬🇭'},
+    {'code': 'MAD', 'symbol': 'DH', 'name': 'Dírham marroquí', 'flag': '🇲🇦'},
+    {'code': 'DZD', 'symbol': 'DA', 'name': 'Dinar argelino', 'flag': '🇩🇿'},
+    {'code': 'TND', 'symbol': 'DT', 'name': 'Dinar tunecino', 'flag': '🇹🇳'},
+    {'code': 'QAR', 'symbol': 'QR', 'name': 'Riyal qatarí', 'flag': '🇶🇦'},
+    {'code': 'KWD', 'symbol': 'KD', 'name': 'Dinar kuwaití', 'flag': '🇰🇼'},
+    {'code': 'BHD', 'symbol': 'BD', 'name': 'Dinar bahreiní', 'flag': '🇧🇭'},
+    {'code': 'OMR', 'symbol': 'RO', 'name': 'Riyal omaní', 'flag': '🇴🇲'},
+    {'code': 'JOD', 'symbol': 'JD', 'name': 'Dinar jordano', 'flag': '🇯🇴'},
+    {'code': 'IDR', 'symbol': 'Rp', 'name': 'Rupia indonesia', 'flag': '🇮🇩'},
+    {'code': 'MYR', 'symbol': 'RM', 'name': 'Ringgit malasio', 'flag': '🇲🇾'},
+    {'code': 'PHP', 'symbol': '₱', 'name': 'Peso filipino', 'flag': '🇵🇭'},
+    {'code': 'THB', 'symbol': '฿', 'name': 'Baht tailandés', 'flag': '🇹🇭'},
+    {'code': 'VND', 'symbol': '₫', 'name': 'Dong vietnamés', 'flag': '🇻🇳'},
+    {'code': 'PKR', 'symbol': '₨', 'name': 'Rupia pakistaní', 'flag': '🇵🇰'},
+    {'code': 'BDT', 'symbol': '৳', 'name': 'Taka bangladesí', 'flag': '🇧🇩'},
+    {'code': 'LKR', 'symbol': 'Rs', 'name': 'Rupia de Sri Lanka', 'flag': '🇱🇰'},
+    {'code': 'HUF', 'symbol': 'Ft', 'name': 'Florín húngaro', 'flag': '🇭🇺'},
+    {'code': 'CZK', 'symbol': 'Kč', 'name': 'Corona checa', 'flag': '🇨🇿'},
+    {'code': 'RON', 'symbol': 'lei', 'name': 'Leu rumano', 'flag': '🇷🇴'},
+    {'code': 'BGN', 'symbol': 'лв', 'name': 'Lev búlgaro', 'flag': '🇧🇬'},
+    {'code': 'UAH', 'symbol': '₴', 'name': 'Grivna ucraniana', 'flag': '🇺🇦'},
+    {'code': 'ISK', 'symbol': 'kr', 'name': 'Corona islandesa', 'flag': '🇮🇸'},
+    {'code': 'RSD', 'symbol': 'din', 'name': 'Dinar serbio', 'flag': '🇷🇸'},
+    {'code': 'TWD', 'symbol': r'NT$', 'name': 'Nuevo dólar taiwanés', 'flag': '🇹🇼'},
+    {'code': 'TJS', 'symbol': 'ЅМ', 'name': 'Somoni tayiko', 'flag': '🇹🇯'},
+    {'code': 'KZT', 'symbol': '₸', 'name': 'Tenge kazajo', 'flag': '🇰🇿'},
+    {'code': 'UZS', 'symbol': "so'm", 'name': 'Som uzbeko', 'flag': '🇺🇿'},
+    {'code': 'GEL', 'symbol': '₾', 'name': 'Lari georgiano', 'flag': '🇬🇪'},
+    {'code': 'AMD', 'symbol': '֏', 'name': 'Dram armenio', 'flag': '🇦🇲'},
+    {'code': 'AZN', 'symbol': '₼', 'name': 'Manat azerbaiyano', 'flag': '🇦🇿'},
+    {'code': 'MNT', 'symbol': '₮', 'name': 'Tugrik mongol', 'flag': '🇲🇳'},
+    {'code': 'LBP', 'symbol': 'L£', 'name': 'Libra libanesa', 'flag': '🇱🇧'},
+    {'code': 'IQD', 'symbol': 'ع.د', 'name': 'Dinar iraquí', 'flag': '🇮🇶'},
+    {'code': 'IRR', 'symbol': '﷼', 'name': 'Rial iraní', 'flag': '🇮🇷'},
+    {'code': 'YER', 'symbol': '﷼', 'name': 'Rial yemení', 'flag': '🇾🇪'},
+    {'code': 'AFN', 'symbol': '؋', 'name': 'Afgani afgano', 'flag': '🇦🇫'},
+    {'code': 'NPR', 'symbol': 'Rs', 'name': 'Rupia nepalesa', 'flag': '🇳🇵'},
+    {'code': 'MVR', 'symbol': 'Rf', 'name': 'Rufiyaa de Maldivas', 'flag': '🇲🇻'},
+    {'code': 'LAK', 'symbol': '₭', 'name': 'Kip laosiano', 'flag': '🇱🇦'},
+    {'code': 'KHR', 'symbol': '៛', 'name': 'Riel camboyano', 'flag': '🇰🇭'},
+    {'code': 'MMK', 'symbol': 'K', 'name': 'Kyat birmano', 'flag': '🇲🇲'},
+    {'code': 'BND', 'symbol': r'B$', 'name': 'Dólar de Brunéi', 'flag': '🇧🇳'},
+    {'code': 'FJD', 'symbol': r'FJ$', 'name': 'Dólar fiyiano', 'flag': '🇫🇯'},
+    {'code': 'PGK', 'symbol': 'K', 'name': 'Kina de Papúa Nueva Guinea', 'flag': '🇵🇬'},
+    {'code': 'SBD', 'symbol': r'SI$', 'name': 'Dólar de las Islas Salomón', 'flag': '🇸🇧'},
+    {'code': 'VUV', 'symbol': 'VT', 'name': 'Vatu vanuatu', 'flag': '🇻🇺'},
+    {'code': 'WST', 'symbol': r'WS$', 'name': 'Tala samoano', 'flag': '🇼🇸'},
+    {'code': 'TOP', 'symbol': r'T$', 'name': 'Paʻanga tongano', 'flag': '🇹🇴'},
+    {'code': 'BWP', 'symbol': 'P', 'name': 'Pula de Botsuana', 'flag': '🇧🇼'},
+    {'code': 'TZS', 'symbol': 'TSh', 'name': 'Chelín tanzano', 'flag': '🇹🇿'},
+    {'code': 'UGX', 'symbol': 'USh', 'name': 'Chelín ugandés', 'flag': '🇺🇬'},
+    {'code': 'ETB', 'symbol': 'Br', 'name': 'Birr etíope', 'flag': '🇪🇹'},
+    {'code': 'RWF', 'symbol': 'FRw', 'name': 'Franco ruandés', 'flag': '🇷🇼'},
+    {'code': 'BIF', 'symbol': 'FBu', 'name': 'Franco burundés', 'flag': '🇧🇮'},
+    {'code': 'MWK', 'symbol': 'MK', 'name': 'Kwacha malauí', 'flag': '🇲🇼'},
+    {'code': 'ZMW', 'symbol': 'ZK', 'name': 'Kwacha zambiano', 'flag': '🇿🇲'},
+    {'code': 'AOA', 'symbol': 'Kz', 'name': 'Kwanza angoleño', 'flag': '🇦🇴'},
+    {'code': 'MZN', 'symbol': 'MT', 'name': 'Metical mozambiqueño', 'flag': '🇲🇿'},
+    {'code': 'NAD', 'symbol': r'N$', 'name': 'Dólar namibio', 'flag': '🇳🇦'},
+    {'code': 'SZL', 'symbol': 'L', 'name': 'Lilangeni suazi', 'flag': '🇸🇿'},
+    {'code': 'LSL', 'symbol': 'L', 'name': 'Loti lesotense', 'flag': '🇱🇸'},
+    {'code': 'SCR', 'symbol': 'SR', 'name': 'Rupia de Seychelles', 'flag': '🇸🇨'},
+    {'code': 'MUR', 'symbol': 'Rs', 'name': 'Rupia mauriciana', 'flag': '🇲🇺'},
+    {'code': 'MGA', 'symbol': 'Ar', 'name': 'Ariary malgache', 'flag': '🇲🇬'},
+    {'code': 'CDF', 'symbol': 'FC', 'name': 'Franco congoleño', 'flag': '🇨🇩'},
+    {'code': 'CVE', 'symbol': 'Esc', 'name': 'Escudo caboverdiano', 'flag': '🇨🇻'},
+    {'code': 'GMD', 'symbol': 'D', 'name': 'Dalasi gambiano', 'flag': '🇬🇲'},
+    {'code': 'SLL', 'symbol': 'Le', 'name': 'Leona de Sierra Leona', 'flag': '🇸🇱'},
+    {'code': 'LRD', 'symbol': r'L$', 'name': 'Dólar liberiano', 'flag': '🇱🇷'},
+    {'code': 'LYD', 'symbol': 'LD', 'name': 'Dinar libio', 'flag': '🇱🇾'},
+    {'code': 'SDG', 'symbol': 'LSd', 'name': 'Libra sudanesa', 'flag': '🇸🇩'},
+    {'code': 'MRO', 'symbol': 'UM', 'name': 'Ouguiya mauritana', 'flag': '🇲🇷'},
+    {'code': 'XAF', 'symbol': 'FCFA', 'name': 'Franco CFA de África Central', 'flag': '🇨🇲'},
+    {'code': 'XOF', 'symbol': 'CFA', 'name': 'Franco CFA de África Occidental', 'flag': '🇸🇳'},
+    {'code': 'ALL', 'symbol': 'L', 'name': 'Lek albanés', 'flag': '🇦🇱'},
+    {'code': 'BAM', 'symbol': 'KM', 'name': 'Marco convertible', 'flag': '🇧🇦'},
+    {'code': 'MKD', 'symbol': 'den', 'name': 'Denar macedonio', 'flag': '🇲🇰'},
+    {'code': 'MDL', 'symbol': 'L', 'name': 'Leu moldavo', 'flag': '🇲🇩'},
+    {'code': 'BYN', 'symbol': 'Br', 'name': 'Rublo bielorruso', 'flag': '🇧🇾'},
+    {'code': 'CUC', 'symbol': r'CUC$', 'name': 'Peso cubano convertible', 'flag': '🇨🇺'},
+    {'code': 'HTG', 'symbol': 'G', 'name': 'Gourde haitiano', 'flag': '🇭🇹'},
+    {'code': 'JMD', 'symbol': r'J$', 'name': 'Dólar jamaicano', 'flag': '🇯🇲'},
+    {'code': 'BSD', 'symbol': r'B$', 'name': 'Dólar bahameño', 'flag': '🇧🇸'},
+    {'code': 'BZD', 'symbol': r'BZ$', 'name': 'Dólar beliceño', 'flag': '🇧🇿'},
+    {'code': 'TTD', 'symbol': r'TT$', 'name': 'Dólar de Trinidad y Tobago', 'flag': '🇹🇹'},
+    {'code': 'XCD', 'symbol': r'EC$', 'name': 'Dólar del Caribe Oriental', 'flag': '🇦🇬'},
+  ];
+
+  static List<String> get todosCodigosMoneda => listaMonedas.map((m) => m['code']!).toList();
+  
+  static bool esMonedaValida(String code) => todosCodigosMoneda.contains(code);
+
+  static String getNameOfCurrency(String currencyCode) {
+    final moneda = listaMonedas.firstWhere(
+      (m) => m['code'] == currencyCode,
+      orElse: () => {'name': currencyCode},
+    );
+    return moneda['name']!;
+  }
+
+  static String getFlagOfCurrency(String currencyCode) {
+    final moneda = listaMonedas.firstWhere(
+      (m) => m['code'] == currencyCode,
+      orElse: () => {'flag': '🏳️'},
+    );
+    return moneda['flag']!;
+  }
+
   String _selectedLanguage = 'es';
   String _selectedCurrency = 'BOB';
   Map<String, double> _tiposCambio = {};
+  Set<String> _monedasPersonalizadas = {};
   bool _hasCompletedOnboarding = false;
   List<ModeloCuenta> _accounts = [];
   List<ModeloTransaccion> _transactions = [];
   List<ModeloCategoria> _categories = [];
   List<ModeloAhorro> _savingsGoals = [];
   List<ModeloPresupuesto> _budgets = [];
+  List<ModeloDeuda> _debts = [];
+  bool _modoRendimiento = false;
   bool _esTemaOscuro = false;
   Color _colorPrincipal = const Color(0xFF000000);
   int _selectedDockIndex = 0;
@@ -312,6 +520,7 @@ class EstadoApp extends ChangeNotifier {
   String get selectedLanguage => _selectedLanguage;
   String get selectedCurrency => _selectedCurrency;
   Map<String, double> get tiposCambio => _tiposCambio;
+  Set<String> get monedasPersonalizadas => _monedasPersonalizadas;
   double get tipoCambioUsd => _tiposCambio['USD'] ?? 6.97;
   int get lastLocalUpdateMillis => _lastLocalUpdateMillis;
   String get currencySymbol => getSymbolOfCurrency(_selectedCurrency);
@@ -335,6 +544,8 @@ class EstadoApp extends ChangeNotifier {
     return _savingsGoals;
   }
   List<ModeloPresupuesto> get budgets => _budgets;
+  List<ModeloDeuda> get debts => _debts;
+  bool get modoRendimiento => _modoRendimiento;
   bool get esTemaOscuro => _esTemaOscuro;
   Color get colorPrincipal => _colorPrincipal;
 
@@ -354,6 +565,13 @@ class EstadoApp extends ChangeNotifier {
   bool get debeMostrarFormularioTransaccion => _debeMostrarFormularioTransaccion;
   set debeMostrarFormularioTransaccion(bool val) {
     _debeMostrarFormularioTransaccion = val;
+    notifyListeners();
+  }
+
+  Future<void> setModoRendimiento(bool val) async {
+    _modoRendimiento = val;
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('app_performance_mode', val);
     notifyListeners();
   }
 
@@ -463,26 +681,11 @@ class EstadoApp extends ChangeNotifier {
   }
 
   static String getSymbolOfCurrency(String currencyCode) {
-    switch (currencyCode) {
-      case 'BOB':
-        return 'Bs';
-      case 'MXN':
-      case 'USD':
-        return '\$';
-      case 'EUR':
-        return '€';
-      case 'GBP':
-        return '£';
-      case 'JPY':
-      case 'CNY':
-        return '¥';
-      case 'KRW':
-        return '₩';
-      case 'INR':
-        return '₹';
-      default:
-        return 'Bs';
-    }
+    final moneda = listaMonedas.firstWhere(
+      (m) => m['code'] == currencyCode,
+      orElse: () => {'symbol': '\$'},
+    );
+    return moneda['symbol']!;
   }
 
   Future<void> setTasaCambio(String code, double valor) async {
@@ -496,6 +699,60 @@ class EstadoApp extends ChangeNotifier {
 
   Future<void> setTipoCambioUsd(double valor) async {
     await setTasaCambio('USD', valor);
+  }
+
+  Future<void> marcarMonedaComoPersonalizada(String code) async {
+    _monedasPersonalizadas.add(code);
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('app_monedas_personalizadas', _monedasPersonalizadas.toList());
+    notifyListeners();
+  }
+
+  Future<void> removerMonedaPersonalizada(String code) async {
+    _monedasPersonalizadas.remove(code);
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('app_monedas_personalizadas', _monedasPersonalizadas.toList());
+    notifyListeners();
+  }
+
+  Future<bool> actualizarTasasDesdeInternet({bool respetarPersonalizadas = true}) async {
+    try {
+      final client = HttpClient();
+      final uri = Uri.parse('https://open.er-api.com/v6/latest/$_selectedCurrency');
+      final request = await client.getUrl(uri).timeout(const Duration(seconds: 10));
+      final response = await request.close();
+      
+      if (response.statusCode == 200) {
+        final jsonString = await response.transform(utf8.decoder).join();
+        final data = json.decode(jsonString);
+        
+        if (data['result'] == 'success') {
+          final Map<String, dynamic> ratesJson = data['rates'];
+          
+          ratesJson.forEach((moneda, valorEnMoneda) {
+            final double val = (valorEnMoneda as num).toDouble();
+            if (val > 0) {
+              if (!respetarPersonalizadas || !_monedasPersonalizadas.contains(moneda)) {
+                _tiposCambio[moneda] = 1.0 / val;
+              }
+            }
+          });
+          
+          _tiposCambio[_selectedCurrency] = 1.0;
+          _lastLocalUpdateMillis = DateTime.now().millisecondsSinceEpoch;
+          
+          final SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setString('app_tipos_cambio', json.encode(_tiposCambio));
+          await prefs.setInt('app_last_local_update_millis', _lastLocalUpdateMillis);
+          
+          _notificarYSincronizar();
+          return true;
+        }
+      }
+    } catch (e) {
+      debugPrint("Error al actualizar tasas desde internet: $e");
+    }
+    return false;
   }
 
   double get totalBalance {
@@ -556,7 +813,28 @@ class EstadoApp extends ChangeNotifier {
       'CNY': 0.96,
       'KRW': 0.005,
       'INR': 0.08,
+      'ARS': 0.0048,
+      'BRL': 1.25,
+      'CLP': 0.0075,
+      'COP': 0.0017,
+      'PEN': 1.85,
+      'UYU': 0.18,
+      'PYG': 0.00092,
+      'CRC': 0.013,
+      'GTQ': 0.90,
+      'HNL': 0.28,
+      'NIO': 0.19,
+      'VES': 0.19,
+      'DOP': 0.12,
+      'PAB': 6.97,
     };
+    
+    for (var m in listaMonedas) {
+      final code = m['code']!;
+      if (!_tiposCambio.containsKey(code)) {
+        _tiposCambio[code] = 1.0;
+      }
+    }
   }
 
   late final Future<void> initFuture;
@@ -577,14 +855,47 @@ class EstadoApp extends ChangeNotifier {
       try {
         final Map<String, dynamic> decoded = json.decode(tiposCambioJson);
         _tiposCambio = decoded.map((key, value) => MapEntry(key, (value as num).toDouble()));
+
+        bool huboFaltantes = false;
+        for (var m in listaMonedas) {
+          final code = m['code']!;
+          if (!_tiposCambio.containsKey(code)) {
+            final Map<String, double> tasasReferenciales = {
+              'ARS': 0.0048,
+              'BRL': 1.25,
+              'CLP': 0.0075,
+              'COP': 0.0017,
+              'PEN': 1.85,
+              'UYU': 0.18,
+              'PYG': 0.00092,
+              'CRC': 0.013,
+              'GTQ': 0.90,
+              'HNL': 0.28,
+              'NIO': 0.19,
+              'VES': 0.19,
+              'DOP': 0.12,
+              'PAB': 6.97,
+            };
+            _tiposCambio[code] = tasasReferenciales[code] ?? 1.0;
+            huboFaltantes = true;
+          }
+        }
+        if (huboFaltantes) {
+          await prefs.setString('app_tipos_cambio', json.encode(_tiposCambio));
+        }
       } catch (_) {
         _inicializarTasasDefecto();
       }
     } else {
       _inicializarTasasDefecto();
     }
-    
-    _tiposCambio[_selectedCurrency] = 1.0; // Garantizar que la moneda principal tenga siempre tasa 1.0
+
+    _tiposCambio[_selectedCurrency] = 1.0;
+
+    final List<String>? personalizadasList = prefs.getStringList('app_monedas_personalizadas');
+    if (personalizadasList != null) {
+      _monedasPersonalizadas = personalizadasList.toSet();
+    }
     
     _hasCompletedOnboarding = prefs.getBool('app_onboarding_completed') ?? false;
     _esTemaOscuro = prefs.getBool('app_dark_mode') ?? false;
@@ -668,6 +979,14 @@ class EstadoApp extends ChangeNotifier {
     if (budgetsJson != null) {
       final List<dynamic> decoded = json.decode(budgetsJson);
       _budgets = decoded.map((item) => ModeloPresupuesto.fromMap(item)).toList();
+    }
+
+    _modoRendimiento = prefs.getBool('app_performance_mode') ?? false;
+
+    final String? debtsJson = prefs.getString('app_debts');
+    if (debtsJson != null) {
+      final List<dynamic> decoded = json.decode(debtsJson);
+      _debts = decoded.map((item) => ModeloDeuda.fromMap(item)).toList();
     }
 
     notifyListeners();
@@ -915,6 +1234,56 @@ class EstadoApp extends ChangeNotifier {
     await _saveAccountsToPrefs(prefs);
     await _saveTransactionsToPrefs(prefs);
 
+    _subirTransaccionASubcoleccion(newTx);
+
+    _notificarYSincronizar();
+  }
+
+  Future<void> importarTransaccionesMasivas(List<ModeloTransaccion> nuevasTxs) async {
+    for (var tx in nuevasTxs) {
+      _transactions.add(tx);
+      if (tx.pagada) {
+        if (tx.type == 'gasto') {
+          final idx = _accounts.indexWhere((acc) => acc.id == tx.accountId);
+          if (idx != -1) {
+            _accounts[idx].balance -= tx.amount;
+          }
+        } else if (tx.type == 'ingreso') {
+          final idx = _accounts.indexWhere((acc) => acc.id == tx.accountId);
+          if (idx != -1) {
+            _accounts[idx].balance += tx.amount;
+          }
+        } else if (tx.type == 'transferencia' && tx.toAccountId != null) {
+          final originIdx = _accounts.indexWhere((acc) => acc.id == tx.accountId);
+          final destIdx = _accounts.indexWhere((acc) => acc.id == tx.toAccountId);
+          if (originIdx != -1) {
+            _accounts[originIdx].balance -= tx.amount;
+          }
+          if (originIdx != -1 && destIdx != -1) {
+            final originAcc = _accounts[originIdx];
+            final destAcc = _accounts[destIdx];
+            final originCurrency = originAcc.currency ?? _selectedCurrency;
+            final destCurrency = destAcc.currency ?? _selectedCurrency;
+            
+            final amountConvertido = convertirMoneda(tx.amount, originCurrency, destCurrency);
+            _accounts[destIdx].balance += amountConvertido;
+          }
+        }
+      }
+    }
+
+    // Ordenar todas las transacciones por fecha descendente
+    _transactions.sort((a, b) => b.date.compareTo(a.date));
+
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await _saveAccountsToPrefs(prefs);
+    await _saveTransactionsToPrefs(prefs);
+
+    final user = ServicioAutenticacion().currentUser;
+    if (user != null && !user.uid.startsWith('demo_')) {
+      _migrarTransaccionesASubcolecciones(user.uid, nuevasTxs);
+    }
+
     _notificarYSincronizar();
   }
 
@@ -1019,6 +1388,8 @@ class EstadoApp extends ChangeNotifier {
     await _saveAccountsToPrefs(prefs);
     await _saveTransactionsToPrefs(prefs);
 
+    _subirTransaccionASubcoleccion(_transactions[idxTx]);
+
     _notificarYSincronizar();
   }
 
@@ -1062,6 +1433,8 @@ class EstadoApp extends ChangeNotifier {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await _saveAccountsToPrefs(prefs);
     await _saveTransactionsToPrefs(prefs);
+
+    _eliminarTransaccionDeSubcoleccion(id);
 
     _notificarYSincronizar();
   }
@@ -1185,6 +1558,61 @@ class EstadoApp extends ChangeNotifier {
     final List<Map<String, dynamic>> mapped = _budgets.map((b) => b.toMap()).toList();
     await prefs.setString('app_budgets', json.encode(mapped));
     await _updateLocalTimestamp(prefs);
+  }
+
+  Future<void> _saveDebtsToPrefs(SharedPreferences prefs) async {
+    final List<Map<String, dynamic>> mapped = _debts.map((d) => d.toMap()).toList();
+    await prefs.setString('app_debts', json.encode(mapped));
+    await _updateLocalTimestamp(prefs);
+  }
+
+  Future<void> addDebt(ModeloDeuda debt) async {
+    _debts.add(debt);
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await _saveDebtsToPrefs(prefs);
+    _notificarYSincronizar();
+  }
+
+  Future<void> updateDebt(ModeloDeuda debt) async {
+    final idx = _debts.indexWhere((d) => d.id == debt.id);
+    if (idx != -1) {
+      _debts[idx] = debt;
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      await _saveDebtsToPrefs(prefs);
+      _notificarYSincronizar();
+    }
+  }
+
+  Future<void> deleteDebt(String id) async {
+    _debts.removeWhere((d) => d.id == id);
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await _saveDebtsToPrefs(prefs);
+    _notificarYSincronizar();
+  }
+
+  Future<void> addPaymentToDebt(String id, double amount, {String? accountId}) async {
+    final idx = _debts.indexWhere((d) => d.id == id);
+    if (idx != -1) {
+      final debt = _debts[idx];
+      debt.paidAmount += amount;
+      
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      await _saveDebtsToPrefs(prefs);
+      
+      // Registrar transaccion real en la contabilidad
+      if (accountId != null) {
+        await addTransaction(
+          title: 'Abono: ${debt.lender}',
+          description: 'Abono a deuda registrada',
+          amount: amount,
+          category: 'Préstamos / Deudas',
+          type: 'gasto',
+          accountId: accountId,
+        );
+      } else {
+        _notificarYSincronizar();
+      }
+    }
   }
 
   Future<void> addSavingGoal(ModeloAhorro goal) async {
@@ -1343,7 +1771,7 @@ class EstadoApp extends ChangeNotifier {
   }
 
   static final Map<String, IconData> galleryIcons = {
-    // Alimentos y Bebidas
+    // === ALIMENTACIÓN Y BEBIDAS ===
     'restaurant': Icons.restaurant_rounded,
     'local_cafe': Icons.local_cafe_rounded,
     'fastfood': Icons.fastfood_rounded,
@@ -1353,8 +1781,24 @@ class EstadoApp extends ChangeNotifier {
     'local_pizza': Icons.local_pizza_rounded,
     'cake': Icons.cake_rounded,
     'soup_kitchen': Icons.soup_kitchen_rounded,
+    'dinner_dining': Icons.dinner_dining_rounded,
+    'brunch_dining': Icons.brunch_dining_rounded,
+    'lunch_dining': Icons.lunch_dining_rounded,
+    'breakfast_dining': Icons.breakfast_dining_rounded,
+    'ramen_dining': Icons.ramen_dining_rounded,
+    'liquor': Icons.liquor_rounded,
+    'wine_bar': Icons.wine_bar_rounded,
+    'coffee': Icons.coffee_rounded,
+    'kitchen': Icons.kitchen_rounded,
+    'cookie': Icons.cookie_rounded,
+    'egg': Icons.egg_rounded,
+    'flatware': Icons.flatware_rounded,
+    'takeout_dining': Icons.takeout_dining_rounded,
+    'restaurant_menu': Icons.restaurant_menu_rounded,
+    'delivery_dining': Icons.delivery_dining_rounded,
+    'sports_bar': Icons.sports_bar_rounded,
 
-    // Compras y Retail
+    // === COMPRAS Y RETAIL ===
     'shopping_cart': Icons.shopping_cart_rounded,
     'shopping_bag': Icons.shopping_bag_rounded,
     'store': Icons.store_rounded,
@@ -1365,8 +1809,18 @@ class EstadoApp extends ChangeNotifier {
     'storefront': Icons.storefront_rounded,
     'local_offer': Icons.local_offer_rounded,
     'outlet': Icons.outlet_rounded,
+    'shopping_basket': Icons.shopping_basket_rounded,
+    'store_mall_directory': Icons.store_mall_directory_rounded,
+    'price_check': Icons.price_check_rounded,
+    'price_change': Icons.price_change_rounded,
+    'qr_code': Icons.qr_code_rounded,
+    'badge': Icons.badge_rounded,
+    'card_membership': Icons.card_membership_rounded,
+    'receipt': Icons.receipt_rounded,
+    'receipt_long': Icons.receipt_long_rounded,
+    'point_of_sale': Icons.point_of_sale_rounded,
 
-    // Transporte y Viajes
+    // === TRANSPORTE Y VIAJES ===
     'directions_car': Icons.directions_car_rounded,
     'directions_bus': Icons.directions_bus_rounded,
     'directions_subway': Icons.directions_subway_rounded,
@@ -1378,8 +1832,20 @@ class EstadoApp extends ChangeNotifier {
     'beach_access': Icons.beach_access_rounded,
     'commute': Icons.commute_rounded,
     'luggage': Icons.luggage_rounded,
+    'car_rental': Icons.car_rental_rounded,
+    'car_repair': Icons.car_repair_rounded,
+    'ev_station': Icons.ev_station_rounded,
+    'tire_repair': Icons.tire_repair_rounded,
+    'electric_car': Icons.electric_car_rounded,
+    'local_parking': Icons.local_parking_rounded,
+    'traffic': Icons.traffic_rounded,
+    'flight_takeoff': Icons.flight_takeoff_rounded,
+    'flight_land': Icons.flight_land_rounded,
+    'directions_boat': Icons.directions_boat_rounded,
+    'motorcycle': Icons.motorcycle_rounded,
+    'local_gas_station': Icons.local_gas_station_rounded,
 
-    // Servicios y Facturas
+    // === SERVICIOS Y FACTURAS ===
     'electrical_services': Icons.electrical_services_rounded,
     'water_drop': Icons.water_drop_rounded,
     'router': Icons.router_rounded,
@@ -1390,8 +1856,17 @@ class EstadoApp extends ChangeNotifier {
     'wifi': Icons.wifi_rounded,
     'gas_meter': Icons.gas_meter_rounded,
     'power': Icons.power_rounded,
+    'electric_meter': Icons.electric_meter_rounded,
+    'smart_toy': Icons.smart_toy_rounded,
+    'print': Icons.print_rounded,
+    'memory': Icons.memory_rounded,
+    'headset_mic': Icons.headset_mic_rounded,
+    'sim_card': Icons.sim_card_rounded,
+    'security': Icons.security_rounded,
+    'shield': Icons.shield_rounded,
+    'vpn_lock': Icons.vpn_lock_rounded,
 
-    // Entretenimiento y Ocio
+    // === ENTRETENIMIENTO Y OCIO ===
     'sports_esports': Icons.sports_esports_rounded,
     'movie': Icons.movie_rounded,
     'celebration': Icons.celebration_rounded,
@@ -1402,8 +1877,24 @@ class EstadoApp extends ChangeNotifier {
     'theater_comedy': Icons.theater_comedy_rounded,
     'brush': Icons.brush_rounded,
     'confirmation_number': Icons.confirmation_number_rounded,
+    'videogame_asset': Icons.videogame_asset_rounded,
+    'sports_basketball': Icons.sports_basketball_rounded,
+    'sports_tennis': Icons.sports_tennis_rounded,
+    'sports_baseball': Icons.sports_baseball_rounded,
+    'sports_volleyball': Icons.sports_volleyball_rounded,
+    'sports_golf': Icons.sports_golf_rounded,
+    'sports_mma': Icons.sports_mma_rounded,
+    'sports_motorsports': Icons.sports_motorsports_rounded,
+    'golf_course': Icons.golf_course_rounded,
+    'mic': Icons.mic_rounded,
+    'radio': Icons.radio_rounded,
+    'piano': Icons.piano_rounded,
+    'headphones': Icons.headphones_rounded,
+    'camera_alt': Icons.camera_alt_rounded,
+    'videocam': Icons.videocam_rounded,
+    'toys': Icons.toys_rounded,
 
-    // Hogar y Familia
+    // === HOGAR Y FAMILIA ===
     'home': Icons.home_rounded,
     'pets': Icons.pets_rounded,
     'child_care': Icons.child_care_rounded,
@@ -1414,8 +1905,26 @@ class EstadoApp extends ChangeNotifier {
     'grass': Icons.grass_rounded,
     'cleaning_services': Icons.cleaning_services_rounded,
     'weekend': Icons.weekend_rounded,
+    'yard': Icons.yard_rounded,
+    'deck': Icons.deck_rounded,
+    'fireplace': Icons.fireplace_rounded,
+    'ac_unit': Icons.ac_unit_rounded,
+    'solar_power': Icons.solar_power_rounded,
+    'roofing': Icons.roofing_rounded,
+    'window': Icons.window_rounded,
+    'door_front': Icons.meeting_room_rounded,
+    'bedroom_parent': Icons.bedroom_parent_rounded,
+    'bedroom_child': Icons.bedroom_child_rounded,
+    'bathroom': Icons.bathroom_rounded,
+    'shower': Icons.shower_rounded,
+    'bathtub': Icons.bathtub_rounded,
+    'plumbing': Icons.plumbing_rounded,
+    'microwave': Icons.microwave_rounded,
+    'pest_control': Icons.pest_control_rounded,
+    'coffee_maker': Icons.coffee_maker_rounded,
+    'blender': Icons.blender_rounded,
 
-    // Educación y Trabajo
+    // === EDUCACIÓN Y TRABAJO ===
     'school': Icons.school_rounded,
     'work': Icons.work_rounded,
     'laptop': Icons.laptop_chromebook_rounded,
@@ -1426,8 +1935,14 @@ class EstadoApp extends ChangeNotifier {
     'science': Icons.science_rounded,
     'psychology': Icons.psychology_rounded,
     'draw': Icons.draw_rounded,
+    'book': Icons.book_rounded,
+    'auto_stories': Icons.auto_stories_rounded,
+    'backpack': Icons.backpack_rounded,
+    'architecture': Icons.architecture_rounded,
+    'calculate': Icons.calculate_rounded,
+    'history_edu': Icons.history_edu_rounded,
 
-    // Salud y Bienestar
+    // === SALUD Y BIENESTAR ===
     'local_hospital': Icons.local_hospital_rounded,
     'fitness_center': Icons.fitness_center_rounded,
     'medication': Icons.medication_rounded,
@@ -1437,8 +1952,15 @@ class EstadoApp extends ChangeNotifier {
     'medical_services': Icons.medical_services_rounded,
     'face': Icons.face_rounded,
     'masks': Icons.masks_rounded,
+    'coronavirus': Icons.coronavirus_rounded,
+    'vaccines': Icons.vaccines_rounded,
+    'health_and_safety': Icons.health_and_safety_rounded,
+    'elderly': Icons.elderly_rounded,
+    'baby_changing_station': Icons.baby_changing_station_rounded,
+    'wheelchair_pickup': Icons.wheelchair_pickup_rounded,
+    'personal_injury': Icons.personal_injury_rounded,
 
-    // Finanzas
+    // === FINANZAS E INGRESOS ===
     'savings': Icons.savings_rounded,
     'payments': Icons.payments_rounded,
     'trending_up': Icons.trending_up_rounded,
@@ -1449,20 +1971,106 @@ class EstadoApp extends ChangeNotifier {
     'wallet': Icons.wallet_rounded,
     'percent': Icons.percent_rounded,
     'credit_card': Icons.credit_card_rounded,
+    'account_balance_wallet': Icons.account_balance_wallet_rounded,
+    'work_history': Icons.work_history_rounded,
+    'add_card': Icons.add_card_rounded,
+    'analytics': Icons.analytics_rounded,
+    'pie_chart': Icons.pie_chart_rounded,
+    'insights': Icons.insights_rounded,
+    'bar_chart': Icons.bar_chart_rounded,
+    'currency_exchange': Icons.currency_exchange_rounded,
+    'toll': Icons.toll_rounded,
+    'currency_bitcoin': Icons.currency_bitcoin_rounded,
+    'euro': Icons.euro_symbol_rounded,
+    'emoji_events': Icons.emoji_events_rounded,
+    'star': Icons.star_rounded,
+    'workspace_premium': Icons.workspace_premium_rounded,
+    'add_business': Icons.add_business_rounded,
+    'real_estate_agent': Icons.real_estate_agent_rounded,
+    'domain': Icons.domain_rounded,
 
-    // Otros y Varios
+    // === SOCIAL Y COMUNIDAD ===
+    'group': Icons.group_rounded,
+    'people': Icons.people_rounded,
+    'diversity_1': Icons.diversity_1_rounded,
+    'diversity_2': Icons.diversity_2_rounded,
+    'diversity_3': Icons.diversity_3_rounded,
+    'handshake': Icons.handshake_rounded,
+    'sentiment_satisfied': Icons.sentiment_satisfied_rounded,
+    'volunteer_activism': Icons.volunteer_activism_rounded,
+
+    // === VIAJES Y AIRE LIBRE ===
+    'explore': Icons.explore_rounded,
+    'hiking': Icons.hiking_rounded,
+    'landscape': Icons.landscape_rounded,
+    'forest': Icons.forest_rounded,
+    'mountain': Icons.forest_rounded,
+    'pool': Icons.pool_rounded,
+    'sailing': Icons.sailing_rounded,
+    'kayaking': Icons.kayaking_rounded,
+    'cabin': Icons.cabin_rounded,
+    'camping': Icons.forest_rounded,
+    'attractions': Icons.attractions_rounded,
+    'map': Icons.map_rounded,
+
+    // === CUIDADO PERSONAL ===
+    'content_cut': Icons.content_cut_rounded,
+    'dry_cleaning': Icons.dry_cleaning_rounded,
+    'iron': Icons.iron_rounded,
+    'umbrella': Icons.umbrella_rounded,
+    'soap': Icons.soap_rounded,
+
+    // === OTROS Y VARIOS ===
     'category': Icons.category_rounded,
     'card_giftcard': Icons.card_giftcard_rounded,
-    'local_gas_station': Icons.local_gas_station_rounded,
     'build': Icons.build_rounded,
-    'volunteer_activism': Icons.volunteer_activism_rounded,
     'redeem': Icons.redeem_rounded,
     'verified_user': Icons.verified_user_rounded,
     'clean_hands': Icons.clean_hands_rounded,
     'vpn_key': Icons.vpn_key_rounded,
     'favorite': Icons.favorite_rounded,
     'remove_circle_outline': Icons.remove_circle_outline_rounded,
+    'gavel': Icons.gavel_rounded,
+    'balance': Icons.balance_rounded,
+    'policy': Icons.policy_rounded,
   };
+
+  static final List<String> expenseIconKeys = [
+    'restaurant', 'local_cafe', 'fastfood', 'local_bar', 'bakery_dining', 'icecream', 'local_pizza', 'cake', 'soup_kitchen',
+    'dinner_dining', 'brunch_dining', 'lunch_dining', 'breakfast_dining', 'ramen_dining', 'liquor', 'wine_bar', 'coffee',
+    'kitchen', 'cookie', 'egg', 'flatware', 'takeout_dining', 'restaurant_menu', 'delivery_dining', 'sports_bar',
+    'shopping_cart', 'shopping_bag', 'store', 'sell', 'checkroom', 'local_mall', 'storefront', 'local_offer', 'outlet',
+    'shopping_basket', 'store_mall_directory', 'price_check', 'qr_code', 'receipt', 'receipt_long',
+    'directions_car', 'directions_bus', 'directions_subway', 'flight', 'local_taxi', 'pedal_bike', 'train', 'hotel',
+    'beach_access', 'commute', 'luggage', 'car_rental', 'car_repair', 'ev_station', 'tire_repair', 'electric_car',
+    'local_parking', 'traffic', 'flight_takeoff', 'flight_land', 'directions_boat', 'motorcycle', 'local_gas_station',
+    'electrical_services', 'water_drop', 'router', 'tv', 'phone_android', 'bolt', 'lightbulb', 'wifi', 'gas_meter',
+    'power', 'electric_meter', 'smart_toy', 'print', 'memory', 'headset_mic', 'sim_card', 'security', 'shield', 'vpn_lock',
+    'sports_esports', 'movie', 'celebration', 'music_note', 'sports_soccer', 'palette', 'casino', 'theater_comedy',
+    'brush', 'confirmation_number', 'videogame_asset', 'sports_basketball', 'sports_tennis', 'sports_baseball',
+    'sports_volleyball', 'sports_golf', 'sports_mma', 'sports_motorsports', 'golf_course', 'mic', 'radio', 'piano',
+    'headphones', 'camera_alt', 'videocam', 'toys',
+    'home', 'pets', 'child_care', 'family_restroom', 'handyman', 'chair', 'house', 'grass', 'cleaning_services', 'weekend',
+    'yard', 'deck', 'fireplace', 'ac_unit', 'solar_power', 'roofing', 'window', 'door_front', 'bedroom_parent',
+    'bedroom_child', 'bathroom', 'shower', 'bathtub', 'plumbing', 'microwave', 'pest_control', 'coffee_maker', 'blender',
+    'school', 'work', 'laptop', 'laptop_chromebook', 'business_center', 'menu_book', 'assignment', 'science', 'psychology',
+    'draw', 'book', 'auto_stories', 'backpack', 'architecture', 'calculate', 'history_edu',
+    'local_hospital', 'fitness_center', 'medication', 'spa', 'self_improvement', 'healing', 'medical_services', 'face',
+    'masks', 'coronavirus', 'vaccines', 'health_and_safety', 'elderly', 'baby_changing_station', 'wheelchair_pickup',
+    'personal_injury',
+    'group', 'people', 'diversity_1', 'diversity_2', 'diversity_3', 'handshake', 'sentiment_satisfied', 'volunteer_activism',
+    'explore', 'hiking', 'landscape', 'forest', 'mountain', 'pool', 'sailing', 'kayaking', 'cabin', 'camping', 'attractions', 'map',
+    'content_cut', 'dry_cleaning', 'iron', 'umbrella', 'soap',
+    'category', 'build', 'favorite', 'remove_circle_outline', 'gavel', 'balance', 'policy'
+  ];
+
+  static final List<String> incomeIconKeys = [
+    'savings', 'payments', 'trending_up', 'account_balance', 'monetization_on', 'show_chart', 'attach_money', 'wallet',
+    'percent', 'credit_card', 'account_balance_wallet', 'work_history', 'add_card', 'analytics', 'pie_chart', 'insights',
+    'bar_chart', 'currency_exchange', 'toll', 'currency_bitcoin', 'euro', 'emoji_events', 'star', 'workspace_premium',
+    'add_business', 'real_estate_agent', 'domain', 'store', 'sell', 'price_check', 'price_change', 'point_of_sale',
+    'card_giftcard', 'redeem', 'verified_user', 'clean_hands', 'vpn_key', 'favorite'
+  ];
 
   static final List<ModeloCategoria> categoriasPorDefecto = [
     // ALIMENTACIÓN (Comida)
@@ -1568,6 +2176,22 @@ class EstadoApp extends ChangeNotifier {
         iconCode: iconCode,
         hexColor: hexColor,
       );
+
+      // Si es categoría padre, actualizar el color de todos sus hijos
+      if (parentId == null) {
+        for (int i = 0; i < _categories.length; i++) {
+          if (_categories[i].parentId == id) {
+            _categories[i] = ModeloCategoria(
+              id: _categories[i].id,
+              name: _categories[i].name,
+              parentId: _categories[i].parentId,
+              iconCode: _categories[i].iconCode,
+              hexColor: hexColor,
+            );
+          }
+        }
+      }
+
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await _saveCategoriesToPrefs(prefs);
       _notificarYSincronizar();
@@ -1605,13 +2229,89 @@ class EstadoApp extends ChangeNotifier {
     });
   }
 
+  void _subirTransaccionASubcoleccion(ModeloTransaccion tx) {
+    final user = ServicioAutenticacion().currentUser;
+    if (user != null && !user.uid.startsWith('demo_')) {
+      FirebaseFirestore.instance
+          .collection('usuarios')
+          .doc(user.uid)
+          .collection('transacciones')
+          .doc(tx.id)
+          .set(tx.toMap())
+          .catchError((e) => debugPrint('Error al subir transaccion: $e'));
+    }
+  }
+
+  void _eliminarTransaccionDeSubcoleccion(String id) {
+    final user = ServicioAutenticacion().currentUser;
+    if (user != null && !user.uid.startsWith('demo_')) {
+      FirebaseFirestore.instance
+          .collection('usuarios')
+          .doc(user.uid)
+          .collection('transacciones')
+          .doc(id)
+          .delete()
+          .catchError((e) => debugPrint('Error al eliminar transaccion: $e'));
+    }
+  }
+
+  Future<void> _migrarTransaccionesASubcolecciones(String uid, List<ModeloTransaccion> transacciones) async {
+    try {
+      final userDocRef = FirebaseFirestore.instance.collection('usuarios').doc(uid);
+      final subCollRef = userDocRef.collection('transacciones');
+
+      // Escribir en lotes de 400 para respetar el límite de 500 por lote de Firestore
+      final int chunkSize = 400;
+      for (int i = 0; i < transacciones.length; i += chunkSize) {
+        final chunk = transacciones.sublist(i, i + chunkSize > transacciones.length ? transacciones.length : i + chunkSize);
+        final batch = FirebaseFirestore.instance.batch();
+        for (var tx in chunk) {
+          final txDocRef = subCollRef.doc(tx.id);
+          batch.set(txDocRef, tx.toMap());
+        }
+        await batch.commit().timeout(const Duration(seconds: 10));
+      }
+
+      // Marcar como migrado en el documento principal y borrar array antiguo
+      await userDocRef.update({
+        'transacciones_migradas': true,
+        'transacciones': FieldValue.delete(),
+        'ultimaActualizacion': FieldValue.serverTimestamp(),
+      }).timeout(const Duration(seconds: 10));
+
+      debugPrint('Migración a subcolecciones completada con éxito para $uid (${transacciones.length} txs)');
+    } catch (e) {
+      debugPrint('Error durante la migración de transacciones: $e');
+    }
+  }
+
+  Future<List<ModeloTransaccion>> _cargarTransaccionesDesdeNube(String uid) async {
+    try {
+      final querySnap = await FirebaseFirestore.instance
+          .collection('usuarios')
+          .doc(uid)
+          .collection('transacciones')
+          .get()
+          .timeout(const Duration(seconds: 10));
+      
+      final List<ModeloTransaccion> list = querySnap.docs.map((doc) {
+        return ModeloTransaccion.fromMap(Map<String, dynamic>.from(doc.data()));
+      }).toList();
+
+      // Ordenar por fecha descendente
+      list.sort((a, b) => b.date.compareTo(a.date));
+      return list;
+    } catch (e) {
+      debugPrint('Error al cargar transacciones desde nube: $e');
+      return [];
+    }
+  }
+
   Future<bool> sincronizarConNube(String uid, {bool forceUploadLocal = false}) async {
     activarEscuchaTiempoReal(uid);
     _isSyncing = true; // Bloquear re-subida durante sincronizacion inicial
     try {
       // Registrar a que cuenta pertenecen los datos locales de este dispositivo.
-      // Permite a la pantalla de login no preguntar por conflicto cuando el
-      // usuario vuelve a entrar con la MISMA cuenta.
       try {
         final SharedPreferences prefsUid = await SharedPreferences.getInstance();
         await prefsUid.setString('app_last_uid', uid);
@@ -1658,9 +2358,14 @@ class EstadoApp extends ChangeNotifier {
             }
           }
 
-          if (data['transacciones'] != null) {
+          // Cargar / migrar transacciones desde subcolecciones
+          final tieneBanderaMigrado = data['transacciones_migradas'] == true;
+          if (!tieneBanderaMigrado && data['transacciones'] != null && (data['transacciones'] as List).isNotEmpty) {
             final List<dynamic> transactionsData = data['transacciones'];
             _transactions = transactionsData.map((item) => ModeloTransaccion.fromMap(Map<String, dynamic>.from(item))).toList();
+            await _migrarTransaccionesASubcolecciones(uid, _transactions);
+          } else {
+            _transactions = await _cargarTransaccionesDesdeNube(uid);
           }
 
           if (data['categorias'] != null) {
@@ -1678,6 +2383,11 @@ class EstadoApp extends ChangeNotifier {
             _budgets = budgetsData.map((item) => ModeloPresupuesto.fromMap(Map<String, dynamic>.from(item))).toList();
           }
 
+          if (data['deudas'] != null) {
+            final List<dynamic> debtsData = data['deudas'];
+            _debts = debtsData.map((item) => ModeloDeuda.fromMap(Map<String, dynamic>.from(item))).toList();
+          }
+
           final SharedPreferences prefs = await SharedPreferences.getInstance();
           await prefs.setBool('app_dark_mode', _esTemaOscuro);
           await prefs.setInt('app_primary_color', _colorPrincipal.toARGB32());
@@ -1690,6 +2400,7 @@ class EstadoApp extends ChangeNotifier {
           await _saveCategoriesToPrefs(prefs);
           await _saveSavingsGoalsToPrefs(prefs);
           await _saveBudgetsToPrefs(prefs);
+          await _saveDebtsToPrefs(prefs);
 
           // Asignar el timestamp oficial de la nube al final para evitar que los metodos de guardado lo pisen
           if (cloudTimestamp != null && cloudTimestamp is Timestamp) {
@@ -1717,10 +2428,10 @@ class EstadoApp extends ChangeNotifier {
     try {
       final docRef = FirebaseFirestore.instance.collection('usuarios').doc(uid);
       final accountsMapList = _accounts.map((acc) => acc.toMap()).toList();
-      final transactionsMapList = _transactions.map((tx) => tx.toMap()).toList();
       final categoriesMapList = _categories.map((cat) => cat.toMap()).toList();
       final savingsMapList = _savingsGoals.map((g) => g.toMap()).toList();
       final budgetsMapList = _budgets.map((b) => b.toMap()).toList();
+      final debtsMapList = _debts.map((d) => d.toMap()).toList();
 
       await docRef.set({
         'uid': uid,
@@ -1729,10 +2440,11 @@ class EstadoApp extends ChangeNotifier {
         'tiposCambio': _tiposCambio,
         'tipoCambioUsd': _tiposCambio['USD'] ?? 6.97,
         'cuentas': accountsMapList,
-        'transacciones': transactionsMapList,
         'categorias': categoriesMapList,
         'ahorros': savingsMapList,
         'presupuestos': budgetsMapList,
+        'deudas': debtsMapList,
+        'transacciones_migradas': true,
         'ultimaActualizacion': FieldValue.serverTimestamp(),
       }).timeout(const Duration(seconds: 10));
 
@@ -1742,6 +2454,69 @@ class EstadoApp extends ChangeNotifier {
       await prefs.setInt('app_last_local_update_millis', _lastLocalUpdateMillis);
     } catch (e) {
       debugPrint('Error al subir datos a la nube: $e');
+      return;
+    }
+  }
+  void desactivarEscuchaTiempoReal() {
+    _nubeSubscription?.cancel();
+    _nubeSubscription = null;
+  }
+
+  Future<bool> importarDatosDesdeJson(String jsonString) async {
+    try {
+      final Map<String, dynamic> data = json.decode(jsonString);
+      if (data['version'] == null) return false;
+
+      // Parse accounts
+      if (data['cuentas'] != null) {
+        final List<dynamic> accountsData = data['cuentas'];
+        _accounts = accountsData.map((item) => ModeloCuenta.fromMap(Map<String, dynamic>.from(item))).toList();
+      }
+
+      // Parse transactions
+      if (data['transacciones'] != null) {
+        final List<dynamic> transactionsData = data['transacciones'];
+        _transactions = transactionsData.map((item) => ModeloTransaccion.fromMap(Map<String, dynamic>.from(item))).toList();
+      }
+
+      // Parse categories
+      if (data['categorias'] != null) {
+        final List<dynamic> categoriesData = data['categorias'];
+        _categories = categoriesData.map((item) => ModeloCategoria.fromMap(Map<String, dynamic>.from(item))).toList();
+      }
+
+      // Parse savings
+      if (data['ahorros'] != null) {
+        final List<dynamic> savingsData = data['ahorros'];
+        _savingsGoals = savingsData.map((item) => ModeloAhorro.fromMap(Map<String, dynamic>.from(item))).toList();
+      }
+
+      // Parse budgets
+      if (data['presupuestos'] != null) {
+        final List<dynamic> budgetsData = data['presupuestos'];
+        _budgets = budgetsData.map((item) => ModeloPresupuesto.fromMap(Map<String, dynamic>.from(item))).toList();
+      }
+
+      if (_accounts.isNotEmpty) {
+        _hasCompletedOnboarding = true;
+      }
+
+      _lastLocalUpdateMillis = DateTime.now().millisecondsSinceEpoch;
+
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('app_onboarding_completed', _hasCompletedOnboarding);
+      await _saveAccountsToPrefs(prefs);
+      await _saveTransactionsToPrefs(prefs);
+      await _saveCategoriesToPrefs(prefs);
+      await _saveSavingsGoalsToPrefs(prefs);
+      await _saveBudgetsToPrefs(prefs);
+      await prefs.setInt('app_last_local_update_millis', _lastLocalUpdateMillis);
+
+      _notificarYSincronizar();
+      return true;
+    } catch (e) {
+      debugPrint('Error al importar datos desde JSON: $e');
+      return false;
     }
   }
 
@@ -1789,9 +2564,14 @@ class EstadoApp extends ChangeNotifier {
             }
           }
 
-          if (data['transacciones'] != null) {
+          // Cargar / migrar transacciones desde subcolecciones
+          final tieneBanderaMigrado = data['transacciones_migradas'] == true;
+          if (!tieneBanderaMigrado && data['transacciones'] != null && (data['transacciones'] as List).isNotEmpty) {
             final List<dynamic> transactionsData = data['transacciones'];
             _transactions = transactionsData.map((item) => ModeloTransaccion.fromMap(Map<String, dynamic>.from(item))).toList();
+            await _migrarTransaccionesASubcolecciones(uid, _transactions);
+          } else {
+            _transactions = await _cargarTransaccionesDesdeNube(uid);
           }
 
           if (data['categorias'] != null) {
@@ -1809,6 +2589,11 @@ class EstadoApp extends ChangeNotifier {
             _budgets = budgetsData.map((item) => ModeloPresupuesto.fromMap(Map<String, dynamic>.from(item))).toList();
           }
 
+          if (data['deudas'] != null) {
+            final List<dynamic> debtsData = data['deudas'];
+            _debts = debtsData.map((item) => ModeloDeuda.fromMap(Map<String, dynamic>.from(item))).toList();
+          }
+
           final SharedPreferences prefs = await SharedPreferences.getInstance();
           await prefs.setBool('app_dark_mode', _esTemaOscuro);
           await prefs.setInt('app_primary_color', _colorPrincipal.toARGB32());
@@ -1821,78 +2606,22 @@ class EstadoApp extends ChangeNotifier {
           await _saveCategoriesToPrefs(prefs);
           await _saveSavingsGoalsToPrefs(prefs);
           await _saveBudgetsToPrefs(prefs);
+          await _saveDebtsToPrefs(prefs);
 
           if (cloudTimestamp != null && cloudTimestamp is Timestamp) {
             _lastLocalUpdateMillis = cloudTimestamp.millisecondsSinceEpoch;
             await prefs.setInt('app_last_local_update_millis', _lastLocalUpdateMillis);
           }
-
-          notifyListeners(); // Ya no hay override, es seguro llamar directamente
+          
+          notifyListeners();
+        } catch (e) {
+          debugPrint('Error procesando actualizacion en tiempo real: $e');
         } finally {
-          _isSyncing = false; // SIEMPRE desbloquear, incluso si hay error
+          _isSyncing = false;
         }
       } catch (e) {
-        _isSyncing = false;
-        debugPrint('Error en la escucha en tiempo real: $e');
+        debugPrint('Error general en listener: $e');
       }
-    }, onError: (error) {
-      _isSyncing = false;
-      debugPrint('Error en la escucha en tiempo real: $error');
     });
-  }
-
-  void desactivarEscuchaTiempoReal() {
-    _nubeSubscription?.cancel();
-    _nubeSubscription = null;
-  }
-
-  Future<bool> importarDatosDesdeJson(String jsonString) async {
-    try {
-      final Map<String, dynamic> data = json.decode(jsonString);
-      
-      // Validar estructura básica
-      if (data['cuentas'] == null || data['transacciones'] == null) {
-        return false;
-      }
-      
-      final List<dynamic> accountsData = data['cuentas'];
-      final List<dynamic> transactionsData = data['transacciones'];
-      
-      _accounts = accountsData.map((item) => ModeloCuenta.fromMap(Map<String, dynamic>.from(item))).toList();
-      _transactions = transactionsData.map((item) => ModeloTransaccion.fromMap(Map<String, dynamic>.from(item))).toList();
-      
-      if (data['categorias'] != null) {
-        final List<dynamic> categoriesData = data['categorias'];
-        _categories = categoriesData.map((item) => ModeloCategoria.fromMap(Map<String, dynamic>.from(item))).toList();
-      }
-      
-      if (data['ahorros'] != null) {
-        final List<dynamic> savingsData = data['ahorros'];
-        _savingsGoals = savingsData.map((item) => ModeloAhorro.fromMap(Map<String, dynamic>.from(item))).toList();
-      }
-      
-      if (data['presupuestos'] != null) {
-        final List<dynamic> budgetsData = data['presupuestos'];
-        _budgets = budgetsData.map((item) => ModeloPresupuesto.fromMap(Map<String, dynamic>.from(item))).toList();
-      }
-      
-      if (_accounts.isNotEmpty) {
-        _hasCompletedOnboarding = true;
-      }
-
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('app_onboarding_completed', _hasCompletedOnboarding);
-      await _saveAccountsToPrefs(prefs);
-      await _saveTransactionsToPrefs(prefs);
-      await _saveCategoriesToPrefs(prefs);
-      await _saveSavingsGoalsToPrefs(prefs);
-      await _saveBudgetsToPrefs(prefs);
-
-      _notificarYSincronizar();
-      return true;
-    } catch (e) {
-      debugPrint('Error al importar datos: $e');
-      return false;
-    }
   }
 }

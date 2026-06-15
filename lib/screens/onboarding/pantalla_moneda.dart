@@ -14,17 +14,7 @@ class _PantallaMonedaState extends State<PantallaMoneda> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
-  final List<Map<String, String>> _currencies = [
-    {'symbol': 'Bs', 'name': 'Boliviano boliviano', 'code': 'BOB'},
-    {'symbol': '\$', 'name': 'Peso mexicano', 'code': 'MXN'},
-    {'symbol': '\$', 'name': 'Dólar estadounidense', 'code': 'USD'},
-    {'symbol': '€', 'name': 'Euro', 'code': 'EUR'},
-    {'symbol': '£', 'name': 'Libra esterlina', 'code': 'GBP'},
-    {'symbol': '¥', 'name': 'Yen japonés', 'code': 'JPY'},
-    {'symbol': '¥', 'name': 'Yuan chino', 'code': 'CNY'},
-    {'symbol': '₩', 'name': 'Won surcoreano', 'code': 'KRW'},
-    {'symbol': '₹', 'name': 'Rupia india', 'code': 'INR'},
-  ];
+  final List<Map<String, String>> _currencies = EstadoApp.listaMonedas;
 
   @override
   Widget build(BuildContext context) {
@@ -236,9 +226,9 @@ class _PantallaMonedaState extends State<PantallaMoneda> {
                               ),
                               child: Center(
                                 child: Text(
-                                  cur['symbol']!,
+                                  cur['flag'] ?? cur['symbol']!,
                                   style: TextStyle(
-                                    fontSize: 14,
+                                    fontSize: cur['flag'] != null ? 18 : 14,
                                     fontWeight: FontWeight.w900,
                                     color: colorTexto,
                                   ),

@@ -1,4 +1,4 @@
-import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -26,6 +26,8 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
   String _selectedCategoryIconCode = 'restaurant';
   String _selectedCategoryColorHex = '#FFE0B2';
   final Set<String> _expandedParentIds = {};
+  int _selectedIconTab = 0; // 0: Gastos, 1: Ingresos, 2: Todos
+  bool _firstCategoryExpanded = false;
 
   static final Map<String, IconData> _galleryIcons = EstadoApp.galleryIcons;
 
@@ -89,81 +91,142 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
     final colorPrincipal = estadoApp.colorPrincipal;
     final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
 
+    // Color del título al medio (el mismo color que tiene ajustes pero un poco más oscuro/claro según el tema)
+    final Color colorTitulo = esOscuro
+        ? Color.alphaBlend(Colors.white.withValues(alpha: 0.1), colorPrincipal)
+        : Color.alphaBlend(Colors.black.withValues(alpha: 0.15), colorPrincipal);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            InteractiveScale(
-              onTap: () {
-                if (_isCreatingOrEditingCategory) {
-                  setState(() {
-                    _isCreatingOrEditingCategory = false;
-                    _selectedCategoryToEdit = null;
-                  });
-                } else {
-                  widget.onBack();
-                }
-              },
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    size: 16,
-                    color: colorPrincipal,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    _isCreatingOrEditingCategory ? 'Categorías' : 'Ajustes',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: colorPrincipal,
+        SizedBox(
+          height: 44,
+          child: Row(
+            children: [
+              // Botón Retroceso (Izquierda)
+              Expanded(
+                flex: 3,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: InteractiveScale(
+                    onTap: () {
+                      if (_isCreatingOrEditingCategory) {
+                        setState(() {
+                          _isCreatingOrEditingCategory = false;
+                          _selectedCategoryToEdit = null;
+                        });
+                      } else {
+                        widget.onBack();
+                      }
+                    },
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          size: 16,
+                          color: colorPrincipal,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          _isCreatingOrEditingCategory ? 'Categorías' : 'Ajustes',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: colorPrincipal,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
-            ),
-            if (_isCreatingOrEditingCategory)
-              InteractiveScale(
-                onTap: () => _guardarCategoria(estadoApp),
-                child: Text(
-                  'Guardar',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: colorPrincipal,
                   ),
                 ),
               ),
-          ],
+              
+              // Título (Centro) - Color de Ajustes pero en Negrita (W900)
+              Expanded(
+                flex: 4,
+                child: Center(
+                  child: Text(
+                    _isCreatingOrEditingCategory
+                        ? (_selectedCategoryToEdit != null ? 'Editar Categoría' : 'Nueva Categoría')
+                        : 'Categorías',
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: colorTitulo,
+                    ),
+                  ),
+                ),
+              ),
+              
+              // Botón Agregar / Guardar (Derecha)
+              Expanded(
+                flex: 3,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Builder(
+                    builder: (context) {
+                      if (_isCreatingOrEditingCategory) {
+                        return InteractiveScale(
+                          onTap: () => _guardarCategoria(estadoApp),
+                          child: Text(
+                            'Guardar',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: colorPrincipal,
+                            ),
+                          ),
+                        );
+                      } else {
+                        return InteractiveScale(
+                          onTap: () {
+                            setState(() {
+                              _isCreatingOrEditingCategory = true;
+                              _selectedCategoryToEdit = null;
+                              _categoryNameController.clear();
+                              _selectedCategoryParentId = null;
+                              _selectedCategoryIconCode = 'restaurant';
+                              _selectedCategoryColorHex = '#FFE0B2';
+                              _selectedIconTab = 0;
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: colorPrincipal.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.add_rounded, size: 14, color: colorPrincipal),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Agregar',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: colorPrincipal,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 20),
-        Text(
-          _isCreatingOrEditingCategory
-              ? (_selectedCategoryToEdit != null ? 'Editar Categoría' : 'Nueva Categoría')
-              : 'Categorías',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w900,
-            color: colorTexto,
-            letterSpacing: -0.8,
-          ),
-        ).animate().fadeIn(duration: 400.ms),
-        const SizedBox(height: 4),
-        Text(
-          _isCreatingOrEditingCategory ? 'PERSONALIZAR DETALLES' : 'GESTIONAR FLUJO DE GASTOS',
-          style: TextStyle(
-            fontSize: 9.5,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.2,
-            color: esOscuro ? Colors.white.withValues(alpha: 0.4) : const Color(0xFF0F172A).withValues(alpha: 0.4),
-          ),
-        ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
-        const SizedBox(height: 24),
         
         if (_isCreatingOrEditingCategory)
           _buildCategoryForm(estadoApp, esOscuro, colorPrincipal, colorTexto)
@@ -181,24 +244,6 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Center(
-          child: Column(
-            children: [
-              Text(
-                'PREVISUALIZACIÓN',
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.8,
-                  color: esOscuro ? Colors.white.withValues(alpha: 0.35) : const Color(0xFF0F172A).withValues(alpha: 0.35),
-                ),
-              ),
-              const SizedBox(height: 10),
-              _buildDynamicPreview(estadoApp, esOscuro, colorTexto),
-            ],
-          ),
-        ).animate().fadeIn(duration: 400.ms),
-        const SizedBox(height: 28),
 
         Text(
           'NOMBRE DE LA CATEGORÍA',
@@ -260,53 +305,104 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
           ),
         ),
         const SizedBox(height: 8),
-        DropdownButtonFormField<String?>(
-          value: _selectedCategoryParentId,
-          dropdownColor: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
-          style: TextStyle(
-            color: colorTexto,
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
+        InkWell(
+          onTap: () => _showParentCategorySelectorBottomSheet(
+            context,
+            parentCategories,
+            esOscuro,
+            colorPrincipal,
+            colorTexto,
           ),
-          items: [
-            const DropdownMenuItem<String?>(
-              value: null,
-              child: Text('Categoría Principal (Padre)'),
-            ),
-            ...parentCategories.where((p) => p.id != _selectedCategoryToEdit?.id).map((cat) => DropdownMenuItem<String?>(
-                  value: cat.id,
-                  child: Text('Subcategoría de: ${cat.name}'),
-                )),
-          ],
-          onChanged: (val) {
-            setState(() {
-              _selectedCategoryParentId = val;
-            });
-          },
-          decoration: InputDecoration(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            filled: true,
-            fillColor: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
-            border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
               borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(
+              border: Border.all(
                 color: esOscuro ? const Color(0xFF1E1E1E) : Colors.black.withValues(alpha: 0.05),
                 width: 1.0,
               ),
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(
-                color: esOscuro ? const Color(0xFF1E1E1E) : Colors.black.withValues(alpha: 0.05),
-                width: 1.0,
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(
-                color: colorPrincipal,
-                width: 1.0,
-              ),
+            child: Row(
+              children: [
+                Builder(
+                  builder: (context) {
+                    if (_selectedCategoryParentId == null) {
+                      return Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: colorPrincipal.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.folder_copy_rounded,
+                          color: colorPrincipal,
+                          size: 18,
+                        ),
+                      );
+                    } else {
+                      final parentCat = parentCategories.firstWhere(
+                        (p) => p.id == _selectedCategoryParentId,
+                        orElse: () => ModeloCategoria(id: '', name: '', iconCode: 'category', hexColor: '#64748B'),
+                      );
+                      final pColor = Color(int.parse(parentCat.hexColor.replaceFirst('#', '0xFF')));
+                      return Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: pColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          _galleryIcons[parentCat.iconCode] ?? Icons.category_rounded,
+                          color: pColor,
+                          size: 18,
+                        ),
+                      );
+                    }
+                  },
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _selectedCategoryParentId == null
+                            ? 'Categoría Principal (Padre)'
+                            : (() {
+                                final parentCat = parentCategories.firstWhere(
+                                  (p) => p.id == _selectedCategoryParentId,
+                                  orElse: () => ModeloCategoria(id: '', name: 'Categoría', iconCode: 'category', hexColor: '#64748B'),
+                                );
+                                return 'Subcategoría de: ${parentCat.name}';
+                              })(),
+                        style: TextStyle(
+                          color: colorTexto,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _selectedCategoryParentId == null
+                            ? 'No pertenece a ninguna otra categoría'
+                            : 'Hereda propiedades de la categoría padre',
+                        style: TextStyle(
+                          color: colorTexto.withValues(alpha: 0.4),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: colorTexto.withValues(alpha: 0.4),
+                ),
+              ],
             ),
           ),
         ),
@@ -323,7 +419,113 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
         ),
         const SizedBox(height: 12),
         Container(
-          height: 180,
+          height: 38,
+          decoration: BoxDecoration(
+            color: esOscuro
+                ? Colors.white.withValues(alpha: 0.03)
+                : Colors.black.withValues(alpha: 0.02),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth / 3;
+              return Stack(
+                children: [
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeInOut,
+                    left: _selectedIconTab * width,
+                    top: 2,
+                    bottom: 2,
+                    child: Container(
+                      width: width - 4,
+                      decoration: BoxDecoration(
+                        color: esOscuro
+                            ? const Color(0xFF1E1E1E)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            setState(() {
+                              _selectedIconTab = 0;
+                            });
+                          },
+                          child: Center(
+                            child: Text(
+                              'Gastos',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: _selectedIconTab == 0 ? FontWeight.bold : FontWeight.w500,
+                                color: _selectedIconTab == 0 ? colorPrincipal : colorTexto.withValues(alpha: 0.6),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            setState(() {
+                              _selectedIconTab = 1;
+                            });
+                          },
+                          child: Center(
+                            child: Text(
+                              'Ingresos',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: _selectedIconTab == 1 ? FontWeight.bold : FontWeight.w500,
+                                color: _selectedIconTab == 1 ? colorPrincipal : colorTexto.withValues(alpha: 0.6),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            setState(() {
+                              _selectedIconTab = 2;
+                            });
+                          },
+                          child: Center(
+                            child: Text(
+                              'Todos',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: _selectedIconTab == 2 ? FontWeight.bold : FontWeight.w500,
+                                color: _selectedIconTab == 2 ? colorPrincipal : colorTexto.withValues(alpha: 0.6),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          height: 250,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: esOscuro
@@ -337,71 +539,158 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
               width: 1.0,
             ),
           ),
-          child: GridView.builder(
-            physics: const BouncingScrollPhysics(),
-            itemCount: _galleryIcons.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 6,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-            ),
-            itemBuilder: (context, index) {
-              final key = _galleryIcons.keys.elementAt(index);
-              final icon = _galleryIcons[key]!;
-              final isSelected = _selectedCategoryIconCode == key;
+          child: Builder(
+            builder: (context) {
+              final List<String> currentTabKeys;
+              if (_selectedIconTab == 0) {
+                currentTabKeys = EstadoApp.expenseIconKeys.where((key) => _galleryIcons.containsKey(key)).toList();
+              } else if (_selectedIconTab == 1) {
+                currentTabKeys = EstadoApp.incomeIconKeys.where((key) => _galleryIcons.containsKey(key)).toList();
+              } else {
+                currentTabKeys = _galleryIcons.keys.toList();
+              }
 
-              return InteractiveScale(
-                onTap: () {
-                  setState(() {
-                    _selectedCategoryIconCode = key;
-                  });
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? colorPrincipal.withValues(alpha: 0.1)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: isSelected ? colorPrincipal : Colors.transparent,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      icon,
-                      color: isSelected ? colorPrincipal : colorTexto.withValues(alpha: 0.6),
-                      size: 20,
-                    ),
-                  ),
+              return GridView.builder(
+                physics: const BouncingScrollPhysics(),
+                itemCount: currentTabKeys.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 5,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
                 ),
+                itemBuilder: (context, index) {
+                  final key = currentTabKeys[index];
+                  final icon = _galleryIcons[key]!;
+                  final isSelected = _selectedCategoryIconCode == key;
+
+                  return InteractiveScale(
+                    onTap: () {
+                      setState(() {
+                        _selectedCategoryIconCode = key;
+                      });
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? colorPrincipal.withValues(alpha: 0.1)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected ? colorPrincipal : Colors.transparent,
+                          width: 2.0,
+                        ),
+                      ),
+                      child: Center(
+                        child: Icon(
+                          icon,
+                          color: isSelected ? colorPrincipal : colorTexto.withValues(alpha: 0.6),
+                          size: 26,
+                        ),
+                      ),
+                    ),
+                  );
+                },
               );
-            },
+            }
           ),
         ),
         const SizedBox(height: 20),
 
-        Text(
-          'COLOR DE LA CATEGORÍA (PASTEL / HEXADECIMAL)',
-          style: TextStyle(
-            fontSize: 9.5,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0.8,
-            color: esOscuro ? Colors.white.withValues(alpha: 0.4) : const Color(0xFF0F172A).withValues(alpha: 0.4),
+        if (_selectedCategoryParentId == null) ...[
+          Text(
+            'COLOR Y VISTA PREVIA EN TIEMPO REAL',
+            style: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.8,
+              color: esOscuro ? Colors.white.withValues(alpha: 0.4) : const Color(0xFF0F172A).withValues(alpha: 0.4),
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-        HexColorPicker(
-          currentColorHex: _selectedCategoryColorHex,
-          onColorChanged: (hex) {
-            setState(() {
-              _selectedCategoryColorHex = hex;
-            });
-          },
-          esOscuro: esOscuro,
-          colorPrincipal: colorPrincipal,
-        ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 11,
+                child: HexColorPicker(
+                  currentColorHex: _selectedCategoryColorHex,
+                  onColorChanged: (hex) {
+                    setState(() {
+                      _selectedCategoryColorHex = hex;
+                    });
+                  },
+                  esOscuro: esOscuro,
+                  colorPrincipal: colorPrincipal,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                flex: 9,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'VISTA PREVIA',
+                      style: TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.8,
+                        color: esOscuro ? Colors.white.withValues(alpha: 0.3) : const Color(0xFF0F172A).withValues(alpha: 0.3),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildDynamicPreview(estadoApp, esOscuro, colorTexto),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ] else ...[
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: colorPrincipal.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: colorPrincipal.withValues(alpha: 0.15),
+                width: 1.0,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.lock_outline_rounded,
+                  color: colorPrincipal,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Las subcategorías heredan automáticamente el color de su categoría padre.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: colorTexto.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'VISTA PREVIA',
+            style: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.8,
+              color: esOscuro ? Colors.white.withValues(alpha: 0.4) : const Color(0xFF0F172A).withValues(alpha: 0.4),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildDynamicPreview(estadoApp, esOscuro, colorTexto),
+        ],
 
       ],
     );
@@ -625,48 +914,14 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
   Widget _buildCategoriesList(EstadoApp estadoApp, bool esOscuro, Color colorPrincipal, Color colorTexto) {
     final parentCategories = estadoApp.categories.where((cat) => cat.parentId == null).toList();
 
+    if (!_firstCategoryExpanded && parentCategories.isNotEmpty) {
+      _expandedParentIds.add(parentCategories.first.id);
+      _firstCategoryExpanded = true;
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        InteractiveScale(
-          onTap: () {
-            setState(() {
-              _isCreatingOrEditingCategory = true;
-              _selectedCategoryToEdit = null;
-              _categoryNameController.clear();
-              _selectedCategoryParentId = null;
-              _selectedCategoryIconCode = 'restaurant';
-              _selectedCategoryColorHex = '#FFE0B2';
-            });
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
-            decoration: BoxDecoration(
-              color: colorPrincipal.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: colorPrincipal.withValues(alpha: 0.2),
-                width: 1.0,
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.add_rounded, color: colorPrincipal, size: 22),
-                const SizedBox(width: 8),
-                Text(
-                  'Agregar nueva categoría',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: colorPrincipal,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ).animate().fadeIn(duration: 350.ms),
-        const SizedBox(height: 24),
 
         if (parentCategories.isEmpty)
           Center(
@@ -818,6 +1073,11 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
                                 _selectedCategoryParentId = cat.parentId;
                                 _selectedCategoryIconCode = cat.iconCode;
                                 _selectedCategoryColorHex = cat.hexColor;
+                                if (EstadoApp.incomeIconKeys.contains(cat.iconCode) && !EstadoApp.expenseIconKeys.contains(cat.iconCode)) {
+                                  _selectedIconTab = 1;
+                                } else {
+                                  _selectedIconTab = 0;
+                                }
                               });
                             },
                             child: Padding(
@@ -938,6 +1198,11 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
                                         _selectedCategoryParentId = child.parentId;
                                         _selectedCategoryIconCode = child.iconCode;
                                         _selectedCategoryColorHex = child.hexColor;
+                                        if (EstadoApp.incomeIconKeys.contains(child.iconCode) && !EstadoApp.expenseIconKeys.contains(child.iconCode)) {
+                                          _selectedIconTab = 1;
+                                        } else {
+                                          _selectedIconTab = 0;
+                                        }
                                       });
                                     },
                                     child: Padding(
@@ -974,6 +1239,206 @@ class _AjustesCategoriasState extends State<AjustesCategorias> {
             },
           ).animate().fadeIn(duration: 400.ms, delay: 50.ms),
       ],
+    );
+  }
+
+  void _showParentCategorySelectorBottomSheet(
+    BuildContext context,
+    List<ModeloCategoria> parentCategories,
+    bool esOscuro,
+    Color colorPrincipal,
+    Color colorTexto,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              decoration: BoxDecoration(
+                color: esOscuro ? const Color(0xFF0F0F11) : Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 20,
+                    spreadRadius: 5,
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.only(top: 8, bottom: 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: esOscuro ? Colors.white24 : Colors.black12,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Categoría Padre',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: colorTexto,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: Icon(Icons.close_rounded, color: colorTexto.withValues(alpha: 0.5)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Flexible(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: Column(
+                        children: [
+                          _buildParentOption(
+                            title: 'Ninguna (Es Categoría Principal)',
+                            subtitle: 'Define esta categoría en el nivel superior',
+                            icon: Icons.folder_copy_rounded,
+                            iconColor: colorPrincipal,
+                            isSelected: _selectedCategoryParentId == null,
+                            onTap: () {
+                              setState(() {
+                                _selectedCategoryParentId = null;
+                              });
+                              Navigator.pop(context);
+                            },
+                            esOscuro: esOscuro,
+                            colorTexto: colorTexto,
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Divider(
+                              color: esOscuro ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+                              height: 1,
+                            ),
+                          ),
+                          ...parentCategories
+                              .where((p) => p.id != _selectedCategoryToEdit?.id)
+                              .map((cat) {
+                            final pColor = Color(int.parse(cat.hexColor.replaceFirst('#', '0xFF')));
+                            final isSelected = _selectedCategoryParentId == cat.id;
+                            
+                            return _buildParentOption(
+                              title: cat.name,
+                              subtitle: 'Crear como subcategoría de ${cat.name}',
+                              icon: _galleryIcons[cat.iconCode] ?? Icons.category_rounded,
+                              iconColor: pColor,
+                              isSelected: isSelected,
+                              onTap: () {
+                                setState(() {
+                                  _selectedCategoryParentId = cat.id;
+                                  _selectedCategoryColorHex = cat.hexColor;
+                                });
+                                Navigator.pop(context);
+                              },
+                              esOscuro: esOscuro,
+                              colorTexto: colorTexto,
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildParentOption({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color iconColor,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required bool esOscuro,
+    required Color colorTexto,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                icon,
+                color: iconColor,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                      color: colorTexto,
+                      fontSize: 14.5,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: colorTexto.withValues(alpha: 0.4),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              Icon(
+                Icons.check_circle_rounded,
+                color: iconColor,
+                size: 22,
+              )
+            else
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: esOscuro ? Colors.white24 : Colors.black12,
+                    width: 2,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

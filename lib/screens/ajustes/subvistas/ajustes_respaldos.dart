@@ -10,6 +10,7 @@ import 'package:file_picker/file_picker.dart';
 import '../../../config/app_config.dart';
 import '../../../services/estado_app.dart';
 import '../../../widgets/interactive_scale.dart';
+import '../../../widgets/backdrop_filter_safe.dart';
 
 class AjustesRespaldos extends StatefulWidget {
   final VoidCallback onBack;
@@ -175,7 +176,7 @@ class _AjustesRespaldosState extends State<AjustesRespaldos> {
     return showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
-        return BackdropFilter(
+        return BackdropFilterSafe(
           filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
           child: AlertDialog(
             backgroundColor: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
@@ -239,56 +240,69 @@ class _AjustesRespaldosState extends State<AjustesRespaldos> {
         ? const Color(0xFF0A0A0A).withValues(alpha: 0.45)
         : Colors.black.withValues(alpha: 0.03);
 
+    final Color colorTitulo = esOscuro
+        ? Color.alphaBlend(Colors.white.withValues(alpha: 0.1), colorPrincipal)
+        : Color.alphaBlend(Colors.black.withValues(alpha: 0.15), colorPrincipal);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 16),
-        Row(
-          children: [
-            InteractiveScale(
-              onTap: widget.onBack,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    size: 16,
-                    color: colorPrincipal,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Ajustes',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: colorPrincipal,
+        SizedBox(
+          height: 44,
+          child: Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: InteractiveScale(
+                    onTap: widget.onBack,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          size: 16,
+                          color: colorPrincipal,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Ajustes',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: colorPrincipal,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
-          ],
+              Expanded(
+                flex: 4,
+                child: Center(
+                  child: Text(
+                    'Respaldos',
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: colorTitulo,
+                    ),
+                  ),
+                ),
+              ),
+              const Expanded(
+                flex: 3,
+                child: SizedBox(),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 20),
-        Text(
-          'Respaldos',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w800,
-            color: colorTexto,
-            letterSpacing: -0.8,
-          ),
-        ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, end: 0, duration: 400.ms),
-        const SizedBox(height: 4),
-        Text(
-          'GESTIÓN DE IMPORTACIÓN Y EXPORTACIÓN',
-          style: TextStyle(
-            fontSize: 9.5,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.2,
-            color: colorTexto.withValues(alpha: 0.4),
-          ),
-        ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
         const SizedBox(height: 20),
 
         // Selector Segmentado de Tabs (Estilo Liquid Glass)
@@ -438,6 +452,19 @@ class _AjustesRespaldosState extends State<AjustesRespaldos> {
           esOscuro: esOscuro,
           onTap: () => _importarJson(estadoApp),
         ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.05, end: 0, duration: 400.ms),
+        const SizedBox(height: 16),
+        // Bento Card para Importar CSV
+        _buildBentoActionCard(
+          icon: Icons.table_chart_rounded,
+          title: 'Importar desde Excel / CSV',
+          description: 'Selecciona un archivo .csv o .txt para importar tus movimientos de forma masiva. Podrás asociar las columnas de tu archivo (Fecha, Monto, Categoría, Detalle) de forma gráfica.',
+          buttonText: 'Importar CSV',
+          colorPrincipal: colorPrincipal,
+          colorTexto: colorTexto,
+          colorSecundario: colorSecundario,
+          esOscuro: esOscuro,
+          onTap: () => _importarCsv(estadoApp),
+        ).animate().fadeIn(duration: 400.ms, delay: 100.ms).slideY(begin: 0.05, end: 0, duration: 400.ms),
       ],
     );
   }
@@ -453,23 +480,23 @@ class _AjustesRespaldosState extends State<AjustesRespaldos> {
     required bool esOscuro,
     required VoidCallback onTap,
   }) {
-    return ClipRRect(
+    final estadoApp = Provider.of<EstadoApp>(context, listen: false);
+    return BackdropFilterSafe(
       borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: esOscuro
-                ? const Color(0xFF0A0A0A).withValues(alpha: 0.45)
-                : Colors.white.withValues(alpha: 0.60),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: esOscuro ? Colors.white.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.65),
-              width: 1.0,
-            ),
+      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: esOscuro
+              ? const Color(0xFF0A0A0A).withValues(alpha: estadoApp.modoRendimiento ? 0.95 : 0.45)
+              : Colors.white.withValues(alpha: estadoApp.modoRendimiento ? 0.98 : 0.60),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: esOscuro ? Colors.white.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.65),
+            width: 1.0,
           ),
+        ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -534,7 +561,643 @@ class _AjustesRespaldosState extends State<AjustesRespaldos> {
             ],
           ),
         ),
+      );
+  }
+
+  Future<void> _importarCsv(EstadoApp estadoApp) async {
+    try {
+      final FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['csv', 'txt'],
+      );
+
+      if (result == null || result.files.single.path == null) {
+        return;
+      }
+
+      final file = File(result.files.single.path!);
+      final bytes = await file.readAsBytes();
+      
+      String csvContent;
+      try {
+        csvContent = utf8.decode(bytes);
+      } catch (_) {
+        csvContent = latin1.decode(bytes);
+      }
+
+      final lines = csvContent.split(RegExp(r'\r?\n')).where((line) => line.trim().isNotEmpty).toList();
+      if (lines.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('El archivo está vacío.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
+
+      final firstLine = lines.first;
+      String delimiter = ',';
+      if (firstLine.contains(';')) {
+        delimiter = ';';
+      } else if (firstLine.contains('\t')) {
+        delimiter = '\t';
+      }
+
+      List<List<String>> parsedRows = [];
+      for (var line in lines) {
+        parsedRows.add(_parseCsvLine(line, delimiter));
+      }
+
+      if (parsedRows.isEmpty) return;
+
+      final firstRow = parsedRows.first;
+      List<String> headers = [];
+      for (int i = 0; i < firstRow.length; i++) {
+        headers.add(firstRow[i].isNotEmpty ? firstRow[i] : 'Columna ${i + 1}');
+      }
+
+      if (!mounted) return;
+      _mostrarDialogoMapeo(parsedRows, headers, estadoApp);
+
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al procesar el archivo CSV: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
+  List<String> _parseCsvLine(String line, String delimiter) {
+    List<String> result = [];
+    StringBuffer currentField = StringBuffer();
+    bool inQuotes = false;
+    for (int i = 0; i < line.length; i++) {
+      String char = line[i];
+      if (char == '"') {
+        inQuotes = !inQuotes;
+      } else if (char == delimiter && !inQuotes) {
+        result.add(currentField.toString().trim());
+        currentField.clear();
+      } else {
+        currentField.write(char);
+      }
+    }
+    result.add(currentField.toString().trim());
+    return result;
+  }
+
+  void _mostrarDialogoMapeo(List<List<String>> parsedRows, List<String> headers, EstadoApp estadoApp) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return _DialogoMapeoCsv(
+          parsedRows: parsedRows,
+          headers: headers,
+          estadoApp: estadoApp,
+          onImportCompleted: () {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Datos CSV importados y sincronizados con éxito.'),
+                  backgroundColor: Color(0xFF10B981),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          },
+        );
+      },
+    );
+  }
+}
+
+class _DialogoMapeoCsv extends StatefulWidget {
+  final List<List<String>> parsedRows;
+  final List<String> headers;
+  final EstadoApp estadoApp;
+  final VoidCallback onImportCompleted;
+
+  const _DialogoMapeoCsv({
+    required this.parsedRows,
+    required this.headers,
+    required this.estadoApp,
+    required this.onImportCompleted,
+  });
+
+  @override
+  State<_DialogoMapeoCsv> createState() => _DialogoMapeoCsvState();
+}
+
+class _DialogoMapeoCsvState extends State<_DialogoMapeoCsv> {
+  String? _selectedAccountId;
+  bool _omitirCabecera = true;
+  int _colTitleIdx = 0;
+  int _colAmountIdx = 0;
+  int _colDateIdx = 0;
+  int? _colCategoryIdx;
+  String _selectedDateFormat = 'Automático';
+  String? _selectedCategoryFallback;
+  String _selectedImportType = 'auto'; // 'auto', 'gasto', 'ingreso'
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.estadoApp.accounts.isNotEmpty) {
+      _selectedAccountId = widget.estadoApp.accounts.first.id;
+    }
+    if (widget.estadoApp.categories.isNotEmpty) {
+      _selectedCategoryFallback = widget.estadoApp.categories.first.name;
+    }
+    
+    // Auto-detect columns based on name matches
+    for (int i = 0; i < widget.headers.length; i++) {
+      final header = widget.headers[i].toLowerCase();
+      if (header.contains('concepto') || header.contains('detalle') || header.contains('descrip') || header.contains('titulo') || header.contains('title')) {
+        _colTitleIdx = i;
+      } else if (header.contains('monto') || header.contains('importe') || header.contains('cantidad') || header.contains('amount') || header.contains('valor')) {
+        _colAmountIdx = i;
+      } else if (header.contains('fecha') || header.contains('date')) {
+        _colDateIdx = i;
+      } else if (header.contains('categor') || header.contains('category') || header.contains('rubro')) {
+        _colCategoryIdx = i;
+      }
+    }
+    
+    // Fallback if they map to the same column
+    if (_colAmountIdx == 0 && widget.headers.length > 1) {
+      _colAmountIdx = 1;
+    }
+    if (_colDateIdx == 0 && widget.headers.length > 2) {
+      _colDateIdx = 2;
+    }
+  }
+
+  DateTime? _intentarParsearFecha(String text, String format) {
+    text = text.trim();
+    if (text.isEmpty) return null;
+
+    if (format == 'Automático') {
+      final matchYmd = RegExp(r'^(\d{4})[-/](\d{1,2})[-/](\d{1,2})').firstMatch(text);
+      if (matchYmd != null) {
+        final y = int.parse(matchYmd.group(1)!);
+        final m = int.parse(matchYmd.group(2)!);
+        final d = int.parse(matchYmd.group(3)!);
+        return DateTime(y, m, d);
+      }
+      final matchDmy = RegExp(r'^(\d{1,2})[-/](\d{1,2})[-/](\d{4})').firstMatch(text);
+      if (matchDmy != null) {
+        final d = int.parse(matchDmy.group(1)!);
+        final m = int.parse(matchDmy.group(2)!);
+        final y = int.parse(matchDmy.group(3)!);
+        return DateTime(y, m, d);
+      }
+      try {
+        return DateTime.parse(text);
+      } catch (_) {}
+      return null;
+    }
+
+    if (format == 'DD/MM/AAAA') {
+      final match = RegExp(r'^(\d{1,2})[-/](\d{1,2})[-/](\d{4})').firstMatch(text);
+      if (match != null) {
+        final d = int.parse(match.group(1)!);
+        final m = int.parse(match.group(2)!);
+        final y = int.parse(match.group(3)!);
+        return DateTime(y, m, d);
+      }
+    }
+
+    if (format == 'AAAA-MM-DD') {
+      final match = RegExp(r'^(\d{4})[-/](\d{1,2})[-/](\d{1,2})').firstMatch(text);
+      if (match != null) {
+        final y = int.parse(match.group(1)!);
+        final m = int.parse(match.group(2)!);
+        final d = int.parse(match.group(3)!);
+        return DateTime(y, m, d);
+      }
+    }
+
+    if (format == 'MM/DD/AAAA') {
+      final match = RegExp(r'^(\d{1,2})[-/](\d{1,2})[-/](\d{4})').firstMatch(text);
+      if (match != null) {
+        final m = int.parse(match.group(1)!);
+        final d = int.parse(match.group(2)!);
+        final y = int.parse(match.group(3)!);
+        return DateTime(y, m, d);
+      }
+    }
+
+    return DateTime.tryParse(text);
+  }
+
+  double? _intentarParsearMonto(String text) {
+    text = text.trim().replaceAll(RegExp(r'[^\d.,-]'), '');
+    if (text.isEmpty) return null;
+
+    if (text.contains(',') && text.contains('.')) {
+      final commaIndex = text.indexOf(',');
+      final dotIndex = text.indexOf('.');
+      if (commaIndex < dotIndex) {
+        text = text.replaceAll(',', '');
+      } else {
+        text = text.replaceAll('.', '').replaceAll(',', '.');
+      }
+    } else if (text.contains(',')) {
+      final parts = text.split(',');
+      if (parts.length == 2 && parts[1].length == 2) {
+        text = text.replaceAll(',', '.');
+      } else {
+        text = text.replaceAll(',', '');
+      }
+    }
+
+    return double.tryParse(text);
+  }
+
+  void _procesarImportacion() async {
+    if (_selectedAccountId == null) return;
+    
+    List<ModeloTransaccion> nuevasTxs = [];
+    final startIndex = _omitirCabecera ? 1 : 0;
+
+    for (int i = startIndex; i < widget.parsedRows.length; i++) {
+      final row = widget.parsedRows[i];
+      if (row.isEmpty) continue;
+
+      final String titulo = _colTitleIdx < row.length ? row[_colTitleIdx].trim() : 'Transacción Importada';
+      final String rawMonto = _colAmountIdx < row.length ? row[_colAmountIdx] : '0';
+      final double? montoParsed = _intentarParsearMonto(rawMonto);
+      if (montoParsed == null) {
+        continue;
+      }
+
+      final String rawFecha = _colDateIdx < row.length ? row[_colDateIdx] : '';
+      final DateTime? fechaParsed = _intentarParsearFecha(rawFecha, _selectedDateFormat);
+      final DateTime fechaFinal = fechaParsed ?? DateTime.now();
+
+      String tipo = 'gasto';
+      double montoFinal = montoParsed;
+      
+      if (_selectedImportType == 'gasto') {
+        tipo = 'gasto';
+        montoFinal = montoParsed.abs();
+      } else if (_selectedImportType == 'ingreso') {
+        tipo = 'ingreso';
+        montoFinal = montoParsed.abs();
+      } else {
+        if (montoParsed < 0) {
+          tipo = 'gasto';
+          montoFinal = montoParsed.abs();
+        } else {
+          tipo = 'ingreso';
+        }
+      }
+
+      String categoriaFinal = _selectedCategoryFallback ?? 'Otros';
+      if (_colCategoryIdx != null && _colCategoryIdx! < row.length) {
+        final rawCat = row[_colCategoryIdx!].trim().toLowerCase();
+        if (rawCat.isNotEmpty) {
+          final matches = widget.estadoApp.categories.where(
+            (c) => c.name.toLowerCase() == rawCat || c.id.toLowerCase() == rawCat
+          );
+          if (matches.isNotEmpty) {
+            categoriaFinal = matches.first.name;
+          }
+        }
+      }
+
+      nuevasTxs.add(ModeloTransaccion(
+        id: 'tx_${fechaFinal.millisecondsSinceEpoch}_${i}_${(montoFinal * 100).toInt()}',
+        title: titulo.isNotEmpty ? titulo : 'Sin concepto',
+        description: 'Importado de CSV',
+        amount: montoFinal,
+        category: categoriaFinal,
+        date: fechaFinal,
+        type: tipo,
+        accountId: _selectedAccountId!,
+        pagada: true,
+      ));
+    }
+
+    if (nuevasTxs.isEmpty) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo importar ninguna fila. Verifica el mapeo.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    await widget.estadoApp.importarTransaccionesMasivas(nuevasTxs);
+    Navigator.of(context).pop();
+    widget.onImportCompleted();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final esOscuro = widget.estadoApp.esTemaOscuro;
+    final colorPrincipal = widget.estadoApp.colorPrincipal;
+    final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
+    final colorSecundario = esOscuro ? Colors.white70 : const Color(0xFF475569);
+    
+    final previewRowIndex = _omitirCabecera && widget.parsedRows.length > 1 ? 1 : 0;
+    final previewRow = widget.parsedRows.length > previewRowIndex ? widget.parsedRows[previewRowIndex] : [];
+
+    return BackdropFilterSafe(
+      filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+      borderRadius: BorderRadius.circular(24),
+      child: AlertDialog(
+        backgroundColor: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text(
+          'Asistente de Importación CSV',
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 18,
+            color: colorTexto,
+          ),
+        ),
+        content: SizedBox(
+          width: MediaQuery.of(context).size.width * 0.9,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildDropdownField<String>(
+                  label: 'Cuenta destino',
+                  value: _selectedAccountId,
+                  items: widget.estadoApp.accounts.map((acc) {
+                    return DropdownMenuItem(
+                      value: acc.id,
+                      child: Text('${acc.name} (${acc.currency ?? 'BOB'})'),
+                    );
+                  }).toList(),
+                  onChanged: (val) => setState(() => _selectedAccountId = val),
+                  colorTexto: colorTexto,
+                ),
+                const SizedBox(height: 12),
+                
+                Row(
+                  children: [
+                    Checkbox(
+                      value: _omitirCabecera,
+                      activeColor: colorPrincipal,
+                      onChanged: (val) {
+                        setState(() => _omitirCabecera = val ?? true);
+                      },
+                    ),
+                    Expanded(
+                      child: Text(
+                        'La primera fila es de cabecera (omitir)',
+                        style: TextStyle(color: colorTexto, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(),
+                const SizedBox(height: 8),
+                Text(
+                  'Mapeo de Columnas',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: colorTexto, fontSize: 14),
+                ),
+                const SizedBox(height: 12),
+
+                _buildColumnDropdown(
+                  label: 'Concepto / Título',
+                  value: _colTitleIdx,
+                  onChanged: (val) => setState(() => _colTitleIdx = val!),
+                  headers: widget.headers,
+                  colorTexto: colorTexto,
+                ),
+                const SizedBox(height: 12),
+
+                _buildColumnDropdown(
+                  label: 'Monto / Importe',
+                  value: _colAmountIdx,
+                  onChanged: (val) => setState(() => _colAmountIdx = val!),
+                  headers: widget.headers,
+                  colorTexto: colorTexto,
+                ),
+                const SizedBox(height: 12),
+
+                _buildColumnDropdown(
+                  label: 'Fecha',
+                  value: _colDateIdx,
+                  onChanged: (val) => setState(() => _colDateIdx = val!),
+                  headers: widget.headers,
+                  colorTexto: colorTexto,
+                ),
+                const SizedBox(height: 12),
+
+                _buildDropdownField<String>(
+                  label: 'Formato de Fecha',
+                  value: _selectedDateFormat,
+                  items: ['Automático', 'DD/MM/AAAA', 'AAAA-MM-DD', 'MM/DD/AAAA'].map((fmt) {
+                    return DropdownMenuItem(
+                      value: fmt,
+                      child: Text(fmt),
+                    );
+                  }).toList(),
+                  onChanged: (val) => setState(() => _selectedDateFormat = val!),
+                  colorTexto: colorTexto,
+                ),
+                const SizedBox(height: 12),
+
+                _buildDropdownField<int?>(
+                  label: 'Columna Categoría (Opcional)',
+                  value: _colCategoryIdx,
+                  items: [
+                    const DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text('Ninguna (Usar valor por defecto)'),
+                    ),
+                    ...List.generate(widget.headers.length, (idx) {
+                      return DropdownMenuItem<int?>(
+                        value: idx,
+                        child: Text(widget.headers[idx]),
+                      );
+                    }),
+                  ],
+                  onChanged: (val) => setState(() => _colCategoryIdx = val),
+                  colorTexto: colorTexto,
+                ),
+                const SizedBox(height: 12),
+
+                _buildDropdownField<String>(
+                  label: 'Categoría por defecto',
+                  value: _selectedCategoryFallback,
+                  items: widget.estadoApp.categories.map((cat) {
+                    return DropdownMenuItem(
+                      value: cat.name,
+                      child: Text(cat.name),
+                    );
+                  }).toList(),
+                  onChanged: (val) => setState(() => _selectedCategoryFallback = val),
+                  colorTexto: colorTexto,
+                ),
+                const SizedBox(height: 12),
+
+                _buildDropdownField<String>(
+                  label: 'Tipo de transacción',
+                  value: _selectedImportType,
+                  items: const [
+                    DropdownMenuItem(value: 'auto', child: Text('Detectar por signo (+/-)')),
+                    DropdownMenuItem(value: 'gasto', child: Text('Forzar Gastos')),
+                    DropdownMenuItem(value: 'ingreso', child: Text('Forzar Ingresos')),
+                  ],
+                  onChanged: (val) => setState(() => _selectedImportType = val!),
+                  colorTexto: colorTexto,
+                ),
+                
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 8),
+                Text(
+                  'Vista Previa (Fila ${previewRowIndex + 1})',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: colorTexto, fontSize: 13),
+                ),
+                const SizedBox(height: 8),
+                if (previewRow.isNotEmpty) ...[
+                  _buildPreviewItem(
+                    label: 'Concepto:',
+                    value: _colTitleIdx < previewRow.length ? previewRow[_colTitleIdx] : '-',
+                    colorSecundario: colorSecundario,
+                  ),
+                  _buildPreviewItem(
+                    label: 'Monto:',
+                    value: _colAmountIdx < previewRow.length
+                        ? '${_intentarParsearMonto(previewRow[_colAmountIdx]) ?? "Error de formato: " + previewRow[_colAmountIdx]}'
+                        : '-',
+                    colorSecundario: colorSecundario,
+                  ),
+                  _buildPreviewItem(
+                    label: 'Fecha:',
+                    value: _colDateIdx < previewRow.length
+                        ? '${_intentarParsearFecha(previewRow[_colDateIdx], _selectedDateFormat) ?? "Error de formato: " + previewRow[_colDateIdx]}'
+                        : '-',
+                    colorSecundario: colorSecundario,
+                  ),
+                  if (_colCategoryIdx != null && _colCategoryIdx! < previewRow.length)
+                    _buildPreviewItem(
+                      label: 'Categoría:',
+                      value: previewRow[_colCategoryIdx!],
+                      colorSecundario: colorSecundario,
+                    ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(
+                color: colorTexto.withValues(alpha: 0.5),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colorPrincipal,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
+            onPressed: _procesarImportacion,
+            child: const Text(
+              'Importar',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildPreviewItem({required String label, required String value, required Color colorSecundario}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(color: colorSecundario, fontSize: 11),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildColumnDropdown({
+    required String label,
+    required int value,
+    required ValueChanged<int?> onChanged,
+    required List<String> headers,
+    required Color colorTexto,
+  }) {
+    return _buildDropdownField<int>(
+      label: label,
+      value: value,
+      items: List.generate(headers.length, (idx) {
+        return DropdownMenuItem(
+          value: idx,
+          child: Text(headers[idx]),
+        );
+      }),
+      onChanged: onChanged,
+      colorTexto: colorTexto,
+    );
+  }
+
+  Widget _buildDropdownField<T>({
+    required String label,
+    required T? value,
+    required List<DropdownMenuItem<T>> items,
+    required ValueChanged<T?> onChanged,
+    required Color colorTexto,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        DropdownButtonFormField<T>(
+          value: value,
+          isExpanded: true,
+          items: items,
+          onChanged: onChanged,
+          dropdownColor: Theme.of(context).scaffoldBackgroundColor,
+          style: TextStyle(color: colorTexto, fontSize: 13),
+          decoration: InputDecoration(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+      ],
     );
   }
 }

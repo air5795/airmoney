@@ -126,7 +126,7 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    'Crea tu primera cuenta',
+                    'Crea tu contabilidad personal',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w900,
@@ -140,7 +140,7 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
               Padding(
                 padding: const EdgeInsets.only(left: 48),
                 child: Text(
-                  'Empieza con un saldo y tipo de cuenta.',
+                  'Esta primera cuenta será para tus finanzas personales.',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -177,8 +177,8 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                                 ? Colors.white.withValues(alpha: 0.08)
                                 : const Color(0xFFE2E8F0),
                             width: 1.2,
+                            ),
                           ),
-                        ),
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Center(
                           child: TextField(
@@ -192,7 +192,7 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                               color: colorTexto,
                             ),
                             decoration: InputDecoration(
-                              hintText: 'Ej. Banco principal',
+                              hintText: 'Ej. Mi Billetera / Efectivo',
                               hintStyle: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w500,
@@ -367,7 +367,7 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                               ),
                               child: const Center(
                                 child: Icon(
-                                  Icons.check,
+                                  Icons.info_outline_rounded,
                                   size: 14,
                                   color: Colors.white,
                                 ),
@@ -379,7 +379,7 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Casi listo',
+                                    'Contabilidad Personal',
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w900,
@@ -388,7 +388,7 @@ class _PantallaCrearCuentaState extends State<PantallaCrearCuenta> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Podrás agregar más cuentas (tarjetas, ahorros, efectivo) en cualquier momento desde el menú.',
+                                    'Esta primera cuenta se creará bajo tu perfil personal. Más adelante podrás crear otras cuentas, presupuestos o libros independientes para tus negocios o proyectos desde el menú de ajustes.',
                                     style: TextStyle(
                                       fontSize: 12,
                                       height: 1.35,

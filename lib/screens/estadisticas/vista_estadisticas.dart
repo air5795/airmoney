@@ -32,6 +32,8 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
   int? _selectedSliceIndex;
   final Set<String> _expandedParentCategoryIds = {};
   final Set<String> _expandedSubcategoryIds = {};
+  String _selectedChartType = 'donut'; // 'donut' o 'evolucion_anual'
+  String? _selectedEvolucionCategory;
 
   bool _mostrarReportes = false;
   String? _reporteSeleccionado;
@@ -633,11 +635,26 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
                 if (txsPeriodo.isEmpty)
                   _buildNoDataWidget(colorTexto)
                 else ...[
-                  _buildDonutChartSection(esOscuro, colorTexto, totalPeriodo, seccionesDonut, currency, desglosePadres),
-                  const SizedBox(height: 28),
-                  _buildCategoryDistributionList(desglosePadres, totalPeriodo, esOscuro, colorTexto, currency, estadoApp.colorPrincipal, estadoApp),
-                  const SizedBox(height: 24),
-                  _buildInsightsPanel(esOscuro, colorTexto, promedioDiario, nombreMayorCategoria, montoMayorCategoria, colorMayorCategoria, currency),
+                  Padding(
+                     padding: const EdgeInsets.symmetric(horizontal: 16),
+                     child: Row(
+                       mainAxisAlignment: MainAxisAlignment.end,
+                       children: [
+                         _buildChartTypeTabPill('Distribución', 'donut', esOscuro, estadoApp.colorPrincipal),
+                         const SizedBox(width: 8),
+                         _buildChartTypeTabPill('Evolución Anual', 'evolucion_anual', esOscuro, estadoApp.colorPrincipal),
+                       ],
+                     ),
+                   ),
+                   const SizedBox(height: 12),
+                   if (_selectedChartType == 'donut')
+                     _buildDonutChartSection(esOscuro, colorTexto, totalPeriodo, seccionesDonut, currency, desglosePadres)
+                   else
+                     _buildEvolucionAnualSection(esOscuro, colorTexto, currency, estadoApp),
+                   const SizedBox(height: 28),
+                   _buildCategoryDistributionList(desglosePadres, totalPeriodo, esOscuro, colorTexto, currency, estadoApp.colorPrincipal, estadoApp),
+                   const SizedBox(height: 24),
+                   _buildInsightsPanel(esOscuro, colorTexto, promedioDiario, nombreMayorCategoria, montoMayorCategoria, colorMayorCategoria, currency),
                 ]
               ],
             ),
@@ -4617,6 +4634,231 @@ class _VistaEstadisticasState extends State<VistaEstadisticas> {
         return 30;
     }
   }
+
+  Widget _buildChartTypeTabPill(String label, String type, bool esOscuro, Color colorPrincipal) {
+    final isSelected = _selectedChartType == type;
+    final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
+    
+    return InteractiveScale(
+      onTap: () {
+        setState(() {
+          _selectedChartType = type;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: isSelected 
+              ? (esOscuro ? colorPrincipal.withValues(alpha: 0.15) : Colors.white)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected 
+                ? (esOscuro ? colorPrincipal.withValues(alpha: 0.35) : Colors.black.withValues(alpha: 0.08))
+                : Colors.transparent,
+            width: 1.0,
+          ),
+          boxShadow: isSelected && !esOscuro
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  )
+                ]
+              : [],
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 10.5,
+            fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold,
+            color: isSelected 
+                ? (esOscuro ? colorPrincipal : colorTexto)
+                : colorTexto.withValues(alpha: 0.45),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEvolucionAnualSection(
+    bool esOscuro,
+    Color colorTexto,
+    String currency,
+    EstadoApp estadoApp,
+  ) {
+    final primaryColor = estadoApp.colorPrincipal;
+    
+    final cats = estadoApp.categories
+        .where((c) => c.parentId == null)
+        .toList();
+        
+    if (cats.isEmpty) {
+      return _buildNoDataWidget(colorTexto);
+    }
+
+    if (_selectedEvolucionCategory == null || !cats.any((c) => c.name == _selectedEvolucionCategory)) {
+      _selectedEvolucionCategory = cats.first.name;
+    }
+
+    List<double> valoresMensuales = List.filled(12, 0.0);
+    for (int m = 1; m <= 12; m++) {
+      final txsMes = estadoApp.transactions.where((tx) {
+        final matchesCategory = tx.category == _selectedEvolucionCategory ||
+            estadoApp.categories.any((sub) => sub.name == tx.category && sub.parentId != null &&
+                estadoApp.categories.any((parent) => parent.id == sub.parentId && parent.name == _selectedEvolucionCategory));
+
+        return tx.date.year == _selectedFilterYear &&
+            tx.date.month == m &&
+            tx.type == _selectedType &&
+            matchesCategory;
+      });
+      valoresMensuales[m - 1] = txsMes.fold(0.0, (sum, tx) => sum + tx.amount);
+    }
+
+    double maxVal = valoresMensuales.fold(0.0, (max, v) => v > max ? v : max);
+    if (maxVal == 0.0) {
+      maxVal = 1000.0;
+    }
+
+    final double totalAnual = valoresMensuales.fold(0.0, (sum, v) => sum + v);
+    final double promedioMensual = totalAnual / 12;
+    int maxMonthIdx = 0;
+    double highestMonthVal = 0.0;
+    for (int i = 0; i < 12; i++) {
+      if (valoresMensuales[i] > highestMonthVal) {
+        highestMonthVal = valoresMensuales[i];
+        maxMonthIdx = i;
+      }
+    }
+    
+    final List<String> mesesLargos = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ];
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+      decoration: BoxDecoration(
+        color: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: esOscuro ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE2E8F0),
+          width: 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: esOscuro ? 0.20 : 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'TENDENCIA ANUAL',
+                style: TextStyle(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w800,
+                  color: colorTexto.withValues(alpha: 0.5),
+                  letterSpacing: 0.8,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: colorTexto.withValues(alpha: 0.04),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colorTexto.withValues(alpha: 0.08)),
+                ),
+                child: DropdownButton<String>(
+                  value: _selectedEvolucionCategory,
+                  dropdownColor: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
+                  underline: const SizedBox(),
+                  style: TextStyle(color: colorTexto, fontWeight: FontWeight.bold, fontSize: 11),
+                  items: cats.map((cat) {
+                    return DropdownMenuItem<String>(
+                      value: cat.name,
+                      child: Text(cat.name),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      _selectedEvolucionCategory = val;
+                    });
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          
+          SizedBox(
+            width: double.infinity,
+            height: 180,
+            child: CustomPaint(
+              painter: PintorGraficoEvolucionAnual(
+                valoresMensuales: valoresMensuales,
+                maxVal: maxVal,
+                colorPrincipal: primaryColor,
+                colorTexto: colorTexto,
+                esOscuro: esOscuro,
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          
+          const Divider(),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildResumenItem('Total Anual', _formatCurrency(totalAnual, currency), colorTexto),
+              _buildResumenItem('Promedio Mensual', _formatCurrency(promedioMensual, currency), colorTexto),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (highestMonthVal > 0)
+            Row(
+              children: [
+                Icon(Icons.trending_up_rounded, color: const Color(0xFFEF4444), size: 16),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Mes de mayor gasto: ${mesesLargos[maxMonthIdx]} (${_formatCurrency(highestMonthVal, currency)})',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: colorTexto.withValues(alpha: 0.75)),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResumenItem(String label, String value, Color colorTexto) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: colorTexto.withValues(alpha: 0.45)),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: colorTexto),
+        ),
+      ],
+    );
+  }
 }
 
 class SeccionGrafico {
@@ -4723,4 +4965,146 @@ class _GrupoCategoriaPadre {
   final Map<String, List<ModeloTransaccion>> childTransactions = {};
 
   _GrupoCategoriaPadre(this.parent);
+}
+
+class PintorGraficoEvolucionAnual extends CustomPainter {
+  final List<double> valoresMensuales;
+  final double maxVal;
+  final Color colorPrincipal;
+  final Color colorTexto;
+  final bool esOscuro;
+
+  PintorGraficoEvolucionAnual({
+    required this.valoresMensuales,
+    required this.maxVal,
+    required this.colorPrincipal,
+    required this.colorTexto,
+    required this.esOscuro,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paintGrid = Paint()
+      ..color = colorTexto.withValues(alpha: 0.05)
+      ..strokeWidth = 1;
+
+    final paintLine = Paint()
+      ..color = colorPrincipal
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    final paintFill = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          colorPrincipal.withValues(alpha: 0.3),
+          colorPrincipal.withValues(alpha: 0.0),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    final paintDot = Paint()
+      ..color = colorPrincipal
+      ..style = PaintingStyle.fill;
+
+    final paintDotOuter = Paint()
+      ..color = esOscuro ? const Color(0xFF0E0E0E) : Colors.white
+      ..style = PaintingStyle.fill;
+
+    final double paddingLeft = 45;
+    final double paddingRight = 15;
+    final double paddingTop = 20;
+    final double paddingBottom = 30;
+
+    final double chartWidth = size.width - paddingLeft - paddingRight;
+    final double chartHeight = size.height - paddingTop - paddingBottom;
+
+    // Draw horizontal grid lines (4 levels)
+    final int levels = 4;
+    for (int i = 0; i <= levels; i++) {
+      final double y = paddingTop + chartHeight - (i * (chartHeight / levels));
+      canvas.drawLine(Offset(paddingLeft, y), Offset(size.width - paddingRight, y), paintGrid);
+
+      final double value = (maxVal / levels) * i;
+      final textSpan = TextSpan(
+        text: value >= 1000 ? '${(value / 1000).toStringAsFixed(1)}k' : value.toStringAsFixed(0),
+        style: TextStyle(color: colorTexto.withValues(alpha: 0.4), fontSize: 9, fontWeight: FontWeight.bold),
+      );
+      final textPainter = TextPainter(
+        text: textSpan,
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout();
+      textPainter.paint(canvas, Offset(paddingLeft - textPainter.width - 8, y - textPainter.height / 2));
+    }
+
+    // Connect monthly points
+    final List<Offset> points = [];
+    final double stepX = chartWidth / 11;
+    for (int i = 0; i < 12; i++) {
+      final double val = valoresMensuales[i];
+      final double x = paddingLeft + (i * stepX);
+      final double y = maxVal > 0 
+          ? paddingTop + chartHeight - ((val / maxVal) * chartHeight)
+          : paddingTop + chartHeight;
+      points.add(Offset(x, y));
+    }
+
+    // Draw area path first
+    if (maxVal > 0) {
+      final Path fillPath = Path();
+      fillPath.moveTo(points.first.dx, paddingTop + chartHeight);
+      for (var pt in points) {
+        fillPath.lineTo(pt.dx, pt.dy);
+      }
+      fillPath.lineTo(points.last.dx, paddingTop + chartHeight);
+      fillPath.close();
+      canvas.drawPath(fillPath, paintFill);
+    }
+
+    // Draw line
+    final Path linePath = Path();
+    linePath.moveTo(points.first.dx, points.first.dy);
+    for (int i = 1; i < points.length; i++) {
+      linePath.lineTo(points[i].dx, points[i].dy);
+    }
+    canvas.drawPath(linePath, paintLine);
+
+    // Draw dots and month labels
+    final List<String> meses = ['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+    for (int i = 0; i < 12; i++) {
+      final pt = points[i];
+      
+      canvas.drawCircle(pt, 5.5, paintDotOuter);
+      canvas.drawCircle(pt, 3.5, paintDot);
+
+      final textSpan = TextSpan(
+        text: meses[i],
+        style: TextStyle(
+          color: colorTexto.withValues(alpha: 0.5),
+          fontSize: 9.5,
+          fontWeight: FontWeight.w800,
+        ),
+      );
+      final textPainter = TextPainter(
+        text: textSpan,
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout();
+      textPainter.paint(
+        canvas,
+        Offset(pt.dx - textPainter.width / 2, paddingTop + chartHeight + 8),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant PintorGraficoEvolucionAnual oldDelegate) {
+    return oldDelegate.valoresMensuales != valoresMensuales ||
+        oldDelegate.maxVal != maxVal ||
+        oldDelegate.colorPrincipal != colorPrincipal ||
+        oldDelegate.colorTexto != colorTexto ||
+        oldDelegate.esOscuro != esOscuro;
+  }
 }

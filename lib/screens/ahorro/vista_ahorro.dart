@@ -6,6 +6,7 @@ import '../../services/estado_app.dart';
 import '../../widgets/interactive_scale.dart';
 import '../../widgets/hex_color_picker.dart';
 import '../../widgets/panel_transaccion.dart';
+import '../../widgets/backdrop_filter_safe.dart';
 
 class VistaAhorro extends StatefulWidget {
   const VistaAhorro({super.key});
@@ -108,6 +109,10 @@ class _VistaAhorroState extends State<VistaAhorro> {
                 filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                 child: Container(
                   color: colorFondo.withValues(alpha: esOscuro ? 0.85 : 0.90),
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height *
+                        (MediaQuery.of(context).viewInsets.bottom > 0 ? 0.88 : 0.72),
+                  ),
                   padding: EdgeInsets.only(
                     bottom: MediaQuery.of(context).viewInsets.bottom + 24,
                     left: 20,
@@ -649,6 +654,10 @@ class _VistaAhorroState extends State<VistaAhorro> {
                 filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                 child: Container(
                   color: colorFondo.withValues(alpha: esOscuro ? 0.85 : 0.90),
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height *
+                        (MediaQuery.of(context).viewInsets.bottom > 0 ? 0.88 : 0.72),
+                  ),
                   padding: EdgeInsets.only(
                     bottom: MediaQuery.of(context).viewInsets.bottom + 24,
                     left: 20,
@@ -974,6 +983,7 @@ class _VistaAhorroState extends State<VistaAhorro> {
             const SizedBox(height: 24),
 
             if (_activeTab == 0) ...[
+              _buildAhorroInfoCard(estadoApp, esOscuro, colorTexto),
               // Bento de Resumen Total de Ahorros
               Container(
                 padding: const EdgeInsets.all(20),
@@ -1393,6 +1403,9 @@ class _VistaAhorroState extends State<VistaAhorro> {
               const SizedBox(height: 12),
 
               _buildBudgetList(estadoApp, esOscuro, colorTexto),
+            ] else if (_activeTab == 2) ...[
+              // VISTA DE DEUDAS
+              _buildDebtsSection(estadoApp, esOscuro, colorTexto),
             ] else ...[
               // VISTA DE PLANES
               _buildPlanesSection(estadoApp, esOscuro, colorTexto),
@@ -1536,7 +1549,9 @@ class _VistaAhorroState extends State<VistaAhorro> {
                     ? 'Construye tu futuro paso a paso.'
                     : (_activeTab == 1
                         ? 'Controla tus gastos con límites inteligentes.'
-                        : 'Organiza tus cobros y pagos futuros.'),
+                        : (_activeTab == 2
+                            ? 'Lleva el control de tus deudas y abonos.'
+                            : 'Organiza tus cobros y pagos futuros.')),
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
@@ -1556,6 +1571,8 @@ class _VistaAhorroState extends State<VistaAhorro> {
               _showAddOrEditGoalSheet();
             } else if (_activeTab == 1) {
               _showAddOrEditBudgetSheet();
+            } else if (_activeTab == 2) {
+              _showAddOrEditDebtSheet();
             } else {
               showModalBottomSheet(
                 context: context,
@@ -1602,7 +1619,7 @@ class _VistaAhorroState extends State<VistaAhorro> {
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final width = constraints.maxWidth / 3;
+          final width = constraints.maxWidth / 4;
           return Stack(
             children: [
               // Micro-deslizador animado
@@ -1651,7 +1668,7 @@ class _VistaAhorroState extends State<VistaAhorro> {
                         child: Text(
                           'Ahorros',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11,
                             fontWeight: _activeTab == 0 ? FontWeight.w900 : FontWeight.bold,
                             color: _activeTab == 0 
                                 ? (esOscuro ? colorPrincipal : const Color(0xFF0F172A))
@@ -1671,9 +1688,9 @@ class _VistaAhorroState extends State<VistaAhorro> {
                       behavior: HitTestBehavior.opaque,
                       child: Center(
                         child: Text(
-                          'Presupuestos',
+                          'Límites',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11,
                             fontWeight: _activeTab == 1 ? FontWeight.w900 : FontWeight.bold,
                             color: _activeTab == 1 
                                 ? (esOscuro ? colorPrincipal : const Color(0xFF0F172A))
@@ -1693,11 +1710,33 @@ class _VistaAhorroState extends State<VistaAhorro> {
                       behavior: HitTestBehavior.opaque,
                       child: Center(
                         child: Text(
-                          'Planes',
+                          'Deudas',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11,
                             fontWeight: _activeTab == 2 ? FontWeight.w900 : FontWeight.bold,
                             color: _activeTab == 2 
+                                ? (esOscuro ? colorPrincipal : const Color(0xFF0F172A))
+                                : colorTexto.withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _activeTab = 3;
+                        });
+                      },
+                      behavior: HitTestBehavior.opaque,
+                      child: Center(
+                        child: Text(
+                          'Planes',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: _activeTab == 3 ? FontWeight.w900 : FontWeight.bold,
+                            color: _activeTab == 3 
                                 ? (esOscuro ? colorPrincipal : const Color(0xFF0F172A))
                                 : colorTexto.withValues(alpha: 0.5),
                           ),
@@ -2180,6 +2219,10 @@ class _VistaAhorroState extends State<VistaAhorro> {
                 filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                 child: Container(
                   color: colorFondo.withValues(alpha: esOscuro ? 0.85 : 0.90),
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height *
+                        (MediaQuery.of(context).viewInsets.bottom > 0 ? 0.88 : 0.72),
+                  ),
                   padding: EdgeInsets.only(
                     bottom: MediaQuery.of(context).viewInsets.bottom + 24,
                     left: 20,
@@ -2477,6 +2520,159 @@ class _VistaAhorroState extends State<VistaAhorro> {
                 const SizedBox(height: 4),
                 Text(
                   'Establece un límite de dinero para tus gastos de este mes. A medida que registres tus egresos reales, las barras se irán llenando. Pulsa sobre cualquier presupuesto para ver el detalle de tus gastos, editar el límite o eliminarlo.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: colorTexto.withValues(alpha: 0.6),
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAhorroInfoCard(EstadoApp estadoApp, bool esOscuro, Color colorTexto) {
+    final colorPrincipal = _getPrimaryColor(estadoApp, esOscuro);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: colorPrincipal.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: colorPrincipal.withValues(alpha: 0.15),
+          width: 1.0,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.info_outline_rounded,
+            color: colorPrincipal,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '¿Cómo funcionan los objetivos de ahorro?',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w900,
+                    color: colorTexto,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Crea metas de ahorro para tus proyectos (como unas vacaciones o un fondo de emergencia). Puedes realizar aportes a tus objetivos transfiriendo dinero directamente desde tus cuentas para alcanzar la meta establecida.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: colorTexto.withValues(alpha: 0.6),
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeudaInfoCard(EstadoApp estadoApp, bool esOscuro, Color colorTexto) {
+    final colorPrincipal = _getPrimaryColor(estadoApp, esOscuro);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: colorPrincipal.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: colorPrincipal.withValues(alpha: 0.15),
+          width: 1.0,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.info_outline_rounded,
+            color: colorPrincipal,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '¿Cómo funciona el control de deudas?',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w900,
+                    color: colorTexto,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Lleva un registro de lo que debes a otras personas u organizaciones, y de lo que te deben a ti. Registra abonos y pagos parciales para ver cómo disminuye el saldo pendiente y mantén tus cuentas claras.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: colorTexto.withValues(alpha: 0.6),
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlanesInfoCard(EstadoApp estadoApp, bool esOscuro, Color colorTexto) {
+    final colorPrincipal = _getPrimaryColor(estadoApp, esOscuro);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: colorPrincipal.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: colorPrincipal.withValues(alpha: 0.15),
+          width: 1.0,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.info_outline_rounded,
+            color: colorPrincipal,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '¿Cómo funcionan los planes y gastos futuros?',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w900,
+                    color: colorTexto,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Registra cobros e ingresos planificados o gastos recurrentes que sucederán en el futuro. Te ayudamos a proyectar el saldo estimado restante de tu dinero una vez que se completen todos tus compromisos del mes.',
                   style: TextStyle(
                     fontSize: 11,
                     color: colorTexto.withValues(alpha: 0.6),
@@ -2989,6 +3185,874 @@ class _VistaAhorroState extends State<VistaAhorro> {
     );
   }
 
+  Widget _buildDebtsSection(EstadoApp estadoApp, bool esOscuro, Color colorTexto) {
+    final currencySymbol = EstadoApp.getSymbolOfCurrency(estadoApp.selectedCurrency);
+    final primaryColor = _getPrimaryColor(estadoApp, esOscuro);
+
+    final double totalDeuda = estadoApp.debts.fold(0.0, (sum, d) => sum + d.totalAmount);
+    final double totalPagado = estadoApp.debts.fold(0.0, (sum, d) => sum + d.paidAmount);
+    final double totalPendiente = totalDeuda - totalPagado;
+    final double porcentajePago = totalDeuda > 0 ? (totalPagado / totalDeuda) * 100 : 0.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildDeudaInfoCard(estadoApp, esOscuro, colorTexto),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: esOscuro ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE2E8F0),
+              width: 1.0,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: esOscuro ? 0.20 : 0.03),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'TOTAL DEUDAS',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                          color: colorTexto.withValues(alpha: 0.4),
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '$currencySymbol ${totalDeuda.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: colorTexto,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: (porcentajePago >= 100 ? const Color(0xFF10B981) : primaryColor).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${porcentajePago.toStringAsFixed(0)}% Pagado',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: porcentajePago >= 100 ? const Color(0xFF10B981) : primaryColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: totalDeuda > 0 ? (totalPagado / totalDeuda) : 0.0,
+                  backgroundColor: esOscuro ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFE2E8F0),
+                  color: porcentajePago >= 100 ? const Color(0xFF10B981) : primaryColor,
+                  minHeight: 6,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'PAGADO',
+                        style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.bold, color: colorTexto.withValues(alpha: 0.4)),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '$currencySymbol ${totalPagado.toStringAsFixed(2)}',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFF10B981)),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'PENDIENTE',
+                        style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.bold, color: colorTexto.withValues(alpha: 0.4)),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '$currencySymbol ${totalPendiente.toStringAsFixed(2)}',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFFEF4444)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        Text(
+          'MIS ACREEDORES Y DEUDAS',
+          style: TextStyle(
+            fontSize: 9.5,
+            fontWeight: FontWeight.w900,
+            color: colorTexto.withValues(alpha: 0.45),
+            letterSpacing: 0.8,
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (estadoApp.debts.isEmpty) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+            decoration: BoxDecoration(
+              color: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: esOscuro ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFE2E8F0),
+              ),
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.verified_rounded,
+                  size: 44,
+                  color: const Color(0xFF10B981).withValues(alpha: 0.3),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '¡Sin deudas registradas!',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: colorTexto),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Lleva un registro ordenado de tus obligaciones.',
+                  style: TextStyle(fontSize: 11, color: colorTexto.withValues(alpha: 0.5)),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ] else ...[
+          ...estadoApp.debts.map((debt) {
+            final colorDeuda = Color(int.parse(debt.hexColor.replaceFirst('#', '0xFF')));
+            final double pendiente = debt.totalAmount - debt.paidAmount;
+            final double progress = debt.totalAmount > 0 ? (debt.paidAmount / debt.totalAmount) : 0.0;
+            final int diasRestantes = debt.dueDate.difference(DateTime.now()).inDays;
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: esOscuro ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFE2E8F0),
+                  width: 1.0,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              color: colorDeuda,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            debt.lender,
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: colorTexto),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        pendiente <= 0
+                            ? 'PAGADA'
+                            : '$currencySymbol ${pendiente.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          color: pendiente <= 0 ? const Color(0xFF10B981) : colorTexto,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        debt.notes.isNotEmpty ? debt.notes : 'Sin notas adicionales',
+                        style: TextStyle(fontSize: 11, color: colorTexto.withValues(alpha: 0.45)),
+                      ),
+                      Text(
+                        pendiente <= 0
+                            ? 'Completado'
+                            : (diasRestantes < 0
+                                ? 'Vencida hace ${diasRestantes.abs()} días'
+                                : 'Límite: ${debt.dueDate.day}/${debt.dueDate.month}/${debt.dueDate.year} ($diasRestantes d)'),
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.bold,
+                          color: pendiente <= 0
+                              ? const Color(0xFF10B981)
+                              : (diasRestantes < 0 ? const Color(0xFFEF4444) : colorTexto.withValues(alpha: 0.5)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
+                    child: LinearProgressIndicator(
+                      value: progress > 1.0 ? 1.0 : progress,
+                      backgroundColor: colorDeuda.withValues(alpha: 0.1),
+                      color: colorDeuda,
+                      minHeight: 5,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '$currencySymbol ${debt.paidAmount.toStringAsFixed(0)} de $currencySymbol ${debt.totalAmount.toStringAsFixed(0)} (${(progress * 100).toStringAsFixed(0)}%)',
+                        style: TextStyle(fontSize: 10.5, color: colorTexto.withValues(alpha: 0.5), fontWeight: FontWeight.bold),
+                      ),
+                      Row(
+                        children: [
+                          if (pendiente > 0) ...[
+                            InteractiveScale(
+                              onTap: () => _showAddPaymentDialog(debt),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: colorDeuda.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: colorDeuda.withValues(alpha: 0.15)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.payments_rounded, size: 12, color: colorDeuda),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Abonar',
+                                      style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: colorDeuda),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          InteractiveScale(
+                            onTap: () => _showAddOrEditDebtSheet(debtToEdit: debt),
+                            child: Icon(Icons.edit_rounded, size: 16, color: colorTexto.withValues(alpha: 0.45)),
+                          ),
+                          const SizedBox(width: 10),
+                          InteractiveScale(
+                            onTap: () async {
+                              final bool? confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  backgroundColor: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                  title: const Text('¿Eliminar deuda?', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  content: Text('Esta acción eliminará de forma permanente el registro con ${debt.lender}. No afectará las transacciones registradas.'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, false),
+                                      child: const Text('Cancelar'),
+                                    ),
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+                                      onPressed: () => Navigator.pop(context, true),
+                                      child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirm == true) {
+                                await estadoApp.deleteDebt(debt.id);
+                              }
+                            },
+                            child: const Icon(Icons.delete_rounded, size: 16, color: Color(0xFFEF4444)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ],
+    );
+  }
+
+  void _showAddOrEditDebtSheet({ModeloDeuda? debtToEdit}) {
+    final estadoApp = Provider.of<EstadoApp>(context, listen: false);
+    final esOscuro = estadoApp.esTemaOscuro;
+    final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
+    final colorFondo = esOscuro ? const Color(0xFF0A0A0A) : Colors.white;
+
+    final lenderController = TextEditingController(text: debtToEdit?.lender ?? '');
+    final totalController = TextEditingController(
+      text: debtToEdit != null ? debtToEdit.totalAmount.toStringAsFixed(0) : '1000',
+    );
+    final paidController = TextEditingController(
+      text: debtToEdit != null ? debtToEdit.paidAmount.toStringAsFixed(0) : '0',
+    );
+    final notesController = TextEditingController(text: debtToEdit?.notes ?? '');
+
+    String selectedColorHex = debtToEdit?.hexColor ?? '#EF4444';
+    DateTime selectedDate = debtToEdit?.date ?? DateTime.now();
+    DateTime selectedDueDate = debtToEdit?.dueDate ?? DateTime.now().add(const Duration(days: 30));
+    String? selectedAccountId = debtToEdit?.accountId;
+
+    if (selectedAccountId == null && estadoApp.accounts.isNotEmpty) {
+      selectedAccountId = estadoApp.accounts.first.id;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final primaryColor = Color(int.parse(selectedColorHex.replaceFirst('#', '0xFF')));
+
+            return ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(28),
+                topRight: Radius.circular(28),
+              ),
+              child: BackdropFilterSafe(
+                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(28),
+                  topRight: Radius.circular(28),
+                ),
+                child: Container(
+                  color: colorFondo.withValues(alpha: esOscuro ? 0.85 : 0.90),
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height *
+                        (MediaQuery.of(context).viewInsets.bottom > 0 ? 0.88 : 0.72),
+                  ),
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                    left: 20,
+                    right: 20,
+                    top: 16,
+                  ),
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 38,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: colorTexto.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          debtToEdit == null ? 'Registrar Nueva Deuda' : 'Editar Deuda',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: colorTexto,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        
+                        Text(
+                          'ACREEDOR / PRESTAMISTA',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                            color: colorTexto.withValues(alpha: 0.4),
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: lenderController,
+                          style: TextStyle(color: colorTexto, fontSize: 14, fontWeight: FontWeight.bold),
+                          decoration: InputDecoration(
+                            hintText: 'Ej. Banco Mercantil, Mamá, Juan',
+                            hintStyle: TextStyle(color: colorTexto.withValues(alpha: 0.25)),
+                            focusedBorder: UnderlineInputBorder(
+                              borderSide: BorderSide(color: primaryColor),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'MONTO TOTAL',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w900,
+                                      color: colorTexto.withValues(alpha: 0.4),
+                                      letterSpacing: 0.8,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  TextField(
+                                    controller: totalController,
+                                    keyboardType: TextInputType.number,
+                                    style: TextStyle(color: colorTexto, fontSize: 14, fontWeight: FontWeight.bold),
+                                    decoration: InputDecoration(
+                                      prefixText: 'Bs ',
+                                      prefixStyle: TextStyle(color: colorTexto.withValues(alpha: 0.5), fontWeight: FontWeight.bold),
+                                      focusedBorder: UnderlineInputBorder(
+                                        borderSide: BorderSide(color: primaryColor),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 20),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'PAGADO INICIAL',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w900,
+                                      color: colorTexto.withValues(alpha: 0.4),
+                                      letterSpacing: 0.8,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  TextField(
+                                    controller: paidController,
+                                    keyboardType: TextInputType.number,
+                                    style: TextStyle(color: colorTexto, fontSize: 14, fontWeight: FontWeight.bold),
+                                    decoration: InputDecoration(
+                                      prefixText: 'Bs ',
+                                      prefixStyle: TextStyle(color: colorTexto.withValues(alpha: 0.5), fontWeight: FontWeight.bold),
+                                      focusedBorder: UnderlineInputBorder(
+                                        borderSide: BorderSide(color: primaryColor),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+
+                        Text(
+                          'NOTAS Y DETALLES',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                            color: colorTexto.withValues(alpha: 0.4),
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: notesController,
+                          style: TextStyle(color: colorTexto, fontSize: 13),
+                          decoration: InputDecoration(
+                            hintText: 'Intereses, cuotas, detalles de contacto, etc.',
+                            hintStyle: TextStyle(color: colorTexto.withValues(alpha: 0.25)),
+                            focusedBorder: UnderlineInputBorder(
+                              borderSide: BorderSide(color: primaryColor),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'FECHA LÍMITE DE PAGO',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w900,
+                                    color: colorTexto.withValues(alpha: 0.4),
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${selectedDueDate.day}/${selectedDueDate.month}/${selectedDueDate.year}',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: colorTexto,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            InteractiveScale(
+                              onTap: () async {
+                                final now = DateTime.now();
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: selectedDueDate,
+                                  firstDate: now.subtract(const Duration(days: 365)),
+                                  lastDate: now.add(const Duration(days: 3650)),
+                                  builder: (context, child) {
+                                    return Theme(
+                                      data: Theme.of(context).copyWith(
+                                        colorScheme: ColorScheme.dark(
+                                          primary: primaryColor,
+                                          surface: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
+                                          onPrimary: Colors.white,
+                                          onSurface: colorTexto,
+                                        ),
+                                      ),
+                                      child: child!,
+                                    );
+                                  },
+                                );
+                                if (picked != null) {
+                                  setSheetState(() {
+                                    selectedDueDate = picked;
+                                  });
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: colorTexto.withValues(alpha: 0.05),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  'Seleccionar',
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: colorTexto),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+
+                        Text(
+                          'CUENTA PREDETERMINADA PARA ABONAR',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                            color: colorTexto.withValues(alpha: 0.4),
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: colorTexto.withValues(alpha: 0.04),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: colorTexto.withValues(alpha: 0.08)),
+                          ),
+                          child: DropdownButtonFormField<String>(
+                            value: selectedAccountId,
+                            dropdownColor: colorFondo,
+                            decoration: const InputDecoration(border: InputBorder.none),
+                            style: TextStyle(color: colorTexto, fontWeight: FontWeight.bold, fontSize: 13),
+                            items: estadoApp.accounts.map((acc) {
+                              return DropdownMenuItem<String>(
+                                value: acc.id,
+                                child: Text(acc.name),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              setSheetState(() {
+                                selectedAccountId = val;
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        Text(
+                          'SELECCIONAR COLOR',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                            color: colorTexto.withValues(alpha: 0.4),
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        HexColorPicker(
+                          currentColorHex: selectedColorHex,
+                          onColorChanged: (hex) {
+                            setSheetState(() {
+                              selectedColorHex = hex;
+                            });
+                          },
+                          esOscuro: esOscuro,
+                          colorPrincipal: estadoApp.colorPrincipal,
+                        ),
+                        const SizedBox(height: 32),
+
+                        InteractiveScale(
+                          onTap: () async {
+                            final String lender = lenderController.text.trim();
+                            final double? total = double.tryParse(totalController.text);
+                            final double? paid = double.tryParse(paidController.text);
+
+                            if (lender.isEmpty || total == null || total <= 0) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Por favor, rellena el acreedor y monto total.')),
+                              );
+                              return;
+                            }
+
+                            final parsedPaid = paid ?? 0.0;
+                            final id = debtToEdit?.id ?? 'debt_${DateTime.now().millisecondsSinceEpoch}';
+
+                            final debt = ModeloDeuda(
+                              id: id,
+                              lender: lender,
+                              totalAmount: total,
+                              paidAmount: parsedPaid,
+                              date: selectedDate,
+                              dueDate: selectedDueDate,
+                              hexColor: selectedColorHex,
+                              notes: notesController.text.trim(),
+                              accountId: selectedAccountId,
+                            );
+
+                            if (debtToEdit == null) {
+                              await estadoApp.addDebt(debt);
+                            } else {
+                              await estadoApp.updateDebt(debt);
+                            }
+
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                            }
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            decoration: BoxDecoration(
+                              color: primaryColor,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: primaryColor.withValues(alpha: 0.3),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              debtToEdit == null ? 'Crear Deuda' : 'Guardar Cambios',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showAddPaymentDialog(ModeloDeuda debt) {
+    final estadoApp = Provider.of<EstadoApp>(context, listen: false);
+    final esOscuro = estadoApp.esTemaOscuro;
+    final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
+
+    final double pendiente = debt.totalAmount - debt.paidAmount;
+    final amountController = TextEditingController(text: pendiente.toStringAsFixed(0));
+    String? selectedAccountId = debt.accountId;
+
+    if (selectedAccountId == null && estadoApp.accounts.isNotEmpty) {
+      selectedAccountId = estadoApp.accounts.first.id;
+    }
+
+    final colorDeuda = Color(int.parse(debt.hexColor.replaceFirst('#', '0xFF')));
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return BackdropFilterSafe(
+              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+              borderRadius: BorderRadius.circular(24),
+              child: AlertDialog(
+                backgroundColor: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                title: Text(
+                  'Registrar Abono',
+                  style: TextStyle(fontWeight: FontWeight.w900, color: colorTexto, fontSize: 16),
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '¿Cuánto vas a abonar a la deuda con ${debt.lender}?',
+                      style: TextStyle(color: colorTexto.withValues(alpha: 0.65), fontSize: 12.5),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: amountController,
+                      keyboardType: TextInputType.number,
+                      autofocus: true,
+                      style: TextStyle(color: colorTexto, fontSize: 20, fontWeight: FontWeight.bold),
+                      decoration: InputDecoration(
+                        prefixText: 'Bs ',
+                        prefixStyle: TextStyle(color: colorTexto.withValues(alpha: 0.5), fontWeight: FontWeight.bold, fontSize: 20),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: colorDeuda),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'PAGAR DESDE LA CUENTA',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        color: colorTexto.withValues(alpha: 0.4),
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: colorTexto.withValues(alpha: 0.04),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: colorTexto.withValues(alpha: 0.08)),
+                      ),
+                      child: DropdownButtonFormField<String>(
+                        value: selectedAccountId,
+                        dropdownColor: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
+                        decoration: const InputDecoration(border: InputBorder.none),
+                        style: TextStyle(color: colorTexto, fontWeight: FontWeight.bold, fontSize: 13),
+                        items: estadoApp.accounts.map((acc) {
+                          return DropdownMenuItem<String>(
+                            value: acc.id,
+                            child: Text('${acc.name} (Bs ${acc.balance.toStringAsFixed(2)})'),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          setDialogState(() {
+                            selectedAccountId = val;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      'Cancelar',
+                      style: TextStyle(
+                        color: colorTexto.withValues(alpha: 0.5),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colorDeuda,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    onPressed: () async {
+                      final double? val = double.tryParse(amountController.text);
+                      if (val == null || val <= 0) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Por favor, ingresa un monto válido.')),
+                        );
+                        return;
+                      }
+
+                      await estadoApp.addPaymentToDebt(debt.id, val, accountId: selectedAccountId);
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                      }
+                    },
+                    child: const Text('Confirmar', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildPlanesSection(EstadoApp estadoApp, bool esOscuro, Color colorTexto) {
     // 1. Filter transactions by selected month/year
     final pendingTxs = estadoApp.transactions
@@ -3018,6 +4082,7 @@ class _VistaAhorroState extends State<VistaAhorro> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _buildPlanesInfoCard(estadoApp, esOscuro, colorTexto),
         // Selector de Fecha para Planes (Mes / Año)
         _buildPlanesDateFilterBar(esOscuro, colorTexto, primaryColor),
         const SizedBox(height: 16),

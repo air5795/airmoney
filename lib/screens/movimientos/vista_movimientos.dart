@@ -524,7 +524,7 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
       );
       saldoActualGeneral = acc.balance;
     } else {
-      saldoActualGeneral = estadoApp.accounts.fold(0.0, (sum, acc) => sum + acc.balance);
+      saldoActualGeneral = estadoApp.totalBalance;
     }
 
     List<ModeloTransaccion> todasLasTxs = List.from(estadoApp.transactions);
@@ -539,10 +539,39 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
       if (!tx.pagada) continue; // Ignorar transacciones pendientes en la línea temporal de saldo real
       
       if (_selectedAccountFilter == null) {
+        final accSrc = estadoApp.accounts.firstWhere(
+          (a) => a.id == tx.accountId,
+          orElse: () => ModeloCuenta(id: '', name: '', balance: 0.0, gradientIndex: 0, type: 'Efectivo', contabilizable: true),
+        );
+        final srcContabilizable = accSrc.contabilizable ?? true;
+        final srcCurrency = accSrc.currency ?? estadoApp.selectedCurrency;
+
         if (tx.type == 'ingreso') {
-          runningBalance -= tx.amount;
+          if (srcContabilizable) {
+            final convertedAmount = estadoApp.convertirMoneda(tx.amount, srcCurrency, estadoApp.selectedCurrency);
+            runningBalance -= convertedAmount;
+          }
         } else if (tx.type == 'gasto') {
-          runningBalance += tx.amount;
+          if (srcContabilizable) {
+            final convertedAmount = estadoApp.convertirMoneda(tx.amount, srcCurrency, estadoApp.selectedCurrency);
+            runningBalance += convertedAmount;
+          }
+        } else if (tx.type == 'transferencia') {
+          final accDest = tx.toAccountId != null
+              ? estadoApp.accounts.firstWhere(
+                  (a) => a.id == tx.toAccountId,
+                  orElse: () => ModeloCuenta(id: '', name: '', balance: 0.0, gradientIndex: 0, type: 'Efectivo', contabilizable: true),
+                )
+              : null;
+          final destContabilizable = accDest?.contabilizable ?? true;
+          
+          if (srcContabilizable && !destContabilizable) {
+            final convertedAmount = estadoApp.convertirMoneda(tx.amount, srcCurrency, estadoApp.selectedCurrency);
+            runningBalance += convertedAmount;
+          } else if (!srcContabilizable && destContabilizable) {
+            final convertedAmount = estadoApp.convertirMoneda(tx.amount, srcCurrency, estadoApp.selectedCurrency);
+            runningBalance -= convertedAmount;
+          }
         }
       } else {
         if (tx.accountId == _selectedAccountFilter) {
@@ -686,8 +715,41 @@ class _VistaMovimientosState extends State<VistaMovimientos> {
                             double netoDia = transaccionesDia.fold(0.0, (sum, tx) {
                               if (!tx.pagada) return sum; // Ignorar transacciones pendientes en el neto del día
                               if (_selectedAccountFilter == null) {
-                                if (tx.type == 'ingreso') return sum + tx.amount;
-                                if (tx.type == 'gasto') return sum - tx.amount;
+                                final accSrc = estadoApp.accounts.firstWhere(
+                                  (a) => a.id == tx.accountId,
+                                  orElse: () => ModeloCuenta(id: '', name: '', balance: 0.0, gradientIndex: 0, type: 'Efectivo', contabilizable: true),
+                                );
+                                final srcContabilizable = accSrc.contabilizable ?? true;
+                                final srcCurrency = accSrc.currency ?? estadoApp.selectedCurrency;
+
+                                if (tx.type == 'ingreso') {
+                                  if (srcContabilizable) {
+                                    final convertedAmount = estadoApp.convertirMoneda(tx.amount, srcCurrency, estadoApp.selectedCurrency);
+                                    return sum + convertedAmount;
+                                  }
+                                } else if (tx.type == 'gasto') {
+                                  if (srcContabilizable) {
+                                    final convertedAmount = estadoApp.convertirMoneda(tx.amount, srcCurrency, estadoApp.selectedCurrency);
+                                    return sum - convertedAmount;
+                                  }
+                                } else if (tx.type == 'transferencia') {
+                                  final accDest = tx.toAccountId != null
+                                      ? estadoApp.accounts.firstWhere(
+                                          (a) => a.id == tx.toAccountId,
+                                          orElse: () => ModeloCuenta(id: '', name: '', balance: 0.0, gradientIndex: 0, type: 'Efectivo', contabilizable: true),
+                                        )
+                                      : null;
+                                  final destContabilizable = accDest?.contabilizable ?? true;
+                                  
+                                  if (srcContabilizable && !destContabilizable) {
+                                    final convertedAmount = estadoApp.convertirMoneda(tx.amount, srcCurrency, estadoApp.selectedCurrency);
+                                    return sum - convertedAmount;
+                                  } else if (!srcContabilizable && destContabilizable) {
+                                    final convertedAmount = estadoApp.convertirMoneda(tx.amount, srcCurrency, estadoApp.selectedCurrency);
+                                    return sum + convertedAmount;
+                                  }
+                                }
+                                return sum;
                               } else {
                                 if (tx.accountId == _selectedAccountFilter) return sum - tx.amount;
                                 if (tx.toAccountId == _selectedAccountFilter) return sum + tx.amount;

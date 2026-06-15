@@ -109,53 +109,70 @@ class _AjustesVozState extends State<AjustesVoz> {
     final colorPrincipal = estadoApp.colorPrincipal;
     final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
 
+    final Color colorTitulo = esOscuro
+        ? Color.alphaBlend(Colors.white.withValues(alpha: 0.1), colorPrincipal)
+        : Color.alphaBlend(Colors.black.withValues(alpha: 0.15), colorPrincipal);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 16),
-        InteractiveScale(
-          onTap: widget.onBack,
+        SizedBox(
+          height: 44,
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.arrow_back_ios_new_rounded,
-                size: 16,
-                color: colorPrincipal,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'Ajustes',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: colorPrincipal,
+              Expanded(
+                flex: 3,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: InteractiveScale(
+                    onTap: widget.onBack,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          size: 16,
+                          color: colorPrincipal,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Ajustes',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: colorPrincipal,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
+              ),
+              Expanded(
+                flex: 4,
+                child: Center(
+                  child: Text(
+                    'Asistente de Voz',
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: colorTitulo,
+                    ),
+                  ),
+                ),
+              ),
+              const Expanded(
+                flex: 3,
+                child: SizedBox(),
               ),
             ],
           ),
         ),
         const SizedBox(height: 20),
-        Text(
-          'Asistente de Voz',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w800,
-            color: colorTexto,
-            letterSpacing: -0.8,
-          ),
-        ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, end: 0, duration: 400.ms),
-        const SizedBox(height: 4),
-        Text(
-          'PROCESAMIENTO INTELIGENTE IA',
-          style: TextStyle(
-            fontSize: 9.5,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.2,
-            color: colorTexto.withValues(alpha: 0.4),
-          ),
-        ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
-        const SizedBox(height: 24),
         
         // Contenedor acrilico premium
         ClipRRect(

@@ -1,8 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import '../../../config/app_config.dart';
 import '../../../services/estado_app.dart';
 import '../../../widgets/hex_color_picker.dart';
 import '../../../widgets/interactive_scale.dart';
@@ -29,6 +27,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
 
   String _selectedAccountType = 'Ahorros';
   String _selectedAccountCurrency = 'BOB';
+  String _modalSearchQuery = '';
   int _selectedAccountGradientIdx = 0;
   String _selectedAccountColorHex = '#B3E5FC';
   String _selectedAccountSecondaryColorHex = '#E2E8F0';
@@ -48,6 +47,202 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
       }
     } catch (_) {}
     return defaultColor;
+  }
+
+  void _mostrarSelectorMoneda(
+    BuildContext context,
+    EstadoApp estadoApp,
+    bool esOscuro,
+    Color colorPrincipal,
+    Color colorTexto,
+    Color colorSecundario,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final double keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+            final colorFondoModal = esOscuro ? const Color(0xFF0F0F0F) : Colors.white;
+            final colorBuscador = esOscuro ? const Color(0xFF161616) : const Color(0xFFF1F5F9);
+            final colorCard = esOscuro ? const Color(0xFF1E1E1E) : Colors.white;
+
+            final filtered = EstadoApp.listaMonedas.where((m) {
+              final name = m['name']!.toLowerCase();
+              final code = m['code']!.toLowerCase();
+              final query = _modalSearchQuery.toLowerCase();
+              return name.contains(query) || code.contains(query);
+            }).toList();
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.70,
+              margin: EdgeInsets.only(bottom: keyboardHeight),
+              decoration: BoxDecoration(
+                color: colorFondoModal,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: esOscuro ? Colors.white24 : Colors.black12,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Seleccionar Moneda',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: colorTexto,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: colorBuscador,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: esOscuro ? Colors.white12 : Colors.black12,
+                        width: 1.0,
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.search_rounded,
+                          color: colorSecundario.withValues(alpha: 0.6),
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            onChanged: (val) {
+                              setModalState(() {
+                                _modalSearchQuery = val;
+                              });
+                            },
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: colorTexto,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'Buscar moneda o código...',
+                              hintStyle: TextStyle(
+                                fontSize: 14,
+                                color: colorSecundario.withValues(alpha: 0.5),
+                              ),
+                              border: InputBorder.none,
+                              isDense: true,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: ListView.separated(
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: filtered.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final cur = filtered[index];
+                        final isSelected = _selectedAccountCurrency == cur['code'];
+
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedAccountCurrency = cur['code']!;
+                            });
+                            Navigator.pop(context);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? colorPrincipal.withValues(alpha: 0.08)
+                                  : colorCard,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isSelected
+                                    ? colorPrincipal
+                                    : (esOscuro ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03)),
+                                width: isSelected ? 1.5 : 1.0,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: BoxDecoration(
+                                    color: esOscuro ? const Color(0xFF161616) : const Color(0xFFF1F5F9),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    cur['flag'] ?? cur['symbol']!,
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        cur['name']!,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: colorTexto,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${cur['code']} (${cur['symbol']})',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: colorSecundario.withValues(alpha: 0.7),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (isSelected)
+                                  Icon(
+                                    Icons.check_circle_rounded,
+                                    color: colorPrincipal,
+                                    size: 20,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    ).then((_) {
+      _modalSearchQuery = '';
+    });
   }
 
 
@@ -203,82 +398,149 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
     final estadoApp = Provider.of<EstadoApp>(context);
     final esOscuro = estadoApp.esTemaOscuro;
     final colorPrincipal = estadoApp.colorPrincipal;
+    final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
+    final colorSecundario = esOscuro ? const Color(0xFF64748B) : const Color(0xFF475569);
+
+    final Color colorTitulo = esOscuro
+        ? Color.alphaBlend(Colors.white.withValues(alpha: 0.1), colorPrincipal)
+        : Color.alphaBlend(Colors.black.withValues(alpha: 0.15), colorPrincipal);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            InteractiveScale(
-              onTap: () {
-                if (_isCreatingOrEditingAccount) {
-                  setState(() {
-                    _isCreatingOrEditingAccount = false;
-                    _selectedAccountToEdit = null;
-                  });
-                } else {
-                  widget.onBack();
-                }
-              },
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    size: 16,
-                    color: colorPrincipal,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    _isCreatingOrEditingAccount ? 'Cuentas' : 'Ajustes',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: colorPrincipal,
+        SizedBox(
+          height: 44,
+          child: Row(
+            children: [
+              // Botón Retroceso (Izquierda)
+              Expanded(
+                flex: 3,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: InteractiveScale(
+                    onTap: () {
+                      if (_isCreatingOrEditingAccount) {
+                        setState(() {
+                          _isCreatingOrEditingAccount = false;
+                          _selectedAccountToEdit = null;
+                        });
+                      } else {
+                        widget.onBack();
+                      }
+                    },
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          size: 16,
+                          color: colorPrincipal,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          _isCreatingOrEditingAccount ? 'Cuentas' : 'Ajustes',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: colorPrincipal,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
-            ),
-            if (_isCreatingOrEditingAccount)
-              InteractiveScale(
-                onTap: () => _guardarCuenta(estadoApp),
-                child: Text(
-                  'Guardar',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: colorPrincipal,
                   ),
                 ),
               ),
-          ],
+              
+              // Título (Centro)
+              Expanded(
+                flex: 4,
+                child: Center(
+                  child: Text(
+                    _isCreatingOrEditingAccount
+                        ? (_selectedAccountToEdit != null ? 'Editar Cuenta' : 'Nueva Cuenta')
+                        : 'Mis Cuentas',
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: colorTitulo,
+                    ),
+                  ),
+                ),
+              ),
+              
+              // Botón Agregar / Guardar (Derecha)
+              Expanded(
+                flex: 3,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Builder(
+                    builder: (context) {
+                      if (_isCreatingOrEditingAccount) {
+                        return InteractiveScale(
+                          onTap: () => _guardarCuenta(estadoApp),
+                          child: Text(
+                            'Guardar',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: colorPrincipal,
+                            ),
+                          ),
+                        );
+                      } else {
+                        return InteractiveScale(
+                          onTap: () {
+                            setState(() {
+                              _isCreatingOrEditingAccount = true;
+                              _selectedAccountToEdit = null;
+                              _accountNameController.clear();
+                              _accountBalanceController.text = '0.00';
+                              _selectedAccountType = 'Ahorros';
+                              _selectedAccountCurrency = estadoApp.selectedCurrency;
+                              _selectedAccountGradientIdx = 0;
+                              _selectedAccountColorHex = '#B3E5FC';
+                              _selectedAccountSecondaryColorHex = '#E2E8F0';
+                              _useCustomColorForAccount = false;
+                              _selectedAccountUseDarkText = false;
+                              _selectedAccountContabilizable = true;
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: colorPrincipal.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.add_rounded, size: 14, color: colorPrincipal),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Agregar',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: colorPrincipal,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 20),
-        Text(
-          _isCreatingOrEditingAccount
-              ? (_selectedAccountToEdit == null ? 'Nueva Cuenta' : 'Editar Cuenta')
-              : 'Mis Cuentas',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w900,
-            color: esOscuro ? Colors.white : const Color(0xFF0F172A),
-            letterSpacing: -0.8,
-          ),
-        ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, end: 0, duration: 400.ms),
-        const SizedBox(height: 4),
-        Text(
-          _isCreatingOrEditingAccount ? 'CONFIGURAR DATOS DE LA TARJETA' : 'GESTIONAR CUENTAS DE ${AppConfig.appName.toUpperCase()}',
-          style: TextStyle(
-            fontSize: 9.5,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.2,
-            color: esOscuro ? Colors.white.withValues(alpha: 0.4) : const Color(0xFF0F172A).withValues(alpha: 0.4),
-          ),
-        ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
-        const SizedBox(height: 24),
         _isCreatingOrEditingAccount
             ? _buildAccountFormView(estadoApp)
             : _buildAccountsListView(estadoApp),
@@ -295,67 +557,7 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
 
     return Column(
       children: [
-        InteractiveScale(
-          onTap: () {
-            setState(() {
-              _isCreatingOrEditingAccount = true;
-              _selectedAccountToEdit = null;
-              _accountNameController.clear();
-              _accountBalanceController.text = '0.00';
-              _selectedAccountType = 'Ahorros';
-              _selectedAccountCurrency = estadoApp.selectedCurrency;
-              _selectedAccountGradientIdx = 0;
-              _selectedAccountColorHex = '#B3E5FC';
-              _selectedAccountSecondaryColorHex = '#E2E8F0';
 
-              _useCustomColorForAccount = false;
-              _selectedAccountUseDarkText = false;
-              _selectedAccountContabilizable = true;
-            });
-          },
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                decoration: BoxDecoration(
-                  color: esOscuro
-                      ? Colors.white.withValues(alpha: 0.04)
-                      : Colors.black.withValues(alpha: 0.03),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: esOscuro
-                        ? const Color(0xFF1E1E1E)
-                        : Colors.black.withValues(alpha: 0.06),
-                    width: 1.0,
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.add_card_rounded,
-                      color: colorPrincipal,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      'Crear Nueva Cuenta',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: colorPrincipal,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
         ListView.separated(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -954,6 +1156,8 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
   Widget _buildAccountFormView(EstadoApp estadoApp) {
     final esOscuro = estadoApp.esTemaOscuro;
     final colorPrincipal = estadoApp.colorPrincipal;
+    final colorTexto = esOscuro ? Colors.white : const Color(0xFF0F172A);
+    final colorSecundario = esOscuro ? const Color(0xFF64748B) : const Color(0xFF475569);
     
     final String liveName = _accountNameController.text.isEmpty ? 'Nombre de Cuenta' : _accountNameController.text;
     final double liveBalance = double.tryParse(_accountBalanceController.text) ?? 0.0;
@@ -1365,55 +1569,62 @@ class _AjustesCuentasState extends State<AjustesCuentas> {
           ),
         ),
         const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          value: ['BOB', 'MXN', 'USD', 'EUR', 'GBP', 'JPY', 'CNY', 'KRW', 'INR'].contains(_selectedAccountCurrency)
-              ? _selectedAccountCurrency
-              : 'BOB',
-          dropdownColor: esOscuro ? const Color(0xFF0E0E0E) : Colors.white,
-          style: TextStyle(
-            color: esOscuro ? Colors.white : const Color(0xFF0F172A),
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-          ),
-          items: const [
-            DropdownMenuItem(value: 'BOB', child: Text('Boliviano (BOB)')),
-            DropdownMenuItem(value: 'USD', child: Text('Dólar estadounidense (USD)')),
-            DropdownMenuItem(value: 'MXN', child: Text('Peso mexicano (MXN)')),
-            DropdownMenuItem(value: 'EUR', child: Text('Euro (EUR)')),
-            DropdownMenuItem(value: 'GBP', child: Text('Libra esterlina (GBP)')),
-            DropdownMenuItem(value: 'JPY', child: Text('Yen japonés (JPY)')),
-          ],
-          onChanged: (val) {
-            if (val != null) {
-              setState(() {
-                _selectedAccountCurrency = val;
-              });
-            }
-          },
-          decoration: InputDecoration(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            filled: true,
-            fillColor: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
-            border: OutlineInputBorder(
+        GestureDetector(
+          onTap: () => _mostrarSelectorMoneda(context, estadoApp, esOscuro, colorPrincipal, colorTexto, colorSecundario),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: esOscuro ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
               borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(
+              border: Border.all(
                 color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
                 width: 1.0,
               ),
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(
-                color: esOscuro ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
-                width: 1.0,
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(
-                color: colorPrincipal,
-                width: 1.0,
-              ),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: colorPrincipal.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    EstadoApp.getFlagOfCurrency(_selectedAccountCurrency),
+                    style: const TextStyle(fontSize: 18),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        EstadoApp.getNameOfCurrency(_selectedAccountCurrency),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: colorTexto,
+                        ),
+                      ),
+                      Text(
+                        'Código: $_selectedAccountCurrency (${EstadoApp.getSymbolOfCurrency(_selectedAccountCurrency)})',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: colorSecundario.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: colorSecundario.withValues(alpha: 0.7),
+                  size: 20,
+                ),
+              ],
             ),
           ),
         ),

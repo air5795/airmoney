@@ -19,47 +19,47 @@ class AjustesTipoCambio extends StatefulWidget {
 
 class _AjustesTipoCambioState extends State<AjustesTipoCambio> {
   final Map<String, TextEditingController> _controllers = {};
-  
-  final Map<String, String> _nombresMonedas = {
-    'BOB': 'Boliviano boliviano',
-    'MXN': 'Peso mexicano',
-    'USD': 'Dolar estadounidense',
-    'EUR': 'Euro',
-    'GBP': 'Libra esterlina',
-    'JPY': 'Yen japones',
-    'CNY': 'Yuan chino',
-    'KRW': 'Won surcoreano',
-    'INR': 'Rupia india',
-  };
-
-  final Map<String, String> _banderasMonedas = {
-    'BOB': '🇧🇴',
-    'MXN': '🇲🇽',
-    'USD': '🇺🇸',
-    'EUR': '🇪🇺',
-    'GBP': '🇬🇧',
-    'JPY': '🇯🇵',
-    'CNY': '🇨🇳',
-    'KRW': '🇰🇷',
-    'INR': '🇮🇳',
-  };
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  bool _estaCargandoApi = false;
+  bool _respetarCambiosManuales = true;
 
   @override
   void initState() {
     super.initState();
+    _cargarTasasEnControladores();
+  }
+
+  void _cargarTasasEnControladores() {
     final estadoApp = Provider.of<EstadoApp>(context, listen: false);
     final monedaPrincipal = estadoApp.selectedCurrency;
-    final todasMonedas = ['BOB', 'MXN', 'USD', 'EUR', 'GBP', 'JPY', 'CNY', 'KRW', 'INR'];
+    final todasMonedas = EstadoApp.todosCodigosMoneda;
     final monedasSecundarias = todasMonedas.where((m) => m != monedaPrincipal).toList();
 
     for (var m in monedasSecundarias) {
       final tasa = estadoApp.tiposCambio[m] ?? 1.0;
-      _controllers[m] = TextEditingController(text: tasa.toStringAsFixed(4));
+      if (_controllers.containsKey(m)) {
+        _controllers[m]!.text = tasa.toStringAsFixed(4);
+      } else {
+        _controllers[m] = TextEditingController(text: tasa.toStringAsFixed(4));
+      }
     }
+  }
+
+  String _formatearUltimaActualizacion(int millis) {
+    if (millis == 0) return 'Nunca';
+    final dt = DateTime.fromMillisecondsSinceEpoch(millis);
+    final hora = dt.hour.toString().padLeft(2, '0');
+    final minuto = dt.minute.toString().padLeft(2, '0');
+    final dia = dt.day.toString().padLeft(2, '0');
+    final mes = dt.month.toString().padLeft(2, '0');
+    final anio = dt.year;
+    return '$dia/$mes/$anio $hora:$minuto';
   }
 
   @override
   void dispose() {
+    _searchController.dispose();
     for (var controller in _controllers.values) {
       controller.dispose();
     }
@@ -68,38 +68,65 @@ class _AjustesTipoCambioState extends State<AjustesTipoCambio> {
 
   void _guardarTiposCambio(EstadoApp estadoApp) async {
     bool algunError = false;
+    String mensajeError = '';
     final Map<String, double> nuevosTipos = {};
 
-    _controllers.forEach((moneda, controller) {
-      final valorTexto = controller.text.trim();
+    for (var m in _controllers.keys) {
+      final controller = _controllers[m]!;
+      final valorTexto = controller.text.trim().replaceAll(',', '.');
       final valor = double.tryParse(valorTexto);
+      final valorActual = estadoApp.tiposCambio[m] ?? 1.0;
 
+      // Comprobar si realmente ha cambiado
+      final textoActual = valorActual.toStringAsFixed(4);
+      final textoFormateadoController = valor != null ? valor.toStringAsFixed(4) : '';
+
+      if (valorTexto == textoActual || textoFormateadoController == textoActual) {
+        continue; // No cambió, no validamos ni guardamos esto
+      }
+
+      // Si cambió, sí validamos
       if (valor == null || valor <= 0) {
         algunError = true;
+        mensajeError = 'Por favor, ingrese un valor numérico mayor a 0 para ${EstadoApp.getNameOfCurrency(m)} ($m).';
+        break;
       } else {
-        nuevosTipos[moneda] = valor;
+        nuevosTipos[m] = valor;
       }
-    });
+    }
 
     if (algunError) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Por favor, ingrese valores numericos validos y mayores a cero en todas las monedas.'),
+        SnackBar(
+          content: Text(mensajeError),
           backgroundColor: Colors.redAccent,
         ),
       );
       return;
     }
 
+    if (nuevosTipos.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No hay cambios para guardar.'),
+          backgroundColor: Colors.blueGrey,
+        ),
+      );
+      return;
+    }
+
     for (var entry in nuevosTipos.entries) {
-      await estadoApp.setTasaCambio(entry.key, entry.value);
+      final moneda = entry.key;
+      final nuevoValor = entry.value;
+      await estadoApp.marcarMonedaComoPersonalizada(moneda);
+      await estadoApp.setTasaCambio(moneda, nuevoValor);
     }
 
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Tipos de cambio actualizados con exito.'),
+        content: Text('Tipos de cambio actualizados con éxito.'),
         backgroundColor: Color(0xFF34C759),
       ),
     );
@@ -115,74 +142,98 @@ class _AjustesTipoCambioState extends State<AjustesTipoCambio> {
 
     final String monedaPrincipal = estadoApp.selectedCurrency;
     final String simboloPrincipal = EstadoApp.getSymbolOfCurrency(monedaPrincipal);
-    final String banderaPrincipal = _banderasMonedas[monedaPrincipal] ?? '';
+    final String banderaPrincipal = EstadoApp.getFlagOfCurrency(monedaPrincipal);
 
-    final todasMonedas = ['BOB', 'MXN', 'USD', 'EUR', 'GBP', 'JPY', 'CNY', 'KRW', 'INR'];
-    final monedasSecundarias = todasMonedas.where((m) => m != monedaPrincipal).toList();
+    final todasMonedas = EstadoApp.todosCodigosMoneda;
+    final monedasSecundariasCompleto = todasMonedas.where((m) => m != monedaPrincipal).toList();
+    final monedasSecundariasFiltradas = monedasSecundariasCompleto.where((m) {
+      final nombre = EstadoApp.getNameOfCurrency(m).toLowerCase();
+      final codigo = m.toLowerCase();
+      final query = _searchQuery.toLowerCase();
+      return nombre.contains(query) || codigo.contains(query);
+    }).toList();
+
+    final monedasSecundarias = _searchQuery.isEmpty
+        ? monedasSecundariasFiltradas.take(10).toList()
+        : monedasSecundariasFiltradas;
+
+    final Color colorTitulo = esOscuro
+        ? Color.alphaBlend(Colors.white.withValues(alpha: 0.1), colorPrincipal)
+        : Color.alphaBlend(Colors.black.withValues(alpha: 0.15), colorPrincipal);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            InteractiveScale(
-              onTap: widget.onBack,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    size: 16,
-                    color: colorPrincipal,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Ajustes',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: colorPrincipal,
+        SizedBox(
+          height: 44,
+          child: Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: InteractiveScale(
+                    onTap: widget.onBack,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          size: 16,
+                          color: colorPrincipal,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Ajustes',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: colorPrincipal,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ),
-            InteractiveScale(
-              onTap: () => _guardarTiposCambio(estadoApp),
-              child: Text(
-                'Guardar',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: colorPrincipal,
                 ),
               ),
-            ),
-          ],
+              Expanded(
+                flex: 4,
+                child: Center(
+                  child: Text(
+                    'Tipos de Cambio',
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: colorTitulo,
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 3,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: InteractiveScale(
+                    onTap: () => _guardarTiposCambio(estadoApp),
+                    child: Text(
+                      'Guardar',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: colorPrincipal,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 20),
-        Text(
-          'Tipos de Cambio',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w800,
-            color: colorTexto,
-            letterSpacing: -0.8,
-          ),
-        ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, end: 0, duration: 400.ms),
-        const SizedBox(height: 4),
-        Text(
-          'CONFIGURACION MULTI-DIVISA GLOBAL',
-          style: TextStyle(
-            fontSize: 9.5,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.2,
-            color: colorTexto.withValues(alpha: 0.4),
-          ),
-        ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
-        const SizedBox(height: 16),
 
         // Info Banner Bento
         ClipRRect(
@@ -228,6 +279,243 @@ class _AjustesTipoCambioState extends State<AjustesTipoCambio> {
           ),
         ).animate().fadeIn(duration: 400.ms, delay: 120.ms),
         const SizedBox(height: 20),
+        // Buscador de Monedas Secundarias
+        Container(
+          height: 52,
+          decoration: BoxDecoration(
+            color: esOscuro ? const Color(0xFF0E0E0E) : const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: esOscuro
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.black.withValues(alpha: 0.03),
+              width: 1.0,
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              Icon(
+                Icons.search_rounded,
+                color: colorSecundario.withValues(alpha: 0.6),
+                size: 20,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (val) {
+                    setState(() {
+                      _searchQuery = val;
+                    });
+                  },
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: colorTexto,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Buscar divisa...',
+                    hintStyle: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: colorSecundario.withValues(alpha: 0.5),
+                    ),
+                    border: InputBorder.none,
+                    isDense: true,
+                  ),
+                ),
+              ),
+              if (_searchQuery.isNotEmpty)
+                GestureDetector(
+                  onTap: () {
+                    _searchController.clear();
+                    setState(() {
+                      _searchQuery = '';
+                    });
+                  },
+                  child: Icon(
+                    Icons.clear_rounded,
+                    color: colorSecundario.withValues(alpha: 0.6),
+                    size: 20,
+                  ),
+                ),
+            ],
+          ),
+        ).animate().fadeIn(duration: 400.ms, delay: 150.ms),
+        const SizedBox(height: 20),
+
+        // Card de Sincronización Automática
+        ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: esOscuro
+                    ? const Color(0xFF1E293B).withValues(alpha: 0.15)
+                    : const Color(0xFFF1F5F9).withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: esOscuro
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : Colors.black.withValues(alpha: 0.03),
+                  width: 1.0,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.cloud_sync_rounded,
+                        color: colorPrincipal,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Actualización Automática',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: colorTexto,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Si el valor de cambio real de Google o el mercado es diferente al mostrado abajo, puedes presionar el botón para sincronizar todas las divisas al instante desde internet o editarlas manualmente.',
+                    style: TextStyle(
+                      fontSize: 11,
+                      height: 1.45,
+                      color: colorSecundario.withValues(alpha: 0.8),
+                    ),
+                  ),
+                  Divider(
+                    height: 24,
+                    color: esOscuro
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.05),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Respetar cambios manuales',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: colorTexto,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'No actualizar las divisas que has editado personalmente.',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                color: colorSecundario.withValues(alpha: 0.7),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: _respetarCambiosManuales,
+                        activeColor: colorPrincipal,
+                        onChanged: (val) {
+                          setState(() {
+                            _respetarCambiosManuales = val;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Última sinc.: ${_formatearUltimaActualizacion(estadoApp.lastLocalUpdateMillis)}',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                          color: colorSecundario.withValues(alpha: 0.6),
+                        ),
+                      ),
+                      _estaCargandoApi
+                          ? SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(colorPrincipal),
+                              ),
+                            )
+                          : ElevatedButton.icon(
+                              onPressed: () async {
+                                  setState(() {
+                                    _estaCargandoApi = true;
+                                  });
+                                  final messenger = ScaffoldMessenger.of(context);
+                                  final exito = await estadoApp.actualizarTasasDesdeInternet(
+                                    respetarPersonalizadas: _respetarCambiosManuales,
+                                  );
+                                  if (mounted) {
+                                    setState(() {
+                                      _estaCargandoApi = false;
+                                    });
+                                    if (exito) {
+                                      _cargarTasasEnControladores();
+                                      messenger.showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Tipos de cambio actualizados con éxito desde internet.'),
+                                          backgroundColor: Color(0xFF34C759),
+                                        ),
+                                      );
+                                    } else {
+                                      messenger.showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Error al conectar con el servidor. Verifica tu conexión.'),
+                                          backgroundColor: Colors.redAccent,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                              icon: const Icon(Icons.sync_rounded, size: 16),
+                              label: const Text(
+                                'Actualizar Divisas',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: colorPrincipal,
+                                foregroundColor: esOscuro ? Colors.black : Colors.white,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ).animate().fadeIn(duration: 400.ms, delay: 180.ms),
+        const SizedBox(height: 20),
 
         // Lista de Monedas Secundarias
         ListView.builder(
@@ -236,10 +524,11 @@ class _AjustesTipoCambioState extends State<AjustesTipoCambio> {
           itemCount: monedasSecundarias.length,
           itemBuilder: (context, index) {
             final moneda = monedasSecundarias[index];
-            final nombreMoneda = _nombresMonedas[moneda] ?? moneda;
+            final nombreMoneda = EstadoApp.getNameOfCurrency(moneda);
             final simboloMoneda = EstadoApp.getSymbolOfCurrency(moneda);
-            final banderaMoneda = _banderasMonedas[moneda] ?? '';
+            final banderaMoneda = EstadoApp.getFlagOfCurrency(moneda);
             final controller = _controllers[moneda];
+            final esPersonalizada = estadoApp.monedasPersonalizadas.contains(moneda);
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 14),
@@ -305,6 +594,84 @@ class _AjustesTipoCambioState extends State<AjustesTipoCambio> {
                                 ],
                               ),
                             ),
+                            if (esPersonalizada) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: Colors.amber.withValues(alpha: 0.4),
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.edit_rounded,
+                                      size: 10,
+                                      color: Colors.amber,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Editado',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w900,
+                                        color: Colors.amber,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () async {
+                                  final messenger = ScaffoldMessenger.of(context);
+                                  setState(() {
+                                    _estaCargandoApi = true;
+                                  });
+                                  await estadoApp.removerMonedaPersonalizada(moneda);
+                                  final exito = await estadoApp.actualizarTasasDesdeInternet(
+                                    respetarPersonalizadas: true,
+                                  );
+                                  if (mounted) {
+                                    setState(() {
+                                      _estaCargandoApi = false;
+                                    });
+                                    _cargarTasasEnControladores();
+                                    if (exito) {
+                                      messenger.showSnackBar(
+                                        SnackBar(
+                                          content: Text('Divisa $moneda restaurada al valor del servidor.'),
+                                          backgroundColor: const Color(0xFF34C759),
+                                        ),
+                                      );
+                                    } else {
+                                      messenger.showSnackBar(
+                                        SnackBar(
+                                          content: Text('Divisa $moneda marcada para actualizar en la próxima sincronización.'),
+                                          backgroundColor: Colors.blueGrey,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.withValues(alpha: 0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.settings_backup_restore_rounded,
+                                    size: 16,
+                                    color: Colors.amber,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                         const SizedBox(height: 16),
